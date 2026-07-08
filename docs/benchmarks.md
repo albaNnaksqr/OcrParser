@@ -1,5 +1,7 @@
 # Benchmark Notes
 
+English | [中文](benchmarks.zh-CN.md)
+
 This document summarizes sanitized benchmark evidence from OcrParser
 development. The numbers are useful for understanding framework behavior, not
 for ranking OCR models.

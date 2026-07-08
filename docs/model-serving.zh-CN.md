@@ -1,23 +1,22 @@
-# Model Serving Examples
+# 模型服务示例
 
-English | [中文](model-serving.zh-CN.md)
+[English](model-serving.md) | 中文
 
-OcrParser calls OCR/model services through HTTP APIs. It does not ship model
-weights and does not start model servers automatically.
+OcrParser 通过 HTTP API 调用 OCR/model services。它不附带模型权重，
+也不会自动启动模型服务器。
 
-The examples below show the shape of the services the parser expects. Replace
-paths, ports, model names, and runtime flags with values appropriate for your
-environment.
+下面的示例展示 parser 期望的服务形态。请根据你的环境替换 paths、ports、
+model names 和 runtime flags。
 
-## Endpoint Shape
+## Endpoint 形态
 
-Most parser engines expect an OpenAI-compatible chat/completions endpoint:
+大多数 parser engines 期望 OpenAI-compatible chat/completions endpoint：
 
 ```text
 http://YOUR_MODEL_ENDPOINT:PORT/v1/chat/completions
 ```
 
-CLI flags usually use host and port separately:
+CLI flags 通常分开传 host 和 port：
 
 ```bash
 python -m ocr_parser \
@@ -29,13 +28,12 @@ python -m ocr_parser \
   --model_name DotsOCR
 ```
 
-If your endpoint requires an API key, pass it through your local environment or
-the platform model profile. Do not commit keys to this repository.
+如果 endpoint 需要 API key，请通过本地环境变量或 platform model profile 传入。
+不要把 key 提交到仓库中。
 
 ## DotsOCR-Style Endpoint
 
-Use this when your DotsOCR-compatible model is already exposed as an
-OpenAI-compatible service:
+当你的 DotsOCR-compatible 模型已经暴露为 OpenAI-compatible service 时，可以这样使用：
 
 ```bash
 python -m ocr_parser \
@@ -51,7 +49,7 @@ python -m ocr_parser \
   --api_concurrency_max 16
 ```
 
-For high-capacity endpoints, benchmark before raising concurrency:
+对于高容量 endpoint，提高并发前先做 benchmark：
 
 ```bash
 python3 tools/run_performance_baseline.py \
@@ -69,8 +67,8 @@ python3 tools/run_performance_baseline.py \
 
 ## MinerU-Style Endpoint
 
-MinerU-style parsing uses VLM calls for both layout and recognition. Keep an
-API lane available for layout while recognition is active:
+MinerU-style parsing 对 layout 和 recognition 都使用 VLM calls。
+当 recognition 活跃时，应为 layout 保留 API lane：
 
 ```bash
 python -m ocr_parser \
@@ -89,7 +87,7 @@ python -m ocr_parser \
   --mineru_recognition_api_concurrency 3
 ```
 
-Example service shape with SGLang:
+SGLang service 形态示例：
 
 ```bash
 python -m sglang.launch_server \
@@ -100,17 +98,17 @@ python -m sglang.launch_server \
   --chat-template qwen2-vl
 ```
 
-Treat the service command as a starting point. Real deployments need explicit
-GPU memory, context length, dtype, and process supervision choices.
+请把 service command 当作起点。真实部署还需要明确 GPU memory、context length、
+dtype 和进程托管方式。
 
 ## PaddleOCR-VL-Style Endpoint
 
-PaddleOCR-VL-style parsing uses two services:
+PaddleOCR-VL-style parsing 使用两个服务：
 
-- a layout detection endpoint, configured with `--layout_detection_url`;
-- an OpenAI-compatible VLM endpoint for block recognition.
+- layout detection endpoint，通过 `--layout_detection_url` 配置；
+- OpenAI-compatible VLM endpoint，用于 block recognition。
 
-Parser command:
+Parser command：
 
 ```bash
 python -m ocr_parser \
@@ -131,7 +129,7 @@ python -m ocr_parser \
   --paddle_block_backpressure_low_watermark 2
 ```
 
-Example VLM service shape with vLLM:
+vLLM VLM service 形态示例：
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
@@ -143,22 +141,22 @@ python -m vllm.entrypoints.openai.api_server \
   --max-model-len 32768
 ```
 
-The layout detection service is model-specific. Expose it separately and pass
-its URL through `--layout_detection_url`.
+Layout detection service 与具体模型相关。请单独暴露该服务，并通过
+`--layout_detection_url` 传入 URL。
 
 ## Control UI Model Profiles
 
-For repeated jobs, store endpoint and default parser options in a model profile
-instead of typing them for every submission.
+对于重复任务，建议把 endpoint 和默认 parser options 存进 model profile，
+而不是每次提交时手动输入。
 
-Recommended public pattern:
+推荐的公开模式：
 
-- keep endpoint host, port, engine, and model name in the profile;
-- store API keys in environment variables when possible;
-- keep profile defaults conservative;
-- raise concurrency only after a benchmark on representative PDFs.
+- 在 profile 中保存 endpoint host、port、engine 和 model name；
+- 尽量通过环境变量存储 API keys；
+- profile defaults 保持保守；
+- 只在代表性 PDF 上 benchmark 后提高并发。
 
-Example profile defaults:
+Profile defaults 示例：
 
 ```json
 {
@@ -179,11 +177,11 @@ Example profile defaults:
 }
 ```
 
-## Tuning Rules Of Thumb
+## 调优经验
 
-- Start with low concurrency on a new endpoint.
-- Raise page concurrency only if API wait time is low and error rate is stable.
-- Raise file concurrency for many-small-PDF workloads.
-- Keep two-stage layout and recognition limits separate.
-- Watch output quality as well as throughput; faster empty output is not useful.
-- Record endpoint resource budget next to benchmark results.
+- 新 endpoint 先从低并发开始。
+- 只有在 API wait time 较低且 error rate 稳定时，才提高 page concurrency。
+- 大量小 PDF workload 可以提高 file concurrency。
+- Two-stage layout 和 recognition limits 要分开配置。
+- 同时关注输出质量和吞吐；更快地产生空输出没有意义。
+- 在 benchmark 结果旁记录 endpoint resource budget。

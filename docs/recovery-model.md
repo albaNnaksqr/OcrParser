@@ -1,5 +1,7 @@
 # Recovery Model
 
+English | [中文](recovery-model.zh-CN.md)
+
 OcrParser separates recovery into local parser recovery and distributed platform
 recovery. Local recovery avoids repeating expensive work inside one machine.
 Platform recovery keeps long-running shared-storage jobs observable and

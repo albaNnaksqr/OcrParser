@@ -53,10 +53,10 @@ OcrParser 面向需要对一个或多个已有模型服务执行**大批量 OCR 
 
 更多细节：
 
-- [功能指南](docs/features.md)
-- [恢复模型](docs/recovery-model.md)
-- [Benchmark 说明](docs/benchmarks.md)
-- [模型服务示例](docs/model-serving.md)
+- [功能指南](docs/features.zh-CN.md)
+- [恢复模型](docs/recovery-model.zh-CN.md)
+- [Benchmark 说明](docs/benchmarks.zh-CN.md)
+- [模型服务示例](docs/model-serving.zh-CN.md)
 
 ## 能从哪些问题中恢复
 
@@ -82,7 +82,7 @@ OcrParser 面向需要对一个或多个已有模型服务执行**大批量 OCR 
 | MinerU-style 两阶段任务，50 个单页 PDF | `file_concurrency=4`、`page_concurrency=4`、API cap 8、recognition cap 6 | 50/50 成功，无 API error/timeout，layout/recognition 指标分离。 |
 | PaddleOCR-VL-style 两阶段任务，50 个单页 PDF | `file_concurrency=4`、`page_concurrency=4`、API cap 8、layout cap 2 | 50/50 成功，无 API error 或 layout fallback，block backlog 可观测。 |
 
-详见 [docs/benchmarks.md](docs/benchmarks.md)，其中包含脱敏后的 benchmark 背景和复现命令。
+详见 [docs/benchmarks.zh-CN.md](docs/benchmarks.zh-CN.md)，其中包含脱敏后的 benchmark 背景和复现命令。
 
 ## 仓库结构
 
@@ -168,7 +168,7 @@ python -m ocr_parser \
 
 对于高吞吐 DotsOCR-style 服务，应同时调优文件级和页级并发。
 对于 MinerU 和 PaddleOCR-VL style 两阶段引擎，建议先从更低并发开始，
-优先使用各自的 stage-specific limit。参见 [docs/model-serving.md](docs/model-serving.md)。
+优先使用各自的 stage-specific limit。参见 [docs/model-serving.zh-CN.md](docs/model-serving.zh-CN.md)。
 
 ## 可选 Control UI
 

@@ -1,5 +1,7 @@
 # Feature Guide
 
+English | [中文](features.zh-CN.md)
+
 OcrParser is both a parser library/CLI and a lightweight distributed OCR
 platform. The single-machine path is useful for development and small batches;
 the platform path is useful when jobs are long-running enough that scheduling,
