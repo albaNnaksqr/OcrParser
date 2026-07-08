@@ -1,0 +1,13 @@
+OCR Parser / OCR Platform
+Copyright (c) 2026 OCR Parser contributors
+
+This project includes code and implementation ideas derived from:
+
+  dots.ocr
+  https://github.com/rednote-hilab/dots.ocr
+  Copyright (c) 2025 rednote-hilab
+  Licensed under the MIT License.
+
+The upstream dots.ocr repository also publishes third-party notices for its own
+distribution. This project does not vendor dots.ocr model weights, datasets, or
+demo assets.

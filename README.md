@@ -29,7 +29,6 @@ configs/          Public environment-file templates
 services/         systemd/logrotate templates
 scripts/          Worker helper scripts
 tools/            Installers, preflight checks, benchmark helpers, mock service
-docs/             Deployment, backup, architecture, and validation notes
 tests/            pytest coverage for parser and platform behavior
 ```
 
@@ -45,7 +44,7 @@ Install dependencies:
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r requirements-dev.txt
+python -m pip install -e ".[dev]"
 ```
 
 ## Minimal CLI Run
@@ -152,14 +151,6 @@ submitting jobs.
 - `/api/system/diagnostics`: UI diagnostics endpoint, protected when API auth is
   enabled.
 
-## Production Docs
-
-- [Deployment guide](docs/ocr-platform-deployment.md)
-- [中文部署指南](docs/ocr-platform-deployment.zh-CN.md)
-- [Worker service guide](docs/ocr-agent-worker-service.md)
-- [Backup and restore](docs/ocr-platform-backup-restore.md)
-- [Manifest/shard architecture](docs/ocr-platform-manifest-shard-architecture.md)
-
 Run the read-only preflight checker before production rollout:
 
 ```bash
@@ -207,6 +198,7 @@ The `Makefile` also provides:
 make verify
 ```
 
-## License
+## License And Notices
 
 This project is released under the MIT License. See [LICENSE](LICENSE).
+Third-party attribution is listed in [NOTICE](NOTICE).

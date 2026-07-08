@@ -3,7 +3,7 @@
 PYTHON ?= python
 
 compile:
-	$(PYTHON) -m compileall -q ocr_parser dots_ocr services
+	$(PYTHON) -m compileall -q ocr_parser dots_ocr ocr_platform
 
 test:
 	$(PYTHON) -m pytest -q

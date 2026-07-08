@@ -515,15 +515,10 @@ def test_non_interactive_does_not_prompt(monkeypatch):
         installer.config_from_args(args)
 
 
-def test_docs_reference_production_installer():
+def test_readme_references_production_installer():
     root = Path(__file__).resolve().parents[1]
 
     readme = (root / "README.md").read_text(encoding="utf-8")
-    zh = (root / "docs" / "ocr-platform-deployment.zh-CN.md").read_text(encoding="utf-8")
-    en = (root / "docs" / "ocr-platform-deployment.md").read_text(encoding="utf-8")
 
     assert "tools/install_production.py control" in readme
-    assert "tools/install_production.py control" in zh
-    assert "tools/install_production.py worker" in zh
-    assert "tools/install_production.py control" in en
-    assert "tools/install_production.py worker" in en
+    assert "tools/install_production.py worker" in readme

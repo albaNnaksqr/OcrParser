@@ -7,7 +7,7 @@ Thanks for helping improve OCR Parser.
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-python -m pip install -r requirements-dev.txt
+python -m pip install -e ".[dev]"
 ```
 
 ## Checks

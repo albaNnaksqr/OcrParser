@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ocrparser-platform"
+version = "0.1.0"
+description = "PDF OCR parser and optional distributed OCR control platform."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [
+  {name = "OCR Parser contributors"}
+]
+keywords = ["ocr", "pdf", "markdown", "openai-compatible", "batch-processing"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Text Processing",
+  "Topic :: Scientific/Engineering :: Image Processing"
+]
+dependencies = [
+  "aiofiles",
+  "aiohttp==3.12.15",
+  "aiobotocore==2.13.0",
+  "botocore>=1.34.0,<1.35.0",
+  "fastapi",
+  "httpx==0.28.1",
+  "idna",
+  "ImageHash==4.3.2",
+  "json_repair==0.51.0",
+  "numpy==2.1.2",
+  "opencv-python==4.12.0.88",
+  "openai==1.90.0",
+  "pillow",
+  "prometheus_client",
+  "psycopg[binary]>=3.1,<4.0",
+  "pydantic>=2.0.0,<3.0",
+  "PyMuPDF==1.26.3",
+  "python-dotenv",
+  "PyYAML",
+  "pyzbar==0.1.9",
+  "requests==2.32.4",
+  "SQLAlchemy>=2.0,<3.0",
+  "tqdm==4.67.1",
+  "uvicorn[standard]"
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "pytest-asyncio"
+]
+
+[project.scripts]
+ocr-parser = "ocr_parser.cli:main"
+ocr-platform-control = "ocr_platform.control.__main__:main"
+ocr-platform-agent = "ocr_platform.agent.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/alabnnak/ocrparser"
+Issues = "https://github.com/alabnnak/ocrparser/issues"
+
+[tool.setuptools]
+license-files = ["LICENSE", "NOTICE"]
+
+[tool.setuptools.packages.find]
+include = ["ocr_parser*", "ocr_platform*", "dots_ocr*", "services*"]
+
+[tool.setuptools.package-data]
+"ocr_platform.control" = ["migrations/*.sql", "ui/index.html"]

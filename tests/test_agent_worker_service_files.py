@@ -119,13 +119,3 @@ def test_agent_worker_logrotate_template_covers_worker_logs():
     assert "missingok" in logrotate
     assert "copytruncate" in logrotate
 
-
-def test_agent_worker_service_doc_installs_logrotate_template():
-    doc = (ROOT / "docs" / "ocr-agent-worker-service.md").read_text(
-        encoding="utf-8"
-    )
-
-    assert "ocr-agent-worker.logrotate.example" in doc
-    assert "/etc/logrotate.d/ocr-agent-worker" in doc
-    assert "ocr-agent-worker@.service.example" in doc
-    assert "ocr-agent-worker@worker-01" in doc

@@ -2,15 +2,15 @@
 
 ## Project Structure & Module Organization
 
-This repository contains a modular OCR parser split across two peer packages. `ocr_parser/` owns the PDF parsing workflow: CLI argument handling, lifecycle management, page processing, table repair, metadata, resume support, and Markdown/JSON output writers under `ocr_parser/output/`. `ocr_parser/pipeline/` contains the higher-level document and page orchestration. `dots_ocr/` contains lower-level model inference, document/image utilities, S3 helpers, and data-index tooling inherited from the original Dots.OCR codebase. Top-level entry points are `ocr_parser_cli.py` and `run_ocr_pdf_modular.sh`. Runtime dependency pins live in `requirements.txt`.
+This repository contains a modular OCR parser split across two peer packages. `ocr_parser/` owns the PDF parsing workflow: CLI argument handling, lifecycle management, page processing, table repair, metadata, resume support, and Markdown/JSON output writers under `ocr_parser/output/`. `ocr_parser/pipeline/` contains the higher-level document and page orchestration. `dots_ocr/` contains lower-level model inference, document/image utilities, S3 helpers, and data-index tooling derived from the Dots.OCR ecosystem. Project metadata, install dependencies, and console entry points live in `pyproject.toml`; `requirements*.txt` files are kept for compatibility with existing scripts.
 
 ## Build, Test, and Development Commands
 
-- `python -m pip install -r requirements.txt`: install runtime dependencies for local development.
-- `python ocr_parser_cli.py --input_file /path/file.pdf --output_dir ./output --ip 127.0.0.1 --port 8000`: run the modular parser against one PDF and a local OCR/vLLM-compatible service.
-- `python ocr_parser_cli.py --input_dir /path/pdfs --output_dir ./output`: process all PDFs in a directory.
-- `bash run_ocr_pdf_modular.sh`: run the scripted batch configuration; edit defaults carefully because it contains service, path, and credential-like values.
-- `python -m compileall ocr_parser dots_ocr`: quick syntax/import-compilation check.
+- `python -m pip install -e ".[dev]"`: install the project and development dependencies for local work.
+- `ocr-parser --input_file /path/file.pdf --output_dir ./output --ip 127.0.0.1 --port 8000`: run the parser against one PDF and a local OCR/vLLM-compatible service.
+- `ocr-parser --input_dir /path/pdfs --output_dir ./output`: process all PDFs in a directory.
+- `python -m compileall ocr_parser dots_ocr ocr_platform`: quick syntax/import-compilation check.
+- `pytest tests`: run the automated test suite.
 
 ## Coding Style & Naming Conventions
 
