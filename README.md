@@ -1,7 +1,38 @@
-# OCR Parser / OCR Platform
+# OcrParser
 
-OCR Parser turns PDF documents into Markdown and structured artifacts through
-OpenAI-compatible OCR/model services. It has two layers:
+English | [中文](README.zh-CN.md)
+
+OcrParser is a production-oriented PDF OCR parsing framework for long-running,
+batch, and distributed OCR workloads. It turns PDFs into Markdown and structured
+artifacts through OpenAI-compatible OCR/model services, while focusing on the
+parts that usually matter after the first demo works: resumability, retries,
+throughput control, worker orchestration, and job observability.
+
+## Who This Is For
+
+OcrParser is designed for teams that need to run **large batches of OCR work**
+against one or more existing model services, not just parse a single PDF from a
+notebook.
+
+It fits best when your environment looks like this:
+
+- PDF inputs and outputs live on a shared filesystem or shared storage mount.
+- OCR/model serving is separate from parsing and job orchestration.
+- Multiple worker machines can access the same input, output, and manifest
+  paths.
+- Operators need one control UI/API to submit jobs, watch progress, stop jobs,
+  inspect workers, and diagnose failures.
+- Jobs may run long enough that retry, resume, stale-worker recovery, and
+  throughput visibility are operational requirements.
+- Different OCR engines need different concurrency policies, such as high
+  DotsOCR API concurrency or two-stage MinerU/PaddleOCR-VL layout-recognition
+  backpressure.
+
+It can still run as a local CLI, but its strongest use case is a private,
+multi-machine OCR platform where model services, worker agents, shared storage,
+and the control UI are deployed as separate pieces.
+
+The project has two layers:
 
 - `ocr_parser/`: a single-machine parser CLI for one PDF or a directory of PDFs.
 - `ocr_platform/`: an optional FastAPI control UI and worker platform for
@@ -11,13 +42,60 @@ This public snapshot does not include model weights, private documents,
 production configuration, or API credentials. Bring your own OCR/model
 endpoint.
 
-## Features
+## Why OcrParser
 
-- PDF-to-Markdown/JSON parsing with resumable local execution.
-- DotsOCR, MinerU, and PaddleOCR-VL style engine adapters.
-- Optional control UI for jobs, workers, shards, throughput, and diagnostics.
-- Shared-storage manifest/shard scheduling for distributed workers.
-- Public environment templates for local and production-like deployment.
+Most OCR examples stop at "send a PDF page to a model." OcrParser is built for
+the operational layer around model services: batching, scheduling, shared-path
+execution, worker coordination, recovery, and visibility.
+
+- **Large batch execution**: process directories with page-level and file-level
+  concurrency instead of serial PDF loops.
+- **Multi-engine support**: run DotsOCR, MinerU-style, PaddleOCR-VL-style, or
+  generic OpenAI-compatible OCR engines behind the same parser interface.
+- **Resumable local parsing**: skip completed outputs, validate sidecar status,
+  and avoid repeating expensive work after interruption.
+- **Shared-storage distributed jobs**: create folder manifests, split work into
+  shards, and let worker agents claim and report progress through a control API.
+- **Failure recovery**: retry transient model/API failures, reclaim stale shards,
+  quarantine bad worker update records, and keep terminal job summaries stable.
+- **Observable operations**: inspect workers, shards, throughput, API inflight
+  counters, leases, manifest integrity, and deployment readiness from the UI.
+
+More detail:
+
+- [Feature guide](docs/features.md)
+- [Recovery model](docs/recovery-model.md)
+- [Benchmark notes](docs/benchmarks.md)
+- [Model serving examples](docs/model-serving.md)
+
+## What It Can Recover From
+
+| Failure or long-running condition | Framework behavior |
+| --- | --- |
+| Parser interrupted locally | Resume checks completed artifacts before reprocessing. |
+| A worker dies mid-shard | Shard leases expire and another eligible worker can reclaim the shard. |
+| Control API is temporarily unavailable | Worker-side update records can be spooled and replayed. |
+| A malformed update record appears | The record is quarantined so later updates can continue. |
+| A job is stopped while shards are running | Unclaimed shards stop immediately; running shards settle through lease/update paths. |
+| A manifest or shard count looks wrong | Manifest freeze/integrity views expose count and file mismatches. |
+
+## Benchmark Highlights
+
+These numbers come from internal validation runs and are included to describe
+the scheduling behavior of the framework. They are **not** a normalized model
+leaderboard. Resource budgets differed between engines, and your endpoint,
+hardware, data shape, and model queueing will change the results.
+
+| Scenario | Resource / concurrency budget | Result |
+| --- | --- | --- |
+| DotsOCR directory run, 5 PDFs / 251 pages | Global API cap 80, `file_concurrency` 1 vs 3 | Throughput improved from 3.17 to 5.00 page/s, about +58%. |
+| DotsOCR directory run, 50 PDFs / 2969 pages | Global API cap 80, `file_concurrency=8` | Direct CLI repeat: 7.82 page/s. Control/agent/shard path: 7.90 page/s. |
+| DotsOCR page concurrency curve, 8 synthetic PDFs / 36 pages | `page_concurrency` 1 to 16 | Total time dropped from 193.6s to 64.2s; 20-page fixture improved 7.42x. |
+| MinerU-style two-stage run, 50 one-page PDFs | `file_concurrency=4`, `page_concurrency=4`, API cap 8, recognition cap 6 | 50/50 success, no API errors/timeouts, separate layout/recognition metrics. |
+| PaddleOCR-VL-style two-stage run, 50 one-page PDFs | `file_concurrency=4`, `page_concurrency=4`, API cap 8, layout cap 2 | 50/50 success, no API errors or layout fallbacks, block backlog observable. |
+
+See [docs/benchmarks.md](docs/benchmarks.md) for the sanitized benchmark context
+and reproduction commands.
 
 ## Repository Layout
 
@@ -47,7 +125,35 @@ python3 -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
+## Quickstart: Control Flow Without A Real Model
+
+Use the built-in mock OCR service when you want to validate the control UI,
+worker loop, events, and job flow without standing up a real OCR model:
+
+```bash
+python3 tools/local_prod_env.py up --with-worker --with-mock-ocr --shared-root /tmp/ocr-shared
+```
+
+Open the UI at the URL printed by the command, then submit a small job using:
+
+- engine: `dotsocr`
+- model name: `mock-ocr`
+- model endpoint: `127.0.0.1:18000`
+
+The mock service is only for local control-flow validation. It does not measure
+real OCR quality or performance.
+
+Stop the local stack:
+
+```bash
+python3 tools/local_prod_env.py down
+```
+
 ## Minimal CLI Run
+
+The CLI calls your model service. It does not start or download models.
+
+Single PDF:
 
 ```bash
 python -m ocr_parser \
@@ -55,7 +161,7 @@ python -m ocr_parser \
   --output_dir /path/to/output \
   --profile local \
   --engine dotsocr \
-  --ip 127.0.0.1 \
+  --ip YOUR_MODEL_ENDPOINT \
   --port 13080 \
   --model_name DotsOCR
 ```
@@ -68,11 +174,15 @@ python -m ocr_parser \
   --output_dir /path/to/output \
   --profile balanced \
   --engine dotsocr \
-  --ip 127.0.0.1 \
-  --port 13080
+  --ip YOUR_MODEL_ENDPOINT \
+  --port 13080 \
+  --file_concurrency 4 \
+  --page_concurrency 16
 ```
 
-The CLI calls your model service. It does not start or download models.
+For high-throughput DotsOCR-style services, tune file and page concurrency
+together. For MinerU and PaddleOCR-VL style two-stage engines, start lower and
+use their stage-specific limits first. See [docs/model-serving.md](docs/model-serving.md).
 
 ## Optional Control UI
 
@@ -104,15 +214,6 @@ python3 tools/local_prod_env.py up --with-worker --shared-root /tmp/ocr-shared
 python3 tools/local_prod_env.py status
 python3 tools/local_prod_env.py down
 ```
-
-To validate UI/job flow without a real OCR service:
-
-```bash
-python3 tools/local_prod_env.py up --with-worker --with-mock-ocr --shared-root /tmp/ocr-shared
-```
-
-The mock service listens on `http://127.0.0.1:18000/v1` with model name
-`mock-ocr`. It is only for local control-flow validation.
 
 ## Worker Agent
 
@@ -157,8 +258,8 @@ Run the read-only preflight checker before production rollout:
 python3 tools/production_preflight.py \
   --host worker-1.example.internal \
   --user ocr_user \
-  --shared-root /shared/ocr-data \
-  --platform-root /shared/ocr-data/ocr-platform \
+  --shared-root /shared/ocr-input \
+  --platform-root /shared/ocr-platform \
   --control-url http://control.example.internal:8080
 ```
 
@@ -171,6 +272,32 @@ sudo python3 tools/install_production.py worker --dry-run
 
 Run with `--dry-run` first, then review the generated plan before applying it
 to a host.
+
+## Benchmarking Your Endpoint
+
+Generate local synthetic fixtures:
+
+```bash
+python3 tools/generate_benchmark_pdfs.py --output-dir /tmp/ocr-benchmark-pdfs
+```
+
+Run a directory benchmark:
+
+```bash
+python3 tools/run_performance_baseline.py \
+  --input-dir /tmp/ocr-benchmark-pdfs \
+  --output-root /tmp/ocr-benchmark-results \
+  --variant current=. \
+  --run-mode directory \
+  --engine dotsocr \
+  --ip YOUR_MODEL_ENDPOINT \
+  --port 13080 \
+  --model-name DotsOCR \
+  --file-concurrency 4 \
+  --page-concurrency 16
+```
+
+The benchmark runner writes CSV and Markdown summaries under the output root.
 
 ## Configuration
 
