@@ -1,0 +1,28 @@
+{
+  "s3_config": {
+    "endpoint": "https://s3.example.com",
+    "bucket_name": "example-bucket",
+    "ak": "",
+    "sk": ""
+  },
+  "upload_settings": {
+    "target_prefix": "example/output-prefix/",
+    "allowed_suffixes": [
+      ".md",
+      ".json",
+      ".txt"
+    ],
+    "exclude_hidden_files": true,
+    "resume": true
+  },
+  "performance": {
+    "scan_threads": 4,
+    "s3_check_workers": 8,
+    "max_workers": 8,
+    "multipart_threshold_mb": 64,
+    "multipart_chunksize_mb": 16
+  },
+  "logging": {
+    "log_directory": "./logs/s3-upload"
+  }
+}

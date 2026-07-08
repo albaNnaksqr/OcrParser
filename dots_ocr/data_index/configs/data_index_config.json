@@ -1,0 +1,5 @@
+{
+    "api_base_url": "http://example.local:13300/v1",
+    "model_name": "gpt-20b",
+    "api_key": ""
+}

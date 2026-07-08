@@ -1,0 +1,137 @@
+[
+  {
+    "分类": "基金资助类",
+    "关键词": [
+      "基金项目",
+      "资助项目",
+      "项目资助",
+      "课题资助",
+      "基金编号",
+      "项目编号",
+      "资助单位",
+      "资助机构",
+      "经费来源",
+      "资金支持",
+      "专项资助",
+      "Fund program",
+      "Grant No.",
+      "Funding",
+      "Financial support",
+      "Sponsored by",
+      "Grant support",
+	    "Source of support",
+	    "Disclaimer and Adherence",
+	    "Acknowledgments"
+    ]
+  },
+  {
+    "分类": "作者信息类",
+    "关键词": [
+      "通讯作者",
+      "共同第一作者",
+      "并列第一作者",
+      "责任作者",
+      "作者单位",
+      "单位地址",
+      "单位名称",
+      "作者贡献",
+      "作者简介",
+      "个人简介",
+      "作者资料",
+      "通信作者",
+      "本文编辑",
+      "Corresponding author",
+      "Co-first author",
+      "Joint first author",
+      "Affiliation",
+      "Author contribution",
+      "Author biography",
+      "Author's Current address",
+      "Author's Present address"
+    ]
+  },
+  {
+    "分类": "联系方式类",
+    "关键词": [
+      "邮箱地址",
+      "联系电话",
+      "通讯地址",
+      "邮寄地址",
+      "办公地址",
+      "Contact information",
+      "Address for correspondence",
+      ".com",
+      ".cn",
+      ".edu",
+      ".org",
+	    "https://"
+    ]
+  },
+  {
+    "分类": "期刊/投稿冗余类",
+    "关键词": [
+      "Submission history",
+      "Peer review process",
+      "Editorial decision",
+      "Proofreading",
+      "Galley proof",
+      "OnlineFirst",
+      "Ahead of Print",
+      "License agreement",
+      "Open Access terms",
+      "Creative Commons Attribution License",
+      "Publisher’s note",
+      "Journal name",
+      "ISSN",
+      "ISBN",
+      "eISSN",
+      "Journal homepage",
+      "Journal abbreviation",
+      "DOI prefix",
+	    "doi",
+	    "DOI",
+      "投稿日期",
+      "收稿日期",
+      "录用日期",
+      "修回日期",
+      "修改日期",
+      "定稿日期",
+      "审稿流程",
+      "接受日期",
+	    "中国图书分类号",
+	    "中图分类号",
+	    "文献标志码",
+	    "文献识别号",
+	    "文章编号"
+    ]
+  },
+  {
+    "分类": "声明类",
+    "关键词": [
+      "Authorship contribution",
+      "版权说明",
+      "版权声明",
+      "复制声明",
+      "开放获取",
+      "知识共享许可",
+      "CC协议",
+      "CN号",
+      "国际标准刊号",
+      "利益冲突声明",
+      "无利益冲突",
+      "作者贡献声明",
+      "合作声明",
+      "版权所有"
+    ]
+  },
+  {
+    "分类": "垃圾信息类",
+    "关键词": [
+      "扫一扫",
+      "微信",
+      "weixin",
+      "微信公众号",
+      "wechat"
+    ]
+  }
+]

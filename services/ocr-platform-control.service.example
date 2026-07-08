@@ -1,0 +1,20 @@
+[Unit]
+Description=OCR Platform Control API and UI
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ocr-platform
+Group=ocr-platform
+SupplementaryGroups=ocr-runtime
+EnvironmentFile=/etc/ocr-platform/control.env
+WorkingDirectory=/opt/ocr-platform/ocrparser
+ExecStart=/opt/ocr-platform/ocrparser/.venv/bin/python -u -m ocr_platform.control
+Restart=always
+RestartSec=10
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

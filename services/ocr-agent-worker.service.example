@@ -1,0 +1,22 @@
+[Unit]
+Description=OCR Platform Agent Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ocr-agent
+Group=ocr-agent
+SupplementaryGroups=ocr-runtime
+EnvironmentFile=/etc/ocr-agent/worker.env
+WorkingDirectory=/opt/ocr-platform/ocrparser
+ExecStart=/opt/ocr-platform/ocrparser/scripts/ocr_agent_worker.sh run /etc/ocr-agent/worker.env
+ExecStop=/opt/ocr-platform/ocrparser/scripts/ocr_agent_worker.sh stop /etc/ocr-agent/worker.env
+ExecReload=/opt/ocr-platform/ocrparser/scripts/ocr_agent_worker.sh restart /etc/ocr-agent/worker.env
+Restart=always
+RestartSec=10
+TimeoutStartSec=30
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

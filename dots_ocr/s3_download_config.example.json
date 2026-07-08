@@ -1,0 +1,35 @@
+{
+  "s3_config": {
+    "endpoint": "https://s3.example.com",
+    "bucket_name": "example-bucket",
+    "ak": "",
+    "sk": ""
+  },
+  "OFFSET": true,
+  "download_settings": {
+    "folder_prefixes": [
+      "example/input-prefix/"
+    ],
+    "allowed_suffixes": [
+      ".pdf"
+    ],
+    "download_dir_base": "./data/s3-downloads",
+    "download_gb_limit": 1,
+    "resume": true
+  },
+  "performance": {
+    "head_workers": 16,
+    "head_batch_size": 1000,
+    "max_workers": 8,
+    "max_pool_connections": 32,
+    "head_connect_timeout_sec": 5,
+    "head_read_timeout_sec": 20,
+    "head_max_attempts": 3,
+    "multipart_threshold_mb": 64,
+    "multipart_chunksize_mb": 16,
+    "per_object_max_concurrency": 4
+  },
+  "logging": {
+    "log_directory": "./logs/s3-download"
+  }
+}

@@ -1,0 +1,20 @@
+{
+    "default_datasource_id": "langchao",
+    "mappings": [
+        {
+            "endpoint": "http://example.local:9000",
+            "bucket_name": "corpus-origin",
+            "datasource_id": "langchao"
+        },
+        {
+            "endpoint": "http://example.local:9000",
+            "bucket_name": "corpus-origin-hot",
+            "datasource_id": "huawei"
+        },
+        {
+            "endpoint": "http://example.local:9000",
+            "bucket_name": "corpus-origin-health",
+            "datasource_id": "huawei"
+        }
+    ]
+}

@@ -1,0 +1,1844 @@
+[
+    {
+        "一级标签": "A-农、林、牧、渔业",
+        "一级标签_en": "A-Agriculture, Forestry, Animal Husbandry and Fishery",
+        "二级标签": [
+            {
+                "二级标签": "1-农业",
+                "二级标签_en": "1-Agriculture",
+                "三级标签": [
+                    "11-谷物种植",
+                    "12-豆类、油料和薯类种植",
+                    "13-棉、麻、糖、烟草种植",
+                    "14-蔬菜、食用菌及园艺作物种植",
+                    "15-水果种植",
+                    "16-坚果、含油果、香料和饮料作物种植",
+                    "17-中药材种植",
+                    "18-草种植及割草",
+                    "19-其他农业"
+                ],
+                "三级标签_en": [
+                    "11-Grain Cultivation",
+                    "12-Legumes, Oilseeds and Tuber Crops Cultivation",
+                    "13-Cotton, Hemp, Sugar, Tobacco Cultivation",
+                    "14-Vegetable, Edible Fungi and Horticultural Crops Cultivation",
+                    "15-Fruit Cultivation",
+                    "16-Nut, Oil-bearing Fruit, Spice and Beverage Crops Cultivation",
+                    "17-Chinese Medicinal Materials Cultivation",
+                    "18-Grass Planting and Mowing",
+                    "19-Other Agriculture"
+                ]
+            },
+            {
+                "二级标签": "2-林业",
+                "二级标签_en": "2-Forestry",
+                "三级标签": [
+                    "21-林木育种和育苗",
+                    "22-造林和更新",
+                    "23-森林经营、管护和改培",
+                    "24-木材和竹材采运",
+                    "25-林产品采集"
+                ],
+                "三级标签_en": [
+                    "21-Forest Tree Breeding and Nursery",
+                    "22-Afforestation and Reforestation",
+                    "23-Forest Management, Protection and Conversion",
+                    "24-Timber and Bamboo Harvesting and Transportation",
+                    "25-Forest Product Collection"
+                ]
+            },
+            {
+                "二级标签": "3-畜牧业",
+                "二级标签_en": "3-Animal Husbandry",
+                "三级标签": [
+                    "31-牲畜饲养",
+                    "32-家禽饲养",
+                    "33-狩猎和捕捉动物",
+                    "39-其他畜牧业"
+                ],
+                "三级标签_en": [
+                    "31-Livestock Breeding",
+                    "32-Poultry Breeding",
+                    "33-Hunting and Trapping Animals",
+                    "39-Other Animal Husbandry"
+                ]
+            },
+            {
+                "二级标签": "4-渔业",
+                "二级标签_en": "4-Fishery",
+                "三级标签": [
+                    "41-水产养殖",
+                    "42-水产捕捞"
+                ],
+                "三级标签_en": [
+                    "41-Aquaculture",
+                    "42-Aquatic Product Fishing"
+                ]
+            },
+            {
+                "二级标签": "5-农、林、牧、渔专业及辅助性活动",
+                "二级标签_en": "5-Agriculture, Forestry, Animal Husbandry and Fishery Professional and Auxiliary Activities",
+                "三级标签": [
+                    "51-农业专业及辅助性活动",
+                    "52-林业专业及辅助性活动",
+                    "53-畜牧专业及辅助性活动",
+                    "54-渔业专业及辅助性活动"
+                ],
+                "三级标签_en": [
+                    "51-Agricultural Professional and Auxiliary Activities",
+                    "52-Forestry Professional and Auxiliary Activities",
+                    "53-Animal Husbandry Professional and Auxiliary Activities",
+                    "54-Fishery Professional and Auxiliary Activities"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "B-采矿业",
+        "一级标签_en": "B-Mining",
+        "二级标签": [
+            {
+                "二级标签": "6-煤炭开采和洗选业",
+                "二级标签_en": "6-Coal Mining and Washing",
+                "三级标签": [
+                    "61-烟煤和无烟煤开采洗选",
+                    "62-褐煤开采洗选",
+                    "69-其他煤炭采选"
+                ],
+                "三级标签_en": [
+                    "61-Bituminous and Anthracite Coal Mining and Washing",
+                    "62-Lignite Mining and Washing",
+                    "69-Other Coal Mining and Dressing"
+                ]
+            },
+            {
+                "二级标签": "7-石油和天然气开采业",
+                "二级标签_en": "7-Oil and Natural Gas Extraction",
+                "三级标签": [
+                    "71-石油开采",
+                    "72-天然气开采"
+                ],
+                "三级标签_en": [
+                    "71-Petroleum Extraction",
+                    "72-Natural Gas Extraction"
+                ]
+            },
+            {
+                "二级标签": "8-黑色金属矿采选业",
+                "二级标签_en": "8-Ferrous Metal Mining",
+                "三级标签": [
+                    "81-铁矿采选",
+                    "82-锰矿、铬矿采选",
+                    "89-其他黑色金属矿采选"
+                ],
+                "三级标签_en": [
+                    "81-Iron Ore Mining",
+                    "82-Manganese and Chromium Ore Mining",
+                    "89-Other Ferrous Metal Mining"
+                ]
+            },
+            {
+                "二级标签": "9-有色金属矿采选业",
+                "二级标签_en": "9-Non-ferrous Metal Mining",
+                "三级标签": [
+                    "91-常用有色金属矿采选",
+                    "92-贵金属矿采选",
+                    "93-稀有稀土金属矿采选"
+                ],
+                "三级标签_en": [
+                    "91-Common Non-ferrous Metal Mining",
+                    "92-Precious Metal Mining",
+                    "93-Rare Earth Metal Mining"
+                ]
+            },
+            {
+                "二级标签": "10-非金属矿采选业",
+                "二级标签_en": "10-Non-metal Mining",
+                "三级标签": [
+                    "101-土砂石开采",
+                    "102-化学矿开采",
+                    "103-采盐",
+                    "109-石棉及其他非金属矿采选"
+                ],
+                "三级标签_en": [
+                    "101-Earth, Sand and Stone Mining",
+                    "102-Chemical Mineral Mining",
+                    "103-Salt Mining",
+                    "109-Asbestos and Other Non-metal Mining"
+                ]
+            },
+            {
+                "二级标签": "11-开采专业及辅助性活动",
+                "二级标签_en": "11-Mining Professional and Auxiliary Activities",
+                "三级标签": [
+                    "111-煤炭开采和洗选专业及辅助性活动",
+                    "112-石油和天然气开采专业及辅助性活动",
+                    "119-其他开采专业及辅助性活动"
+                ],
+                "三级标签_en": [
+                    "111-Coal Mining and Washing Professional and Auxiliary Activities",
+                    "112-Oil and Natural Gas Extraction Professional and Auxiliary Activities",
+                    "119-Other Mining Professional and Auxiliary Activities"
+                ]
+            },
+            {
+                "二级标签": "12-其他采矿业",
+                "二级标签_en": "12-Other Mining",
+                "三级标签": [
+                    "120-其他采矿业"
+                ],
+                "三级标签_en": [
+                    "120-Other Mining"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "C-制造业",
+        "一级标签_en": "C-Manufacturing",
+        "二级标签": [
+            {
+                "二级标签": "13-农副食品加工业",
+                "二级标签_en": "13-Agricultural and Sideline Food Processing",
+                "三级标签": [
+                    "131-谷物磨制",
+                    "132-饲料加工",
+                    "133-植物油加工",
+                    "134-制糖业",
+                    "135-屠宰及肉类加工",
+                    "136-水产品加工",
+                    "137-蔬菜、菌类、水果和坚果加工",
+                    "139-其他农副食品加工"
+                ],
+                "三级标签_en": [
+                    "131-Grain Milling",
+                    "132-Feed Processing",
+                    "133-Vegetable Oil Processing",
+                    "134-Sugar Manufacturing",
+                    "135-Slaughtering and Meat Processing",
+                    "136-Aquatic Product Processing",
+                    "137-Vegetable, Fungi, Fruit and Nut Processing",
+                    "139-Other Agricultural and Sideline Food Processing"
+                ]
+            },
+            {
+                "二级标签": "14-食品制造业",
+                "二级标签_en": "14-Food Manufacturing",
+                "三级标签": [
+                    "141-焙烤食品制造",
+                    "142-糖果、巧克力及蜜饯制造",
+                    "143-方便食品制造",
+                    "144-乳制品制造",
+                    "145-罐头食品制造",
+                    "146-调味品、发酵制品制造",
+                    "149-其他食品制造"
+                ],
+                "三级标签_en": [
+                    "141-Baked Food Manufacturing",
+                    "142-Candy, Chocolate and Preserved Fruit Manufacturing",
+                    "143-Convenience Food Manufacturing",
+                    "144-Dairy Product Manufacturing",
+                    "145-Canned Food Manufacturing",
+                    "146-Condiment and Fermented Product Manufacturing",
+                    "149-Other Food Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "15-酒、饮料和精制茶制造业",
+                "二级标签_en": "15-Alcohol, Beverages and Refined Tea Manufacturing",
+                "三级标签": [
+                    "151-酒的制造",
+                    "152-饮料制造",
+                    "153-精制茶加工"
+                ],
+                "三级标签_en": [
+                    "151-Alcohol Manufacturing",
+                    "152-Beverage Manufacturing",
+                    "153-Refined Tea Processing"
+                ]
+            },
+            {
+                "二级标签": "16-烟草制品业",
+                "二级标签_en": "16-Tobacco Products",
+                "三级标签": [
+                    "161-烟叶复烤",
+                    "162-卷烟制造",
+                    "169-其他烟草制品制造"
+                ],
+                "三级标签_en": [
+                    "161-Tobacco Re-drying",
+                    "162-Cigarette Manufacturing",
+                    "169-Other Tobacco Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "17-纺织业",
+                "二级标签_en": "17-Textile Industry",
+                "三级标签": [
+                    "171-棉纺织及印染精加工",
+                    "172-毛纺织及染整精加工",
+                    "173-麻纺织及染整精加工",
+                    "174-丝绢纺织及印染精加工",
+                    "175-化纤织造及印染精加工",
+                    "176-针织或钩针编织物及其制品制造",
+                    "177-家用纺织制成品制造",
+                    "178-产业用纺织制成品制造"
+                ],
+                "三级标签_en": [
+                    "171-Cotton Textile and Dyeing Finishing",
+                    "172-Wool Textile and Dyeing Finishing",
+                    "173-Hemp Textile and Dyeing Finishing",
+                    "174-Silk Textile and Dyeing Finishing",
+                    "175-Chemical Fiber Weaving and Dyeing Finishing",
+                    "176-Knitted or Crocheted Fabrics and Products Manufacturing",
+                    "177-Household Textile Products Manufacturing",
+                    "178-Industrial Textile Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "18-纺织服装、服饰业",
+                "二级标签_en": "18-Textile, Garment and Apparel",
+                "三级标签": [
+                    "181-机织服装制造",
+                    "182-针织或钩针编织服装制造",
+                    "183-服饰制造"
+                ],
+                "三级标签_en": [
+                    "181-Woven Garment Manufacturing",
+                    "182-Knitted or Crocheted Garment Manufacturing",
+                    "183-Apparel Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "19-皮革、毛皮、羽毛及其制品和制鞋业",
+                "二级标签_en": "19-Leather, Fur, Feather and Related Products and Footwear",
+                "三级标签": [
+                    "191-皮革鞣制加工",
+                    "192-皮革制品制造",
+                    "193-毛皮鞣制及制品加工",
+                    "194-羽毛 (绒) 加工及制品制造",
+                    "195-制鞋业"
+                ],
+                "三级标签_en": [
+                    "191-Leather Tanning and Processing",
+                    "192-Leather Products Manufacturing",
+                    "193-Fur Tanning and Products Processing",
+                    "194-Feather (Down) Processing and Products Manufacturing",
+                    "195-Footwear Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "20-木材加工和木、竹、藤、棕、草制品业",
+                "二级标签_en": "20-Wood Processing and Wood, Bamboo, Rattan, Palm, Grass Products",
+                "三级标签": [
+                    "201-木材加工",
+                    "202-人造板制造",
+                    "203-木质制品制造",
+                    "204-竹、藤、棕、草等制品制造"
+                ],
+                "三级标签_en": [
+                    "201-Wood Processing",
+                    "202-Man-made Board Manufacturing",
+                    "203-Wood Products Manufacturing",
+                    "204-Bamboo, Rattan, Palm, Grass and Other Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "21-家具制造业",
+                "二级标签_en": "21-Furniture Manufacturing",
+                "三级标签": [
+                    "211-木质家具制造",
+                    "212-竹、藤家具制造",
+                    "213-金属家具制造",
+                    "214-塑料家具制造",
+                    "219-其他家具制造"
+                ],
+                "三级标签_en": [
+                    "211-Wooden Furniture Manufacturing",
+                    "212-Bamboo and Rattan Furniture Manufacturing",
+                    "213-Metal Furniture Manufacturing",
+                    "214-Plastic Furniture Manufacturing",
+                    "219-Other Furniture Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "22-造纸和纸制品业",
+                "二级标签_en": "22-Paper Making and Paper Products",
+                "三级标签": [
+                    "221-纸浆制造",
+                    "222-造纸",
+                    "223-纸制品制造"
+                ],
+                "三级标签_en": [
+                    "221-Pulp Manufacturing",
+                    "222-Paper Manufacturing",
+                    "223-Paper Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "23-印刷和记录媒介复制业",
+                "二级标签_en": "23-Printing and Record Medium Reproduction",
+                "三级标签": [
+                    "231-印刷",
+                    "232-装订及印刷相关服务",
+                    "233-记录媒介复制"
+                ],
+                "三级标签_en": [
+                    "231-Printing",
+                    "232-Binding and Printing Related Services",
+                    "233-Record Medium Reproduction"
+                ]
+            },
+            {
+                "二级标签": "24-文教、工美、体育和娱乐用品制造业",
+                "二级标签_en": "24-Culture, Education, Arts and Crafts, Sports and Entertainment Products",
+                "三级标签": [
+                    "241-文教办公用品制造",
+                    "242-乐器制造",
+                    "243-工艺美术及礼仪用品制造",
+                    "244-体育用品制造",
+                    "245-玩具制造",
+                    "246-游艺器材及娱乐用品制造"
+                ],
+                "三级标签_en": [
+                    "241-Culture, Education and Office Supplies Manufacturing",
+                    "242-Musical Instrument Manufacturing",
+                    "243-Arts and Crafts and Etiquette Products Manufacturing",
+                    "244-Sports Goods Manufacturing",
+                    "245-Toy Manufacturing",
+                    "246-Amusement Equipment and Entertainment Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "25-石油、煤炭及其他燃料加工业",
+                "二级标签_en": "25-Petroleum, Coal and Other Fuel Processing",
+                "三级标签": [
+                    "251-精炼石油产品制造",
+                    "252-煤炭加工",
+                    "253-核燃料加工",
+                    "254-生物质燃料加工"
+                ],
+                "三级标签_en": [
+                    "251-Refined Petroleum Products Manufacturing",
+                    "252-Coal Processing",
+                    "253-Nuclear Fuel Processing",
+                    "254-Biomass Fuel Processing"
+                ]
+            },
+            {
+                "二级标签": "26-化学原料和化学制品制造业",
+                "二级标签_en": "26-Chemical Raw Materials and Chemical Products",
+                "三级标签": [
+                    "261-基础化学原料制造",
+                    "262-肥料制造",
+                    "263-农药制造",
+                    "264-涂料、油墨、颜料及类似产品制造",
+                    "265-合成材料制造",
+                    "266-专用化学产品制造",
+                    "267-炸药、火工及焰火产品制造",
+                    "268-日用化学产品制造"
+                ],
+                "三级标签_en": [
+                    "261-Basic Chemical Raw Materials Manufacturing",
+                    "262-Fertilizer Manufacturing",
+                    "263-Pesticide Manufacturing",
+                    "264-Coating, Ink, Pigment and Similar Products Manufacturing",
+                    "265-Synthetic Materials Manufacturing",
+                    "266-Special Chemical Products Manufacturing",
+                    "267-Explosives, Pyrotechnics and Fireworks Manufacturing",
+                    "268-Daily Chemical Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "27-医药制造业",
+                "二级标签_en": "27-Pharmaceutical Manufacturing",
+                "三级标签": [
+                    "271-化学药品原料药制造",
+                    "272-化学药品制剂制造",
+                    "273-中药饮片加工",
+                    "274-中成药生产",
+                    "275-兽用药品制造",
+                    "276-生物药品制品制造",
+                    "277-卫生材料及医药用品制造",
+                    "278-药用辅料及包装材料制造"
+                ],
+                "三级标签_en": [
+                    "271-Chemical Pharmaceutical Raw Materials Manufacturing",
+                    "272-Chemical Pharmaceutical Preparations Manufacturing",
+                    "273-Traditional Chinese Medicine Decoction Pieces Processing",
+                    "274-Traditional Chinese Patent Medicine Production",
+                    "275-Veterinary Drug Manufacturing",
+                    "276-Biopharmaceutical Products Manufacturing",
+                    "277-Sanitary Materials and Medical Supplies Manufacturing",
+                    "278-Pharmaceutical Excipients and Packaging Materials Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "28-化学纤维制造业",
+                "二级标签_en": "28-Chemical Fiber Manufacturing",
+                "三级标签": [
+                    "281-纤维素纤维原料及纤维制造",
+                    "282-合成纤维制造",
+                    "283-生物基材料制造"
+                ],
+                "三级标签_en": [
+                    "281-Cellulose Fiber Raw Materials and Fiber Manufacturing",
+                    "282-Synthetic Fiber Manufacturing",
+                    "283-Bio-based Materials Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "29-橡胶和塑料制品业",
+                "二级标签_en": "29-Rubber and Plastic Products",
+                "三级标签": [
+                    "291-橡胶制品业",
+                    "292-塑料制品业"
+                ],
+                "三级标签_en": [
+                    "291-Rubber Products",
+                    "292-Plastic Products"
+                ]
+            },
+            {
+                "二级标签": "30-非金属矿物制品业",
+                "二级标签_en": "30-Non-metallic Mineral Products",
+                "三级标签": [
+                    "301-水泥、石灰和石膏制造",
+                    "302-石膏、水泥制品及类似制品制造",
+                    "303-砖瓦、石材等建筑材料制造",
+                    "304-玻璃制造",
+                    "305-玻璃制品制造",
+                    "306-玻璃纤维和玻璃纤维增强塑料制品制造",
+                    "307-陶瓷制品制造",
+                    "308-耐火材料制品制造",
+                    "309-石墨及其他非金属矿物制品制造"
+                ],
+                "三级标签_en": [
+                    "301-Cement, Lime and Gypsum Manufacturing",
+                    "302-Gypsum, Cement Products and Similar Products Manufacturing",
+                    "303-Brick, Tile, Stone and Other Building Materials Manufacturing",
+                    "304-Glass Manufacturing",
+                    "305-Glass Products Manufacturing",
+                    "306-Glass Fiber and Glass Fiber Reinforced Plastic Products Manufacturing",
+                    "307-Ceramic Products Manufacturing",
+                    "308-Refractory Materials Manufacturing",
+                    "309-Graphite and Other Non-metallic Mineral Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "31-黑色金属冶炼和压延加工业",
+                "二级标签_en": "31-Ferrous Metal Smelting and Rolling Processing",
+                "三级标签": [
+                    "311-炼铁",
+                    "312-炼钢",
+                    "313-钢压延加工",
+                    "314-铁合金冶炼"
+                ],
+                "三级标签_en": [
+                    "311-Iron Smelting",
+                    "312-Steel Smelting",
+                    "313-Steel Rolling Processing",
+                    "314-Ferroalloy Smelting"
+                ]
+            },
+            {
+                "二级标签": "32-有色金属冶炼和压延加工业",
+                "二级标签_en": "32-Non-ferrous Metal Smelting and Rolling Processing",
+                "三级标签": [
+                    "321-常用有色金属冶炼",
+                    "322-贵金属冶炼",
+                    "323-稀有稀土金属冶炼",
+                    "324-有色金属合金制造",
+                    "325-有色金属压延加工"
+                ],
+                "三级标签_en": [
+                    "321-Common Non-ferrous Metal Smelting",
+                    "322-Precious Metal Smelting",
+                    "323-Rare Earth Metal Smelting",
+                    "324-Non-ferrous Metal Alloy Manufacturing",
+                    "325-Non-ferrous Metal Rolling Processing"
+                ]
+            },
+            {
+                "二级标签": "33-金属制品业",
+                "二级标签_en": "33-Metal Products",
+                "三级标签": [
+                    "331-结构性金属制品制造",
+                    "332-金属工具制造",
+                    "333-集装箱及金属包装容器制造",
+                    "334-金属丝绳及其制品制造",
+                    "335-建筑、安全用金属制品制造",
+                    "336-金属表面处理及热处理加工",
+                    "337-搪瓷制品制造",
+                    "338-金属制日用品制造",
+                    "339-铸造及其他金属制品制造"
+                ],
+                "三级标签_en": [
+                    "331-Structural Metal Products Manufacturing",
+                    "332-Metal Tool Manufacturing",
+                    "333-Container and Metal Packaging Container Manufacturing",
+                    "334-Metal Wire and Rope and Products Manufacturing",
+                    "335-Building and Safety Metal Products Manufacturing",
+                    "336-Metal Surface Treatment and Heat Treatment Processing",
+                    "337-Enamel Products Manufacturing",
+                    "338-Metal Daily Products Manufacturing",
+                    "339-Casting and Other Metal Products Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "34-通用设备制造业",
+                "二级标签_en": "34-General Equipment Manufacturing",
+                "三级标签": [
+                    "341-锅炉及原动设备制造",
+                    "342-金属加工机械制造",
+                    "343-物料搬运设备制造",
+                    "344-泵、阀门、压缩机及类似机械制造",
+                    "345-轴承、齿轮和传动部件制造",
+                    "346-烘炉、风机、包装等设备制造",
+                    "347-文化、办公用机械制造",
+                    "348-通用零部件制造",
+                    "349-其他通用设备制造业"
+                ],
+                "三级标签_en": [
+                    "341-Boiler and Prime Mover Manufacturing",
+                    "342-Metal Processing Machinery Manufacturing",
+                    "343-Material Handling Equipment Manufacturing",
+                    "344-Pump, Valve, Compressor and Similar Machinery Manufacturing",
+                    "345-Bearing, Gear and Transmission Parts Manufacturing",
+                    "346-Oven, Fan, Packaging and Other Equipment Manufacturing",
+                    "347-Culture and Office Machinery Manufacturing",
+                    "348-General Parts Manufacturing",
+                    "349-Other General Equipment Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "35-专用设备制造业",
+                "二级标签_en": "35-Special Equipment Manufacturing",
+                "三级标签": [
+                    "351-采矿、冶金、建筑专用设备制造",
+                    "352-化工、木材、非金属加工专用设备制造",
+                    "353-食品、饮料、烟草及饲料生产专用设备制造",
+                    "354-印刷、制药、日化及日用品生产专用设备制造",
+                    "355-纺织、服装和皮革加工专用设备制造",
+                    "356-电子和电工机械专用设备制造",
+                    "357-农、林、牧、渔专用机械制造",
+                    "358-医疗仪器设备及器械制造",
+                    "359-环保、邮政、社会公共服务及其他专用设备制造"
+                ],
+                "三级标签_en": [
+                    "351-Mining, Metallurgy, Construction Special Equipment Manufacturing",
+                    "352-Chemical, Wood, Non-metal Processing Special Equipment Manufacturing",
+                    "353-Food, Beverage, Tobacco and Feed Production Special Equipment Manufacturing",
+                    "354-Printing, Pharmaceutical, Daily Chemical and Daily Products Production Special Equipment Manufacturing",
+                    "355-Textile, Garment and Leather Processing Special Equipment Manufacturing",
+                    "356-Electronic and Electrical Machinery Special Equipment Manufacturing",
+                    "357-Agriculture, Forestry, Animal Husbandry and Fishery Special Machinery Manufacturing",
+                    "358-Medical Instruments and Equipment Manufacturing",
+                    "359-Environmental Protection, Postal, Social Public Services and Other Special Equipment Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "36-汽车制造业",
+                "二级标签_en": "36-Automobile Manufacturing",
+                "三级标签": [
+                    "361-汽车整车制造",
+                    "362-汽车用发动机制造",
+                    "363-改装汽车制造",
+                    "364-低速汽车制造",
+                    "365-电车制造",
+                    "366-汽车车身、挂车制造",
+                    "367-汽车零部件及配件制造"
+                ],
+                "三级标签_en": [
+                    "361-Automobile Manufacturing",
+                    "362-Automobile Engine Manufacturing",
+                    "363-Modified Automobile Manufacturing",
+                    "364-Low-speed Automobile Manufacturing",
+                    "365-Electric Vehicle Manufacturing",
+                    "366-Automobile Body and Trailer Manufacturing",
+                    "367-Automobile Parts and Accessories Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "37-铁路、船舶、航空航天和其他运输设备制造业",
+                "二级标签_en": "37-Railway, Ship, Aerospace and Other Transportation Equipment Manufacturing",
+                "三级标签": [
+                    "371-铁路运输设备制造",
+                    "372-城市轨道交通设备制造",
+                    "373-船舶及相关装置制造",
+                    "374-航空、航天器及设备制造",
+                    "375-摩托车制造",
+                    "376-自行车和残疾人座车制造",
+                    "377-助动车制造",
+                    "378-非公路休闲车及零配件制造",
+                    "379-潜水救捞及其他未列明运输设备制造"
+                ],
+                "三级标签_en": [
+                    "371-Railway Transportation Equipment Manufacturing",
+                    "372-Urban Rail Transit Equipment Manufacturing",
+                    "373-Ship and Related Equipment Manufacturing",
+                    "374-Aviation, Spacecraft and Equipment Manufacturing",
+                    "375-Motorcycle Manufacturing",
+                    "376-Bicycle and Disabled Persons' Vehicle Manufacturing",
+                    "377-Moped Manufacturing",
+                    "378-Off-road Recreational Vehicles and Parts Manufacturing",
+                    "379-Diving and Salvage and Other Unlisted Transportation Equipment Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "38-电气机械和器材制造业",
+                "二级标签_en": "38-Electrical Machinery and Equipment",
+                "三级标签": [
+                    "381-电机制造",
+                    "382-输配电及控制设备制造",
+                    "383-电线、电缆、光缆及电工器材制造",
+                    "384-电池制造",
+                    "385-家用电力器具制造",
+                    "386-非电力家用器具制造",
+                    "387-照明器具制造",
+                    "389-其他电气机械及器材制造"
+                ],
+                "三级标签_en": [
+                    "381-Motor Manufacturing",
+                    "382-Power Transmission and Distribution and Control Equipment Manufacturing",
+                    "383-Wire, Cable, Optical Cable and Electrical Equipment Manufacturing",
+                    "384-Battery Manufacturing",
+                    "385-Household Electrical Appliances Manufacturing",
+                    "386-Non-electrical Household Appliances Manufacturing",
+                    "387-Lighting Fixture Manufacturing",
+                    "389-Other Electrical Machinery and Equipment Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "39-计算机、通信和其他电子设备制造业",
+                "二级标签_en": "39-Computers, Communications and Other Electronic Equipment Manufacturing",
+                "三级标签": [
+                    "391-计算机制造",
+                    "392-通信设备制造",
+                    "393-广播电视设备制造",
+                    "394-雷达及配套设备制造",
+                    "395-非专业视听设备制造",
+                    "396-智能消费设备制造",
+                    "397-电子器件制造",
+                    "398-电子元件及电子专用材料制造",
+                    "399-其他电子设备制造"
+                ],
+                "三级标签_en": [
+                    "391-Computer Manufacturing",
+                    "392-Communication Equipment Manufacturing",
+                    "393-Radio and Television Equipment Manufacturing",
+                    "394-Radar and Supporting Equipment Manufacturing",
+                    "395-Non-professional Audio-visual Equipment Manufacturing",
+                    "396-Smart Consumer Device Manufacturing",
+                    "397-Electronic Device Manufacturing",
+                    "398-Electronic Components and Electronic Special Materials Manufacturing",
+                    "399-Other Electronic Equipment Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "40-仪器仪表制造业",
+                "二级标签_en": "40-Instrumentation Manufacturing",
+                "三级标签": [
+                    "401-通用仪器仪表制造",
+                    "402-专用仪器仪表制造",
+                    "403-钟表与计时仪器制造",
+                    "404-光学仪器制造",
+                    "405-衡器制造",
+                    "409-其他仪器仪表制造业"
+                ],
+                "三级标签_en": [
+                    "401-General Instrumentation Manufacturing",
+                    "402-Special Instrumentation Manufacturing",
+                    "403-Clocks, Watches and Timing Instruments Manufacturing",
+                    "404-Optical Instrument Manufacturing",
+                    "405-Weighing Instrument Manufacturing",
+                    "409-Other Instrumentation Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "41-其他制造业",
+                "二级标签_en": "41-Other Manufacturing",
+                "三级标签": [
+                    "411-日用杂品制造",
+                    "412-核辐射加工",
+                    "419-其他未列明制造业"
+                ],
+                "三级标签_en": [
+                    "411-Daily Sundries Manufacturing",
+                    "412-Nuclear Radiation Processing",
+                    "419-Other Unlisted Manufacturing"
+                ]
+            },
+            {
+                "二级标签": "42-废弃资源综合利用业",
+                "二级标签_en": "42-Waste Resources Comprehensive Utilization",
+                "三级标签": [
+                    "421-金属废料和碎屑加工处理",
+                    "422-非金属废料和碎屑加工处理"
+                ],
+                "三级标签_en": [
+                    "421-Metal Waste and Scrap Processing",
+                    "422-Non-metal Waste and Scrap Processing"
+                ]
+            },
+            {
+                "二级标签": "43-金属制品、机械和设备修理业",
+                "二级标签_en": "43-Metal Products, Machinery and Equipment Repair",
+                "三级标签": [
+                    "431-金属制品修理",
+                    "432-通用设备修理",
+                    "433-专用设备修理",
+                    "434-铁路、船舶、航空航天等运输设备修理",
+                    "435-电气设备修理",
+                    "436-仪器仪表修理",
+                    "439-其他机械和设备修理业"
+                ],
+                "三级标签_en": [
+                    "431-Metal Products Repair",
+                    "432-General Equipment Repair",
+                    "433-Special Equipment Repair",
+                    "434-Railway, Ship, Aerospace and Other Transportation Equipment Repair",
+                    "435-Electrical Equipment Repair",
+                    "436-Instrumentation Repair",
+                    "439-Other Machinery and Equipment Repair"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "D-电力、热力、燃气及水生产和供应业",
+        "一级标签_en": "D-Production and Distribution of Electricity, Heat, Gas and Water",
+        "二级标签": [
+            {
+                "二级标签": "44-电力、热力生产和供应业",
+                "二级标签_en": "44-Electricity, Heat Production and Supply",
+                "三级标签": [
+                    "441-电力生产",
+                    "442-电力供应",
+                    "443-热力生产和供应"
+                ],
+                "三级标签_en": [
+                    "441-Electricity Production",
+                    "442-Electricity Supply",
+                    "443-Heat Production and Supply"
+                ]
+            },
+            {
+                "二级标签": "45-燃气生产和供应业",
+                "二级标签_en": "45-Gas Production and Supply",
+                "三级标签": [
+                    "451-燃气生产和供应业",
+                    "452-生物质燃气生产和供应业"
+                ],
+                "三级标签_en": [
+                    "451-Gas Production and Supply",
+                    "452-Biomass Gas Production and Supply"
+                ]
+            },
+            {
+                "二级标签": "46-水的生产和供应业",
+                "二级标签_en": "46-Water Production and Supply",
+                "三级标签": [
+                    "461-自来水生产和供应",
+                    "462-污水处理及其再生利用",
+                    "463-海水淡化处理",
+                    "469-其他水的处理、利用与分配"
+                ],
+                "三级标签_en": [
+                    "461-Tap Water Production and Supply",
+                    "462-Sewage Treatment and Reuse",
+                    "463-Seawater Desalination",
+                    "469-Other Water Treatment, Utilization and Distribution"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "E-建筑业",
+        "一级标签_en": "E-Construction",
+        "二级标签": [
+            {
+                "二级标签": "47-房屋建筑业",
+                "二级标签_en": "47-Housing Construction",
+                "三级标签": [
+                    "471-住宅房屋建筑",
+                    "472-体育场馆建筑",
+                    "479-其他房屋建筑业"
+                ],
+                "三级标签_en": [
+                    "471-Residential Building Construction",
+                    "472-Sports Venue Construction",
+                    "479-Other Housing Construction"
+                ]
+            },
+            {
+                "二级标签": "48-土木工程建筑业",
+                "二级标签_en": "48-Civil Engineering Construction",
+                "三级标签": [
+                    "481-铁路、道路、隧道和桥梁工程建筑",
+                    "482-水利和水运工程建筑",
+                    "483-海洋工程建筑",
+                    "484-工矿工程建筑",
+                    "485-架线和管道工程建筑",
+                    "486-节能环保工程施工",
+                    "487-电力工程施工",
+                    "489-其他土木工程建筑"
+                ],
+                "三级标签_en": [
+                    "481-Railway, Road, Tunnel and Bridge Engineering Construction",
+                    "482-Water Conservancy and Waterway Engineering Construction",
+                    "483-Ocean Engineering Construction",
+                    "484-Industrial and Mining Engineering Construction",
+                    "485-Overhead Line and Pipeline Engineering Construction",
+                    "486-Energy Saving and Environmental Protection Engineering Construction",
+                    "487-Power Engineering Construction",
+                    "489-Other Civil Engineering Construction"
+                ]
+            },
+            {
+                "二级标签": "49-建筑安装业",
+                "二级标签_en": "49-Construction Installation",
+                "三级标签": [
+                    "491-电气安装",
+                    "492-管道和设备安装",
+                    "499-其他建筑安装业"
+                ],
+                "三级标签_en": [
+                    "491-Electrical Installation",
+                    "492-Pipeline and Equipment Installation",
+                    "499-Other Construction Installation"
+                ]
+            },
+            {
+                "二级标签": "50-建筑装饰、装修和其他建筑业",
+                "二级标签_en": "50-Building Decoration, Renovation and Other Construction",
+                "三级标签": [
+                    "501-建筑装饰和装修业",
+                    "502-建筑物拆除和场地准备活动",
+                    "503-提供施工设备服务",
+                    "509-其他未列明建筑业"
+                ],
+                "三级标签_en": [
+                    "501-Building Decoration and Renovation",
+                    "502-Building Demolition and Site Preparation Activities",
+                    "503-Construction Equipment Services",
+                    "509-Other Unlisted Construction"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "F-批发和零售业",
+        "一级标签_en": "F-Wholesale and Retail Trade",
+        "二级标签": [
+            {
+                "二级标签": "51-批发业",
+                "二级标签_en": "51-Wholesale Trade",
+                "三级标签": [
+                    "511-农、林、牧、渔产品批发",
+                    "512-食品、饮料及烟草制品批发",
+                    "513-纺织、服装及家庭用品批发",
+                    "514-文化、体育用品及器材批发",
+                    "515-医药及医疗器材批发",
+                    "516-矿产品、建材及化工产品批发",
+                    "517-机械设备、五金产品及电子产品批发",
+                    "518-贸易经纪与代理",
+                    "519-其他批发业"
+                ],
+                "三级标签_en": [
+                    "511-Agriculture, Forestry, Animal Husbandry and Fishery Products Wholesale",
+                    "512-Food, Beverages and Tobacco Products Wholesale",
+                    "513-Textile, Garment and Household Products Wholesale",
+                    "514-Culture, Sports Goods and Equipment Wholesale",
+                    "515-Pharmaceutical and Medical Equipment Wholesale",
+                    "516-Mineral Products, Building Materials and Chemical Products Wholesale",
+                    "517-Machinery, Hardware and Electronic Products Wholesale",
+                    "518-Trade Brokerage and Agency",
+                    "519-Other Wholesale Trade"
+                ]
+            },
+            {
+                "二级标签": "52-零售业",
+                "二级标签_en": "52-Retail Trade",
+                "三级标签": [
+                    "521-综合零售",
+                    "522-食品、饮料及烟草制品专门零售",
+                    "523-纺织、服装及日用品专门零售",
+                    "524-文化、体育用品及器材专门零售",
+                    "525-医药及医疗器材专门零售",
+                    "526-汽车、摩托车、零配件和燃料及其他动力销售",
+                    "527-家用电器及电子产品专门零售",
+                    "528-五金、家具及室内装饰材料专门零售",
+                    "529-货摊、无店铺及其他零售业"
+                ],
+                "三级标签_en": [
+                    "521-Comprehensive Retail",
+                    "522-Food, Beverages and Tobacco Products Specialized Retail",
+                    "523-Textile, Garment and Daily Necessities Specialized Retail",
+                    "524-Culture, Sports Goods and Equipment Specialized Retail",
+                    "525-Pharmaceutical and Medical Equipment Specialized Retail",
+                    "526-Automobile, Motorcycle, Parts and Fuel and Other Power Sales",
+                    "527-Household Appliances and Electronic Products Specialized Retail",
+                    "528-Hardware, Furniture and Interior Decoration Materials Specialized Retail",
+                    "529-Stall, Non-store and Other Retail"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "G-交通运输、仓储和邮政业",
+        "一级标签_en": "G-Transport, Storage and Post",
+        "二级标签": [
+            {
+                "二级标签": "53-铁路运输业",
+                "二级标签_en": "53-Railway Transport",
+                "三级标签": [
+                    "531-铁路旅客运输",
+                    "532-铁路货物运输",
+                    "533-铁路运输辅助活动"
+                ],
+                "三级标签_en": [
+                    "531-Railway Passenger Transport",
+                    "532-Railway Freight Transport",
+                    "533-Railway Transport Auxiliary Activities"
+                ]
+            },
+            {
+                "二级标签": "54-道路运输业",
+                "二级标签_en": "54-Road Transport",
+                "三级标签": [
+                    "541-城市公共交通运输",
+                    "542-公路旅客运输",
+                    "543-道路货物运输",
+                    "544-道路运输辅助活动"
+                ],
+                "三级标签_en": [
+                    "541-Urban Public Transport",
+                    "542-Road Passenger Transport",
+                    "543-Road Freight Transport",
+                    "544-Road Transport Auxiliary Activities"
+                ]
+            },
+            {
+                "二级标签": "55-水上运输业",
+                "二级标签_en": "55-Water Transport",
+                "三级标签": [
+                    "551-水上旅客运输",
+                    "552-水上货物运输",
+                    "553-水上运输辅助活动"
+                ],
+                "三级标签_en": [
+                    "551-Water Passenger Transport",
+                    "552-Water Freight Transport",
+                    "553-Water Transport Auxiliary Activities"
+                ]
+            },
+            {
+                "二级标签": "56-航空运输业",
+                "二级标签_en": "56-Air Transport",
+                "三级标签": [
+                    "561-航空客货运输",
+                    "562-通用航空服务",
+                    "563-航空运输辅助活动"
+                ],
+                "三级标签_en": [
+                    "561-Air Passenger and Freight Transport",
+                    "562-General Aviation Services",
+                    "563-Air Transport Auxiliary Activities"
+                ]
+            },
+            {
+                "二级标签": "57-管道运输业",
+                "二级标签_en": "57-Pipeline Transport",
+                "三级标签": [
+                    "571-海底管道运输",
+                    "572-陆地管道运输"
+                ],
+                "三级标签_en": [
+                    "571-Submarine Pipeline Transport",
+                    "572-Land Pipeline Transport"
+                ]
+            },
+            {
+                "二级标签": "58-多式联运和运输代理业",
+                "二级标签_en": "58-Multimodal Transport and Transport Agency",
+                "三级标签": [
+                    "581-多式联运",
+                    "582-运输代理业"
+                ],
+                "三级标签_en": [
+                    "581-Multimodal Transport",
+                    "582-Transport Agency"
+                ]
+            },
+            {
+                "二级标签": "59-装卸搬运和仓储业",
+                "二级标签_en": "59-Loading, Unloading, Handling and Storage",
+                "三级标签": [
+                    "591-装卸搬运",
+                    "592-通用仓储",
+                    "593-低温仓储",
+                    "594-危险品仓储",
+                    "595-谷物、棉花等农产品仓储",
+                    "596-中药材仓储",
+                    "599-其他仓储业"
+                ],
+                "三级标签_en": [
+                    "591-Loading, Unloading and Handling",
+                    "592-General Storage",
+                    "593-Cold Storage",
+                    "594-Hazardous Goods Storage",
+                    "595-Grain, Cotton and Other Agricultural Products Storage",
+                    "596-Traditional Chinese Medicinal Materials Storage",
+                    "599-Other Storage"
+                ]
+            },
+            {
+                "二级标签": "60-邮政业",
+                "二级标签_en": "60-Postal Services",
+                "三级标签": [
+                    "601-邮政基本服务",
+                    "602-快递服务",
+                    "609-其他寄递服务"
+                ],
+                "三级标签_en": [
+                    "601-Basic Postal Services",
+                    "602-Express Delivery Services",
+                    "609-Other Delivery Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "H-住宿和餐饮业",
+        "一级标签_en": "H-Accommodation and Catering",
+        "二级标签": [
+            {
+                "二级标签": "61-住宿业",
+                "二级标签_en": "61-Accommodation",
+                "三级标签": [
+                    "611-旅游饭店",
+                    "612-一般旅馆",
+                    "613-民宿服务",
+                    "614-露营地服务",
+                    "619-其他住宿业"
+                ],
+                "三级标签_en": [
+                    "611-Tourist Hotel",
+                    "612-General Hotel",
+                    "613-Homestay Services",
+                    "614-Campsite Services",
+                    "619-Other Accommodation"
+                ]
+            },
+            {
+                "二级标签": "62-餐饮业",
+                "二级标签_en": "62-Catering",
+                "三级标签": [
+                    "621-正餐服务",
+                    "622-快餐服务",
+                    "623-饮料及冷饮服务",
+                    "624-餐饮配送及外卖送餐服务",
+                    "629-其他餐饮业"
+                ],
+                "三级标签_en": [
+                    "621-Formal Dining Services",
+                    "622-Fast Food Services",
+                    "623-Beverage and Cold Drink Services",
+                    "624-Catering Delivery and Takeaway Services",
+                    "629-Other Catering"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "I-信息传输、软件和信息技术服务业",
+        "一级标签_en": "I-Information Transmission, Software and Information Technology Services",
+        "二级标签": [
+            {
+                "二级标签": "63-电信、广播电视和卫星传输服务",
+                "二级标签_en": "63-Telecommunications, Radio, Television and Satellite Transmission Services",
+                "三级标签": [
+                    "631-电信",
+                    "632-广播电视传输服务",
+                    "633-卫星传输服务"
+                ],
+                "三级标签_en": [
+                    "631-Telecommunications",
+                    "632-Radio and Television Transmission Services",
+                    "633-Satellite Transmission Services"
+                ]
+            },
+            {
+                "二级标签": "64-互联网和相关服务",
+                "二级标签_en": "64-Internet and Related Services",
+                "三级标签": [
+                    "641-互联网接入及相关服务",
+                    "642-互联网信息服务",
+                    "643-互联网平台",
+                    "644-互联网安全服务",
+                    "645-互联网数据服务",
+                    "649-其他互联网服务"
+                ],
+                "三级标签_en": [
+                    "641-Internet Access and Related Services",
+                    "642-Internet Information Services",
+                    "643-Internet Platform",
+                    "644-Internet Security Services",
+                    "645-Internet Data Services",
+                    "649-Other Internet Services"
+                ]
+            },
+            {
+                "二级标签": "65-软件和信息技术服务业",
+                "二级标签_en": "65-Software and Information Technology Services",
+                "三级标签": [
+                    "651-软件开发",
+                    "652-集成电路设计",
+                    "653-信息系统集成和物联网技术服务",
+                    "654-运行维护服务",
+                    "655-信息处理和存储支持服务",
+                    "656-信息技术咨询服务",
+                    "657-数字内容服务",
+                    "659-其他信息技术服务业"
+                ],
+                "三级标签_en": [
+                    "651-Software Development",
+                    "652-Integrated Circuit Design",
+                    "653-Information System Integration and IoT Technology Services",
+                    "654-Operation and Maintenance Services",
+                    "655-Information Processing and Storage Support Services",
+                    "656-Information Technology Consulting Services",
+                    "657-Digital Content Services",
+                    "659-Other Information Technology Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "J-金融业",
+        "一级标签_en": "J-Financial Industry",
+        "二级标签": [
+            {
+                "二级标签": "66-货币金融服务",
+                "二级标签_en": "66-Monetary Financial Services",
+                "三级标签": [
+                    "661-中央银行服务",
+                    "662-货币银行服务",
+                    "663-非货币银行服务",
+                    "664-银行理财服务",
+                    "665-银行监管服务"
+                ],
+                "三级标签_en": [
+                    "661-Central Bank Services",
+                    "662-Monetary Banking Services",
+                    "663-Non-monetary Banking Services",
+                    "664-Bank Wealth Management Services",
+                    "665-Bank Regulatory Services"
+                ]
+            },
+            {
+                "二级标签": "67-资本市场服务",
+                "二级标签_en": "67-Capital Market Services",
+                "三级标签": [
+                    "671-证券市场服务",
+                    "672-公开募集证券投资基金",
+                    "673-非公开募集证券投资基金",
+                    "674-期货市场服务",
+                    "675-证券期货监管服务",
+                    "676-资本投资服务",
+                    "679-其他资本市场服务"
+                ],
+                "三级标签_en": [
+                    "671-Securities Market Services",
+                    "672-Publicly Offered Securities Investment Funds",
+                    "673-Privately Offered Securities Investment Funds",
+                    "674-Futures Market Services",
+                    "675-Securities and Futures Regulatory Services",
+                    "676-Capital Investment Services",
+                    "679-Other Capital Market Services"
+                ]
+            },
+            {
+                "二级标签": "68-保险业",
+                "二级标签_en": "68-Insurance",
+                "三级标签": [
+                    "681-人身保险",
+                    "682-财产保险",
+                    "683-再保险",
+                    "684-商业养老金",
+                    "685-保险中介服务",
+                    "686-保险资产管理",
+                    "687-保险监管服务",
+                    "689-其他保险活动"
+                ],
+                "三级标签_en": [
+                    "681-Life Insurance",
+                    "682-Property Insurance",
+                    "683-Reinsurance",
+                    "684-Commercial Pension",
+                    "685-Insurance Intermediary Services",
+                    "686-Insurance Asset Management",
+                    "687-Insurance Regulatory Services",
+                    "689-Other Insurance Activities"
+                ]
+            },
+            {
+                "二级标签": "69-其他金融业",
+                "二级标签_en": "69-Other Financial Services",
+                "三级标签": [
+                    "691-金融信托与管理服务",
+                    "692-控股公司服务",
+                    "693-非金融机构支付服务",
+                    "694-金融信息服务",
+                    "695-金融资产管理公司",
+                    "699-其他未列明金融业"
+                ],
+                "三级标签_en": [
+                    "691-Financial Trust and Management Services",
+                    "692-Holding Company Services",
+                    "693-Non-financial Institution Payment Services",
+                    "694-Financial Information Services",
+                    "695-Financial Asset Management Company",
+                    "699-Other Unlisted Financial Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "K-房地产业",
+        "一级标签_en": "K-Real Estate",
+        "二级标签": [
+            {
+                "二级标签": "70-房地产业",
+                "二级标签_en": "70-Real Estate",
+                "三级标签": [
+                    "701-房地产开发经营",
+                    "702-物业管理",
+                    "703-房地产中介服务",
+                    "704-房地产租赁经营",
+                    "709-其他房地产业"
+                ],
+                "三级标签_en": [
+                    "701-Real Estate Development and Operation",
+                    "702-Property Management",
+                    "703-Real Estate Agency Services",
+                    "704-Real Estate Leasing Operations",
+                    "709-Other Real Estate"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "L-租赁和商务服务业",
+        "一级标签_en": "L-Leasing and Business Services",
+        "二级标签": [
+            {
+                "二级标签": "71-租赁业",
+                "二级标签_en": "71-Leasing",
+                "三级标签": [
+                    "711-机械设备经营租赁",
+                    "712-文体设备和用品出租",
+                    "713-日用品出租"
+                ],
+                "三级标签_en": [
+                    "711-Machinery and Equipment Leasing",
+                    "712-Culture and Sports Equipment and Supplies Rental",
+                    "713-Daily Necessities Rental"
+                ]
+            },
+            {
+                "二级标签": "72-商务服务业",
+                "二级标签_en": "72-Business Services",
+                "三级标签": [
+                    "721-组织管理服务",
+                    "722-综合管理服务",
+                    "723-法律服务",
+                    "724-咨询与调查",
+                    "725-广告业",
+                    "726-人力资源服务",
+                    "727-安全保护服务",
+                    "728-会议、展览及相关服务",
+                    "729-其他商务服务业"
+                ],
+                "三级标签_en": [
+                    "721-Organization and Management Services",
+                    "722-Comprehensive Management Services",
+                    "723-Legal Services",
+                    "724-Consulting and Investigation",
+                    "725-Advertising",
+                    "726-Human Resources Services",
+                    "727-Security Protection Services",
+                    "728-Conference, Exhibition and Related Services",
+                    "729-Other Business Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "M-科学研究和技术服务业",
+        "一级标签_en": "M-Scientific Research and Technical Services",
+        "二级标签": [
+            {
+                "二级标签": "73-研究和试验发展",
+                "二级标签_en": "73-Research and Experimental Development",
+                "三级标签": [
+                    "731-自然科学研究和试验发展",
+                    "732-工程和技术研究和试验发展",
+                    "733-农业科学研究和试验发展",
+                    "734-医学研究和试验发展",
+                    "735-社会人文科学研究"
+                ],
+                "三级标签_en": [
+                    "731-Natural Science Research and Experimental Development",
+                    "732-Engineering and Technology Research and Experimental Development",
+                    "733-Agricultural Science Research and Experimental Development",
+                    "734-Medical Research and Experimental Development",
+                    "735-Social and Humanities Science Research"
+                ]
+            },
+            {
+                "二级标签": "74-专业技术服务业",
+                "二级标签_en": "74-Professional Technical Services",
+                "三级标签": [
+                    "741-气象服务",
+                    "742-地震服务",
+                    "743-海洋服务",
+                    "744-测绘地理信息服务",
+                    "745-质检技术服务",
+                    "746-环境与生态监测检测服务",
+                    "747-地质勘查",
+                    "748-工程技术与设计服务",
+                    "749-工业与专业设计及其他专业技术服务"
+                ],
+                "三级标签_en": [
+                    "741-Meteorological Services",
+                    "742-Earthquake Services",
+                    "743-Marine Services",
+                    "744-Surveying and Mapping Geographic Information Services",
+                    "745-Quality Inspection Technical Services",
+                    "746-Environmental and Ecological Monitoring and Testing Services",
+                    "747-Geological Survey",
+                    "748-Engineering Technology and Design Services",
+                    "749-Industrial and Professional Design and Other Professional Technical Services"
+                ]
+            },
+            {
+                "二级标签": "75-科技推广和应用服务业",
+                "二级标签_en": "75-Technology Promotion and Application Services",
+                "三级标签": [
+                    "751-技术推广服务",
+                    "752-知识产权服务",
+                    "753-科技中介服务",
+                    "754-创业空间服务",
+                    "759-其他科技推广服务业"
+                ],
+                "三级标签_en": [
+                    "751-Technology Promotion Services",
+                    "752-Intellectual Property Services",
+                    "753-Technology Intermediary Services",
+                    "754-Entrepreneurship Space Services",
+                    "759-Other Technology Promotion Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "N-水利、环境和公共设施管理业",
+        "一级标签_en": "N-Management of Water Conservancy, Environment and Public Facilities",
+        "二级标签": [
+            {
+                "二级标签": "76-水利管理业",
+                "二级标签_en": "76-Water Conservancy Management",
+                "三级标签": [
+                    "761-防洪除涝设施管理",
+                    "762-水资源管理",
+                    "763-天然水收集与分配",
+                    "764-水文服务",
+                    "769-其他水利管理业"
+                ],
+                "三级标签_en": [
+                    "761-Flood Control and Drainage Facilities Management",
+                    "762-Water Resources Management",
+                    "763-Natural Water Collection and Distribution",
+                    "764-Hydrological Services",
+                    "769-Other Water Conservancy Management"
+                ]
+            },
+            {
+                "二级标签": "77-生态保护和环境治理业",
+                "二级标签_en": "77-Ecological Protection and Environmental Governance",
+                "三级标签": [
+                    "771-生态保护",
+                    "772-环境治理业"
+                ],
+                "三级标签_en": [
+                    "771-Ecological Protection",
+                    "772-Environmental Governance"
+                ]
+            },
+            {
+                "二级标签": "78-公共设施管理业",
+                "二级标签_en": "78-Public Facilities Management",
+                "三级标签": [
+                    "781-市政设施管理",
+                    "782-环境卫生管理",
+                    "783-城乡市容管理",
+                    "784-绿化管理",
+                    "785-城市公园管理",
+                    "786-游览景区管理"
+                ],
+                "三级标签_en": [
+                    "781-Municipal Facilities Management",
+                    "782-Environmental Sanitation Management",
+                    "783-Urban and Rural Appearance Management",
+                    "784-Greening Management",
+                    "785-Urban Park Management",
+                    "786-Scenic Area Management"
+                ]
+            },
+            {
+                "二级标签": "79-土地管理业",
+                "二级标签_en": "79-Land Management",
+                "三级标签": [
+                    "791-土地整治服务",
+                    "792-土地调查评估服务",
+                    "793-土地登记服务",
+                    "794-土地登记代理服务",
+                    "799-其他土地管理服务"
+                ],
+                "三级标签_en": [
+                    "791-Land Consolidation Services",
+                    "792-Land Survey and Assessment Services",
+                    "793-Land Registration Services",
+                    "794-Land Registration Agency Services",
+                    "799-Other Land Management Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "O-居民服务、修理和其他服务业",
+        "一级标签_en": "O-Residential Services, Repair and Other Services",
+        "二级标签": [
+            {
+                "二级标签": "80-居民服务业",
+                "二级标签_en": "80-Residential Services",
+                "三级标签": [
+                    "801-家庭服务",
+                    "802-托儿所服务",
+                    "803-洗染服务",
+                    "804-理发及美容服务",
+                    "805-洗浴和保健养生服务",
+                    "806-摄影扩印服务",
+                    "807-婚姻服务",
+                    "808-殡葬服务",
+                    "809-其他居民服务业"
+                ],
+                "三级标签_en": [
+                    "801-Household Services",
+                    "802-Nursery Services",
+                    "803-Laundry Services",
+                    "804-Hairdressing and Beauty Services",
+                    "805-Bathing and Health Preservation Services",
+                    "806-Photography and Printing Services",
+                    "807-Marriage Services",
+                    "808-Funeral Services",
+                    "809-Other Residential Services"
+                ]
+            },
+            {
+                "二级标签": "81-机动车、电子产品和日用产品修理业",
+                "二级标签_en": "81-Motor Vehicle, Electronic Products and Daily Products Repair",
+                "三级标签": [
+                    "811-汽车、摩托车等修理与维护",
+                    "812-计算机和办公设备维修",
+                    "813-家用电器修理",
+                    "819-其他日用产品修理业"
+                ],
+                "三级标签_en": [
+                    "811-Automobile, Motorcycle and Other Repair and Maintenance",
+                    "812-Computer and Office Equipment Repair",
+                    "813-Household Appliance Repair",
+                    "819-Other Daily Products Repair"
+                ]
+            },
+            {
+                "二级标签": "82-其他服务业",
+                "二级标签_en": "82-Other Services",
+                "三级标签": [
+                    "821-清洁服务",
+                    "822-宠物服务",
+                    "829-其他未列明服务业"
+                ],
+                "三级标签_en": [
+                    "821-Cleaning Services",
+                    "822-Pet Services",
+                    "829-Other Unlisted Services"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "P-教育",
+        "一级标签_en": "P-Education",
+        "二级标签": [
+            {
+                "二级标签": "83-教育",
+                "二级标签_en": "83-Education",
+                "三级标签": [
+                    "831-学前教育",
+                    "832-初等教育",
+                    "833-中等教育",
+                    "834-高等教育",
+                    "835-特殊教育",
+                    "839-技能培训、教育辅助及其他教育"
+                ],
+                "三级标签_en": [
+                    "831-Preschool Education",
+                    "832-Primary Education",
+                    "833-Secondary Education",
+                    "834-Higher Education",
+                    "835-Special Education",
+                    "839-Skills Training, Educational Auxiliary and Other Education"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "Q-卫生和社会工作",
+        "一级标签_en": "Q-Health and Social Work",
+        "二级标签": [
+            {
+                "二级标签": "84-卫生",
+                "二级标签_en": "84-Health",
+                "三级标签": [
+                    "841-医院",
+                    "842-基层医疗卫生服务",
+                    "843-专业公共卫生服务",
+                    "849-其他卫生活动"
+                ],
+                "三级标签_en": [
+                    "841-Hospitals",
+                    "842-Primary Medical and Health Services",
+                    "843-Professional Public Health Services",
+                    "849-Other Health Activities"
+                ]
+            },
+            {
+                "二级标签": "85-社会工作",
+                "二级标签_en": "85-Social Work",
+                "三级标签": [
+                    "851-提供住宿社会工作",
+                    "852-不提供住宿社会工作"
+                ],
+                "三级标签_en": [
+                    "851-Residential Social Work",
+                    "852-Non-residential Social Work"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "R-文化、体育和娱乐业",
+        "一级标签_en": "R-Culture, Sports and Entertainment",
+        "二级标签": [
+            {
+                "二级标签": "86-新闻和出版业",
+                "二级标签_en": "86-News and Publishing",
+                "三级标签": [
+                    "861-新闻业",
+                    "862-出版业"
+                ],
+                "三级标签_en": [
+                    "861-News Industry",
+                    "862-Publishing Industry"
+                ]
+            },
+            {
+                "二级标签": "87-广播、电视、电影和录音制作业",
+                "二级标签_en": "87-Radio, Television, Film and Sound Recording Production",
+                "三级标签": [
+                    "871-广播",
+                    "872-电视",
+                    "873-影视节目制作",
+                    "874-广播电视集成播控",
+                    "875-电影和广播电视节目发行",
+                    "876-电影放映",
+                    "877-录音制作"
+                ],
+                "三级标签_en": [
+                    "871-Radio",
+                    "872-Television",
+                    "873-Film and Television Program Production",
+                    "874-Radio and Television Integrated Broadcasting Control",
+                    "875-Film and Radio and Television Program Distribution",
+                    "876-Film Screening",
+                    "877-Sound Recording Production"
+                ]
+            },
+            {
+                "二级标签": "88-文化艺术业",
+                "二级标签_en": "88-Culture and Arts",
+                "三级标签": [
+                    "881-文艺创作与表演",
+                    "882-艺术表演场馆",
+                    "883-图书馆与档案馆",
+                    "884-文物及非物质文化遗产保护",
+                    "885-博物馆",
+                    "886-烈士陵园、纪念馆",
+                    "887-群众文体活动",
+                    "889-其他文化艺术业"
+                ],
+                "三级标签_en": [
+                    "881-Literary and Artistic Creation and Performance",
+                    "882-Art Performance Venues",
+                    "883-Libraries and Archives",
+                    "884-Cultural Relics and Intangible Cultural Heritage Protection",
+                    "885-Museums",
+                    "886-Martyrs' Cemeteries and Memorial Halls",
+                    "887-Mass Cultural and Sports Activities",
+                    "889-Other Culture and Arts"
+                ]
+            },
+            {
+                "二级标签": "89-体育",
+                "二级标签_en": "89-Sports",
+                "三级标签": [
+                    "891-体育组织",
+                    "892-体育场地设施管理",
+                    "893-健身休闲活动",
+                    "899-其他体育"
+                ],
+                "三级标签_en": [
+                    "891-Sports Organizations",
+                    "892-Sports Facilities Management",
+                    "893-Fitness and Leisure Activities",
+                    "899-Other Sports"
+                ]
+            },
+            {
+                "二级标签": "90-娱乐业",
+                "二级标签_en": "90-Entertainment",
+                "三级标签": [
+                    "901-室内娱乐活动",
+                    "902-游乐园",
+                    "903-休闲观光活动",
+                    "904-彩票活动",
+                    "905-文化体育娱乐活动与经纪代理服务",
+                    "909-其他娱乐业"
+                ],
+                "三级标签_en": [
+                    "901-Indoor Entertainment Activities",
+                    "902-Amusement Parks",
+                    "903-Leisure and Sightseeing Activities",
+                    "904-Lottery Activities",
+                    "905-Cultural, Sports and Entertainment Activities and Brokerage Services",
+                    "909-Other Entertainment"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "S-公共管理、社会保障和社会组织",
+        "一级标签_en": "S-Public Management, Social Security and Social Organizations",
+        "二级标签": [
+            {
+                "二级标签": "91-中国共产党机关",
+                "二级标签_en": "91-Organs of the Communist Party of China",
+                "三级标签": [
+                    "910-中国共产党机关"
+                ],
+                "三级标签_en": [
+                    "910-Organs of the Communist Party of China"
+                ]
+            },
+            {
+                "二级标签": "92-国家机构",
+                "二级标签_en": "92-State Organs",
+                "三级标签": [
+                    "921-国家权力机构",
+                    "922-国家行政机构",
+                    "923-监察委员会、人民法院和人民检察院",
+                    "929-其他国家机构"
+                ],
+                "三级标签_en": [
+                    "921-State Power Organs",
+                    "922-State Administrative Organs",
+                    "923-Supervisory Commissions, People's Courts and People's Procuratorates",
+                    "929-Other State Organs"
+                ]
+            },
+            {
+                "二级标签": "93-人民政协、民主党派",
+                "二级标签_en": "93-CPPCC, Democratic Parties",
+                "三级标签": [
+                    "931-人民政协",
+                    "932-民主党派"
+                ],
+                "三级标签_en": [
+                    "931-Chinese People's Political Consultative Conference",
+                    "932-Democratic Parties"
+                ]
+            },
+            {
+                "二级标签": "94-社会保障",
+                "二级标签_en": "94-Social Security",
+                "三级标签": [
+                    "941-基本保险",
+                    "942-补充保险",
+                    "949-其他社会保障"
+                ],
+                "三级标签_en": [
+                    "941-Basic Insurance",
+                    "942-Supplementary Insurance",
+                    "949-Other Social Security"
+                ]
+            },
+            {
+                "二级标签": "95-群众团体、社会团体和其他成员组织",
+                "二级标签_en": "95-Mass Organizations, Social Organizations and Other Membership Organizations",
+                "三级标签": [
+                    "951-群众团体",
+                    "952-社会团体",
+                    "953-基金会",
+                    "954-宗教组织"
+                ],
+                "三级标签_en": [
+                    "951-Mass Organizations",
+                    "952-Social Organizations",
+                    "953-Foundations",
+                    "954-Religious Organizations"
+                ]
+            },
+            {
+                "二级标签": "96-基层群众自治组织",
+                "二级标签_en": "96-Primary-level Mass Autonomous Organizations",
+                "三级标签": [
+                    "961-社区居民自治组织",
+                    "962-村民自治组织"
+                ],
+                "三级标签_en": [
+                    "961-Community Residents' Autonomous Organizations",
+                    "962-Villagers' Autonomous Organizations"
+                ]
+            }
+        ]
+    },
+    {
+        "一级标签": "T-国际组织",
+        "一级标签_en": "T-International Organizations",
+        "二级标签": [
+            {
+                "二级标签": "97-国际组织",
+                "二级标签_en": "97-International Organizations",
+                "三级标签": [
+                    "970-国际组织"
+                ],
+                "三级标签_en": [
+                    "970-International Organizations"
+                ]
+            }
+        ]
+    }
+]
