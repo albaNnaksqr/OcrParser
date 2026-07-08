@@ -1,8 +1,18 @@
+import sys
+import types
 from pathlib import Path
 
-import fitz
-
 from tools import run_performance_baseline as baseline
+
+
+class _FakeFitzDocument:
+    page_count = 3
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
 
 
 def test_parse_variant_spec_supports_entrypoint():
@@ -265,13 +275,11 @@ def test_load_local_configs_overlays_later_files(tmp_path):
     assert config["BENCHMARK_PAGE_CONCURRENCY"] == "80"
 
 
-def test_resolve_pdf_meta_counts_pages_without_manifest(tmp_path):
+def test_resolve_pdf_meta_counts_pages_without_manifest(tmp_path, monkeypatch):
     pdf_path = tmp_path / "sample.pdf"
-    doc = fitz.open()
-    for _ in range(3):
-        doc.new_page()
-    doc.save(pdf_path)
-    doc.close()
+    pdf_path.write_bytes(b"%PDF-1.4\n")
+    fake_fitz = types.SimpleNamespace(open=lambda _path: _FakeFitzDocument())
+    monkeypatch.setitem(sys.modules, "fitz", fake_fitz)
 
     meta = baseline.resolve_pdf_meta(pdf_path, {})
 
