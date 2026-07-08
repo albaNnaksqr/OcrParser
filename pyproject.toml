@@ -63,8 +63,8 @@ ocr-platform-control = "ocr_platform.control.__main__:main"
 ocr-platform-agent = "ocr_platform.agent.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/alabnnak/ocrparser"
-Issues = "https://github.com/alabnnak/ocrparser/issues"
+Homepage = "https://github.com/albaNnaksqr/OcrParser"
+Issues = "https://github.com/albaNnaksqr/OcrParser/issues"
 
 [tool.setuptools]
 license-files = ["LICENSE", "NOTICE"]
