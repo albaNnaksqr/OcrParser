@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -25,6 +26,30 @@ def _wait_for_port(host: str, port: int, timeout: float = 20.0) -> None:
         except OSError:
             time.sleep(0.1)
     raise RuntimeError(f"timed out waiting for {host}:{port}")
+
+
+def _wait_for_agent_registration(
+    *,
+    control_url: str,
+    token: str,
+    server_id: str,
+    timeout: float = 20.0,
+) -> None:
+    deadline = time.monotonic() + timeout
+    request = urllib.request.Request(
+        control_url.rstrip("/") + "/api/servers",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen(request, timeout=1.0) as response:
+                servers = json.loads(response.read().decode("utf-8"))
+            if any(str(server.get("id")) == server_id for server in servers):
+                return
+        except (OSError, urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError):
+            pass
+        time.sleep(0.1)
+    raise RuntimeError(f"timed out waiting for agent registration: {server_id}")
 
 
 def _stop(process: subprocess.Popen[str]) -> None:
@@ -129,6 +154,12 @@ def run(root: Path, *, parser_python: str) -> int:
             )
             handle.close()
             processes.append(("agent", agent, agent_log))
+
+            _wait_for_agent_registration(
+                control_url="http://127.0.0.1:38080",
+                token=token,
+                server_id="local-worker-01",
+            )
 
             result = subprocess.run(
                 [
