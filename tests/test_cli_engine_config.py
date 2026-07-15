@@ -244,6 +244,11 @@ def test_config_preserves_engine_defaults_and_overrides():
     assert config.gpu_memory_limit_gb == 60
 
 
+def test_config_rejects_unknown_sdk_argument():
+    with pytest.raises(ValueError, match="unknown ParserConfig argument: typo_option"):
+        ParserConfig.from_kwargs(typo_option=True)
+
+
 def test_config_preserves_resource_lane_overrides():
     config = ParserConfig.from_kwargs(
         api_concurrency=8,

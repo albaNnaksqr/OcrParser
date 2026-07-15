@@ -1,5 +1,9 @@
 # OcrParser
 
+> v0.2 明确本公开仓库为唯一源码主线，并启用 Control 安全默认值。参见
+> [架构说明](docs/architecture.zh-CN.md)和
+> [v0.2 安全迁移](docs/security-migration-v0.2.zh-CN.md)。
+
 [English](README.md) | 中文
 
 OcrParser 是一个面向生产场景的 PDF OCR 解析框架，适合长时间运行、
@@ -170,19 +174,38 @@ python -m ocr_parser \
 对于 MinerU 和 PaddleOCR-VL style 两阶段引擎，建议先从更低并发开始，
 优先使用各自的 stage-specific limit。参见 [docs/model-serving.zh-CN.md](docs/model-serving.zh-CN.md)。
 
+## Python SDK façade
+
+v0.2 保持顶层导入兼容。配置现在是严格的：未知配置会直接报错，不再静默忽略。
+
+```python
+import asyncio
+from ocr_parser import DotsOCRParser, ParserConfig
+
+async def main():
+    parser = DotsOCRParser(ParserConfig(ip="127.0.0.1", port=8000))
+    await parser.initialize()
+    try:
+        await parser.parse_file("sample.pdf", output_dir="./output")
+    finally:
+        await parser.shutdown()
+
+asyncio.run(main())
+```
+
 ## 可选 Control UI
 
 本地开发启动：
 
 ```bash
-OCR_PLATFORM_HOST=0.0.0.0 \
 OCR_PLATFORM_PORT=8080 \
 python -m ocr_platform.control
 ```
 
 打开 `http://127.0.0.1:8080/ui/`。
 
-如果 worker 运行在其他机器上，请把 `OCR_CONTROL_URL` 配置成 worker 可以访问的地址，
+如果 worker 运行在其他机器上，先配置强 `OCR_PLATFORM_API_TOKEN`，再将 Control
+监听到非 loopback 地址；同时把 `OCR_CONTROL_URL` 配置成 worker 可以访问的地址，
 例如 `http://control.example.internal:8080`。
 
 ## 启动模式

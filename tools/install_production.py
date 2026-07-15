@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import ipaddress
 import contextlib
 import getpass
 import grp
@@ -56,7 +57,7 @@ class ControlInstallConfig(BaseInstallConfig):
     database_url: str = ""
     env_path: Path = DEFAULT_CONTROL_ENV
     service_path: Path = DEFAULT_CONTROL_SERVICE
-    host: str = "0.0.0.0"
+    host: str = "127.0.0.1"
     port: int = 8080
     require_postgres: bool = True
     require_current_migrations: bool = True
@@ -331,7 +332,7 @@ def render_control_env(config: ControlInstallConfig) -> str:
         f"OCR_PLATFORM_HOST={config.host}",
         f"OCR_PLATFORM_PORT={config.port}",
         f"OCR_PLATFORM_REQUIRE_API_TOKEN={_bool_env(config.require_api_token)}",
-        f"OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS={_bool_env(config.disable_saved_model_profile_keys)}",
+        f"OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS={_bool_env(not config.disable_saved_model_profile_keys)}",
         "OCR_JOB_STALE_AFTER_SECONDS=120",
         "OCR_SERVER_STALE_AFTER_SECONDS=120",
         "OCR_SHARD_LEASE_SECONDS=300",
@@ -586,7 +587,20 @@ def collect_validation_errors(
     config: ControlInstallConfig | WorkerInstallConfig,
 ) -> list[ValidationError]:
     errors = validate_service_identity(config.service_user, config.service_group)
-    if isinstance(config, WorkerInstallConfig):
+    if isinstance(config, ControlInstallConfig):
+        try:
+            loopback = config.host == "localhost" or ipaddress.ip_address(config.host).is_loopback
+        except ValueError:
+            loopback = False
+        if not loopback and (not config.require_api_token or not config.api_token):
+            errors.append(
+                ValidationError(
+                    "non_loopback_control_requires_token",
+                    "A non-loopback Control host requires API token authentication.",
+                    "Pass --enable-api-token and provide --api-token, or bind to 127.0.0.1.",
+                )
+            )
+    else:
         errors.extend(validate_worker_paths(config))
         connectivity = check_control_connectivity(config.control_url, config.control_api_token)
         if connectivity is not None:
@@ -697,7 +711,7 @@ def config_from_args(args: argparse.Namespace) -> ControlInstallConfig | WorkerI
             database_url=database_url,
             env_path=Path(_value(args, file_config, "env_path", DEFAULT_CONTROL_ENV)),
             service_path=Path(_value(args, file_config, "service_path", DEFAULT_CONTROL_SERVICE)),
-            host=_value(args, file_config, "host", "0.0.0.0"),
+            host=_value(args, file_config, "host", "127.0.0.1"),
             port=int(_value(args, file_config, "port", 8080)),
             require_postgres=not args.no_require_postgres,
             require_current_migrations=not args.no_require_current_migrations,

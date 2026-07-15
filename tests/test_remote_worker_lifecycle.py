@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from ocr_platform.control.app import create_app
@@ -10,6 +11,11 @@ from ocr_platform.control.remote_workers import (
     load_remote_worker_targets,
 )
 from ocr_platform.control.schemas import RemoteWorkerInstallDryRunRequest, RemoteWorkerScaleRequest
+
+
+@pytest.fixture(autouse=True)
+def enable_remote_admin(monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ENABLE_REMOTE_ADMIN", "1")
 
 
 class FakeRemoteWorkerExecutor:
@@ -106,6 +112,16 @@ def make_client(tmp_path, executor):
     init_db(engine)
     app = create_app(session_factory=session_factory, remote_worker_executor=executor)
     return TestClient(app)
+
+
+def test_remote_worker_admin_is_disabled_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("OCR_PLATFORM_ENABLE_REMOTE_ADMIN", raising=False)
+    client = make_client(tmp_path, FakeRemoteWorkerExecutor())
+
+    response = client.get("/api/remote-workers/targets")
+
+    assert response.status_code == 403
+    assert "OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1" in response.json()["detail"]
 
 
 def test_remote_worker_preflight_uses_configured_executor(tmp_path):

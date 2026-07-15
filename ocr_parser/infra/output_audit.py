@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from ocr_platform.manifest.models import ManifestItem
+from ..contracts import ManifestItem
 
 from .resume import check_output_artifacts
 

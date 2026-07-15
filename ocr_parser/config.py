@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 from typing import Any, Dict, Optional
 
 
@@ -83,7 +83,9 @@ _BOOL_OPTION_KEYS = {
     "disable_badcase_collection",
     "filter_qr_barcodes",
     "normalize_superscript",
+    "trim_first_page_summary",
     "circuit_breaker_enabled",
+    "disable_process_pool",
 }
 
 _INT_OPTION_KEYS = {
@@ -221,27 +223,42 @@ class ParserConfig:
     run_data_index: bool = False
     index_page_limit: int = 0
     flatten_output: bool = False
-    extra_options: Dict[str, Any] = field(default_factory=dict)
+    concurrent_retries: int = 4
+    enable_table_screenshot: bool = False
+    enable_table_reparse: bool = False
+    skip_uncaptioned_images: bool = False
+    keep_page_header: bool = False
+    keep_page_footer: bool = False
+    skip_footnote: bool = False
+    filter_author_blocks: bool = False
+    disable_badcase_collection: bool = False
+    badcase_collection_dir: Optional[str] = None
+    filter_qr_barcodes: bool = True
+    keyword_filter_config: Optional[str] = None
+    trim_first_page_summary: bool = False
+    normalize_superscript: bool = False
+    table_ocr_backend: Optional[str] = None
+    table_ocr_server_url: Optional[str] = None
+    table_ocr_max_retries: Optional[int] = None
+    table_ocr_retry_delay: Optional[float] = None
+    table_ocr_device: Optional[str] = None
+    circuit_breaker_enabled: bool = True
+    circuit_breaker_threshold: int = 5
+    circuit_breaker_recovery: float = 30.0
+    use_hf: bool = False
+    debug_matching: bool = False
+    init_process_pool: bool = True
+    init_md_semaphore: bool = True
 
     @classmethod
     def from_kwargs(cls, **kwargs: Any) -> "ParserConfig":
-        known_fields = {
-            item.name
-            for item in fields(cls)
-            if item.init and item.name != "extra_options"
-        }
-        init_kwargs: Dict[str, Any] = {}
-        extra_options: Dict[str, Any] = {}
-
-        for key, value in kwargs.items():
-            if key in known_fields:
-                init_kwargs[key] = value
-            else:
-                extra_options[key] = value
-
-        config = cls(**init_kwargs)
-        config.extra_options = extra_options
-        return config
+        known_fields = {item.name for item in fields(cls) if item.init}
+        unknown = sorted(str(key) for key in kwargs if str(key) not in known_fields)
+        if unknown:
+            joined = ", ".join(unknown)
+            plural = "arguments" if len(unknown) != 1 else "argument"
+            raise ValueError(f"unknown ParserConfig {plural}: {joined}")
+        return cls(**kwargs)
 
     @classmethod
     def known_option_keys(cls) -> set[str]:
@@ -280,11 +297,8 @@ class ParserConfig:
                 normalized[key] = value
         return normalized
 
-    def to_legacy_kwargs(self) -> Dict[str, Any]:
-        data = {
+    def to_runtime_kwargs(self) -> Dict[str, Any]:
+        return {
             item.name: getattr(self, item.name)
             for item in fields(self)
-            if item.name != "extra_options"
         }
-        data.update(self.extra_options)
-        return data

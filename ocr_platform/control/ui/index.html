@@ -921,7 +921,7 @@
           <div>
             <label for="apiKey">API key override</label>
             <input id="apiKey" type="password" autocomplete="off" placeholder="Required for DotsOCR 1.5" />
-            <span class="small">Optional per-job override. Saved profile keys are stored on the control server.</span>
+            <span class="small">Optional per-job override. Prefer api_key_env_var; database-saved keys are legacy-only.</span>
           </div>
         </div>
         <div class="resolved-config" id="resolvedModelConfig"></div>
@@ -966,7 +966,7 @@
               <input id="profileApiKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="New key; blank keeps existing key" />
               <label for="profileApiKeyEnvVar">api_key_env_var</label>
               <input id="profileApiKeyEnvVar" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Optional env var name on control server" />
-              <div class="small">Production can set OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS=1 to require env-var keys.</div>
+              <div class="small">Saved API keys are disabled by default. Prefer api_key_env_var; set OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS=1 only for an explicitly accepted legacy deployment.</div>
               <div class="small" id="profileHasApiKey" aria-live="polite">No saved key</div>
               <label class="inline-option">
                 <input id="profileRequiresApiKey" type="checkbox" />
@@ -4244,7 +4244,7 @@
 
       const PREFLIGHT_ISSUE_LABELS = {
         model_profile_missing_api_key: "model profile API key is missing",
-        model_profile_saved_api_key: "model profile API key is stored in DB",
+        model_profile_saved_api_key: "legacy model profile API key is stored in DB; clear it and migrate to api_key_env_var",
         mixed_worker_versions: "mixed worker versions",
         database_not_postgres: "database is not PostgreSQL",
         database_migrations_missing: "database migrations table is missing",
@@ -4395,7 +4395,7 @@
         ui.controlApiToken.addEventListener("input", () => {
           const token = ui.controlApiToken.value.trim();
           if (token) {
-            localStorage.setItem(API_TOKEN_STORAGE_KEY, token);
+            sessionStorage.setItem(API_TOKEN_STORAGE_KEY, token);
             if (state.tokenRefreshTimer) clearTimeout(state.tokenRefreshTimer);
             state.tokenRefreshTimer = setTimeout(() => {
               refreshOperationsData().catch((error) => {
@@ -4403,7 +4403,7 @@
               });
             }, 250);
           } else {
-            localStorage.removeItem(API_TOKEN_STORAGE_KEY);
+            sessionStorage.removeItem(API_TOKEN_STORAGE_KEY);
           }
         });
         ui.modelProfile.addEventListener("change", applyModelProfile);
@@ -4738,7 +4738,7 @@
       }
 
       async function init() {
-        ui.controlApiToken.value = localStorage.getItem(API_TOKEN_STORAGE_KEY) || "";
+        ui.controlApiToken.value = sessionStorage.getItem(API_TOKEN_STORAGE_KEY) || "";
         await loadModelProfiles();
         syncExecutionModeFields();
         renderPreflight(null);

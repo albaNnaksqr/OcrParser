@@ -59,3 +59,19 @@ def test_walkthrough_tool_compacts_job_summary_for_operator_logs():
     assert compact["shards"] == [0, 1, 0, 0, 1]
     assert compact["scan_units"] == [0, 0, 1, 0, 1]
     assert compact["worker_shards"] == [{"server_id": "local-worker-01"}]
+
+
+def test_walkthrough_tool_can_reference_runtime_api_key_env_var(tmp_path):
+    args = Namespace(
+        shared_root=str(tmp_path / "shared"),
+        worker_id="local-worker-01",
+        engine="dotsocr",
+        ocr_host="127.0.0.1",
+        ocr_port=18000,
+        model_name="mock-ocr",
+        api_key_env_var="OCR_JOB_DOTSOCR_API_KEY",
+    )
+
+    payload = run_distributed_walkthrough.build_job_payload(args)
+
+    assert payload["extra_args"]["api_key_env_var"] == "OCR_JOB_DOTSOCR_API_KEY"

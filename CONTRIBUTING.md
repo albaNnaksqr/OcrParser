@@ -2,6 +2,14 @@
 
 Thanks for helping improve OCR Parser.
 
+## Source of Truth
+
+This public repository is the only source-code mainline. Private deployment
+repositories may pin a public tag or commit and carry environment-specific
+configuration, but they must not overwrite this repository wholesale. Changes
+originating in a private environment must be sanitized, reviewed, and introduced
+through a focused pull request here.
+
 ## Development Setup
 
 ```bash
@@ -28,6 +36,8 @@ pytest tests
   private endpoints, customer data, API keys, logs, runtime databases, or model
   weights.
 - Include the command output you used for verification.
+- Do not copy an internal repository over this checkout. Port the smallest
+  reviewed change and document any private behavior that could not be reproduced.
 
 ## Issue Reports
 

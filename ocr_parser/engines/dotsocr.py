@@ -15,11 +15,15 @@ from dots_ocr.utils.format_transformer_v3 import (
 )
 from dots_ocr.utils.layout_utils import post_process_output
 
-from .base import EnginePageResult
+from .base import EngineCapabilities, EnginePageResult
 
 
 class DotsOCREngine:
     name = "dotsocr"
+    capabilities = EngineCapabilities(
+        uses_shared_postprocess=True,
+        emits_native_artifacts=False,
+    )
 
     def __init__(self, parser: Any):
         self.parser = parser

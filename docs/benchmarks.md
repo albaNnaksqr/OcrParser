@@ -42,6 +42,17 @@ python3 tools/run_performance_baseline.py \
 The runner writes CSV and Markdown summaries with duration, pages per second,
 status, output paths, and extracted runtime metrics when present in logs.
 
+For a v0.2 release candidate, run the baseline and candidate in the same
+environment, then enforce the 10% mock-throughput budget:
+
+```bash
+python3 tools/check_performance_regression.py \
+  /tmp/ocr-benchmark-results/results.csv \
+  --baseline-variant baseline \
+  --candidate-variant current \
+  --max-regression-percent 10
+```
+
 ## DotsOCR: Page Concurrency Curve
 
 Synthetic fixture set:

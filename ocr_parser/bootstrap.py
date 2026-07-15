@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 
 from dots_ocr.utils.consts import ABSOLUTE_MAX_PIXELS, MIN_PIXELS
 
-from .config import DEFAULT_MAX_COMPLETION_TOKENS, DEFAULT_MODEL_DIR
+from .config import DEFAULT_MAX_COMPLETION_TOKENS, DEFAULT_MODEL_DIR, ParserConfig
 from .runtime import ResizableAsyncLimiter
 
 
@@ -38,9 +38,10 @@ def _require_port(value) -> int:
     return port
 
 
-def setup_parser(self, kwargs: dict, console_write) -> None:
+def configure_runtime(self, config: ParserConfig, console_write) -> None:
     from .infra.monitoring import PerformanceMonitor
 
+    kwargs = config.to_runtime_kwargs()
     init_process_pool = kwargs.pop("init_process_pool", True)
     init_md_semaphore = kwargs.pop("init_md_semaphore", True)
 
