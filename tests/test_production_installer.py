@@ -27,7 +27,7 @@ def test_control_parser_defaults_disable_api_auth():
     assert config.service_group == "ocr-runtime"
     assert config.require_api_token is False
     assert config.api_token is None
-    assert config.host == "0.0.0.0"
+    assert config.host == "127.0.0.1"
     assert config.port == 8080
 
 
@@ -357,6 +357,21 @@ def test_build_control_plan_warns_when_auth_disabled_on_public_bind():
     assert plan.role == "control"
     assert "Control API auth is disabled" in "\n".join(plan.warnings)
     assert any(action.description == "write control env file" for action in plan.actions)
+
+
+def test_non_loopback_control_install_requires_enabled_token_auth():
+    config = installer.ControlInstallConfig(
+        role="control",
+        service_user="ocr_user",
+        service_group="ocr-runtime",
+        database_url="postgresql+psycopg://ocr_platform:secret@db:5432/ocr_platform",
+        host="0.0.0.0",
+        require_api_token=False,
+    )
+
+    errors = installer.collect_validation_errors(config)
+
+    assert any(error.code == "non_loopback_control_requires_token" for error in errors)
 
 
 def test_build_worker_plan_contains_shared_roots():

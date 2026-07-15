@@ -242,7 +242,8 @@ def test_register_server_create_job_and_claim(tmp_path):
     assert detail_resp.json()["status"] == "running"
 
 
-def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path):
+def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
     client = make_client(tmp_path)
 
     profiles = client.get("/api/model-profiles")
@@ -352,6 +353,25 @@ def test_model_profile_rejects_saved_api_key_when_db_profile_keys_are_disabled(t
     assert "api_key_env_var" in response.json()["detail"]
 
 
+def test_model_profile_rejects_saved_api_key_by_default(tmp_path, monkeypatch):
+    monkeypatch.delenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", raising=False)
+    monkeypatch.delenv("OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS", raising=False)
+    client = make_client(tmp_path)
+
+    response = client.put(
+        "/api/model-profiles/dotsocr_15",
+        json={
+            "label": "DotsOCR production",
+            "engine": "dotsocr",
+            "requires_api_key": True,
+            "api_key": "profile-secret",
+        },
+    )
+
+    assert response.status_code == 400
+    assert "api_key_env_var" in response.json()["detail"]
+
+
 def test_model_profile_allows_env_api_key_when_db_profile_keys_are_disabled(tmp_path, monkeypatch):
     monkeypatch.setenv("OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS", "1")
     monkeypatch.setenv("OCR_MODEL_DOTSOCR_API_KEY", "env-profile-secret")
@@ -383,6 +403,7 @@ def test_model_profile_allows_env_api_key_when_db_profile_keys_are_disabled(tmp_
 
 
 def test_model_profile_requires_clearing_existing_saved_key_when_db_profile_keys_are_disabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
     client, session_factory = make_client_with_session(tmp_path)
     saved = client.put(
         "/api/model-profiles/dotsocr_15",
@@ -399,6 +420,7 @@ def test_model_profile_requires_clearing_existing_saved_key_when_db_profile_keys
         },
     )
     assert saved.status_code == 200
+    monkeypatch.delenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", raising=False)
     monkeypatch.setenv("OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS", "1")
 
     blocked = client.put(
@@ -421,7 +443,8 @@ def test_model_profile_requires_clearing_existing_saved_key_when_db_profile_keys
         assert session.get(ModelProfile, "dotsocr_15").api_key == "profile-secret"
 
 
-def test_create_job_can_inject_saved_model_profile_api_key(tmp_path):
+def test_create_job_can_inject_saved_model_profile_api_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -724,7 +747,8 @@ def test_job_preflight_does_not_warn_when_control_api_auth_is_enabled(tmp_path, 
     assert "control_api_auth_disabled" not in codes
 
 
-def test_job_preflight_warns_when_model_profile_uses_saved_db_api_key(tmp_path):
+def test_job_preflight_warns_when_model_profile_uses_saved_db_api_key(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
     client = make_client(tmp_path)
     client.put(
         "/api/model-profiles/dotsocr_15",
@@ -1260,7 +1284,8 @@ def test_job_preflight_checks_inferred_manifest_root_writability(tmp_path):
     assert codes["manifest_root_not_writable"]["details"]["inferred"] is True
 
 
-def test_per_job_api_key_override_is_only_visible_to_agent(tmp_path):
+def test_per_job_api_key_override_is_only_visible_to_agent(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",

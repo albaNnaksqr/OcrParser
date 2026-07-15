@@ -52,7 +52,8 @@ def test_control_env_example_disables_saved_model_profile_keys_for_production():
         encoding="utf-8"
     )
 
-    assert "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS=1" in env_file
+    assert "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS=0" in env_file
+    assert "OCR_PLATFORM_ENABLE_REMOTE_ADMIN=0" in env_file
     assert "model profile or per-job API keys" in env_file
 
 
@@ -118,4 +119,3 @@ def test_agent_worker_logrotate_template_covers_worker_logs():
     assert "compress" in logrotate
     assert "missingok" in logrotate
     assert "copytruncate" in logrotate
-

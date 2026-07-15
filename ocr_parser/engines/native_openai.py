@@ -13,7 +13,7 @@ from PIL import Image
 from ocr_parser.output.native_writer import async_write_native_json, async_write_native_text
 
 from .api import create_chat_completion, prepare_image_payload, run_in_encode_lane
-from .base import EnginePageResult
+from .base import EngineCapabilities, EnginePageResult
 from .otsl2html import convert_otsl_to_html
 from .two_stage import LayoutBlock, TwoStageMetrics, recognize_layout_blocks, record_two_stage_metrics
 
@@ -76,6 +76,10 @@ class NativeOpenAIEngine:
     def __init__(self, parser: Any, name: str):
         self.parser = parser
         self.name = name
+        self.capabilities = EngineCapabilities(
+            uses_shared_postprocess=False,
+            emits_native_artifacts=True,
+        )
 
     def _prompt(self) -> str:
         if self.name == "mineru":

@@ -26,7 +26,7 @@ from PIL import Image
 from ocr_parser.output.native_writer import async_write_native_json, async_write_native_text
 
 from .api import create_chat_completion, run_in_encode_lane
-from .base import EnginePageResult
+from .base import EngineCapabilities, EnginePageResult
 from .otsl2html import convert_otsl_to_html
 from .two_stage import LayoutBlock, TwoStageMetrics, recognize_layout_blocks, record_two_stage_metrics
 
@@ -421,6 +421,12 @@ def _assign_levels_to_pages(blocks_by_page: List[List[Dict]]) -> List[List[Dict]
 
 class PaddleOCRVLEngine:
     """Two-stage document OCR using PP-DocLayoutV2 + PaddleOCR-VL-1.5."""
+
+    capabilities = EngineCapabilities(
+        uses_shared_postprocess=False,
+        emits_native_artifacts=True,
+        requires_layout_service=True,
+    )
 
     def __init__(self, parser: Any):
         self.parser = parser

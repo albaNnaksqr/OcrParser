@@ -143,7 +143,8 @@ def build_control_env(config: LocalProdConfig) -> dict[str, str]:
         "OCR_PLATFORM_PORT": str(config.control_port),
         "OCR_PLATFORM_API_TOKEN": config.api_token,
         "OCR_PLATFORM_REQUIRE_API_TOKEN": "1",
-        "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS": "1",
+        "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS": "0",
+        "OCR_PLATFORM_ENABLE_REMOTE_ADMIN": "0",
     }
 
 

@@ -80,10 +80,17 @@ RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED = {"manifest_scan_progress"}
 RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = 1
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS"
+ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS"
 
 
 def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
+
+
+def saved_model_profile_keys_allowed() -> bool:
+    if _env_truthy(DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV):
+        return False
+    return _env_truthy(ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV)
 
 
 def _env_positive_int(name: str, default: int) -> int:
@@ -397,7 +404,7 @@ def upsert_model_profile(session: Session, profile_id: str, request: ModelProfil
     if request.is_default:
         session.execute(update(ModelProfile).where(ModelProfile.id != profile_id).values(is_default=False))
 
-    saved_profile_keys_disabled = _env_truthy(DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV)
+    saved_profile_keys_disabled = not saved_model_profile_keys_allowed()
     requested_saved_key = request.api_key is not None and bool(request.api_key)
     existing_saved_key_would_remain = bool(profile.api_key) and not request.clear_api_key and request.api_key is None
     if saved_profile_keys_disabled and requested_saved_key:
@@ -454,7 +461,7 @@ def _resolve_job_extra_args_api_key_env_var(extra_args: dict[str, Any]) -> str |
 
 
 def _validate_job_extra_args_saved_api_key(extra_args: dict[str, Any]) -> None:
-    if not _env_truthy(DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV):
+    if saved_model_profile_keys_allowed():
         return
     if extra_args.get("api_key"):
         raise ValueError(
@@ -1290,7 +1297,7 @@ def preflight_job(session: Session, request: JobCreateRequest) -> JobPreflightRe
                 _preflight_issue(
                     "warning",
                     "model_profile_saved_api_key",
-                    "Selected model profile stores an API key in the control database; prefer api_key_env_var or an external secret for production.",
+                    "Selected model profile stores a legacy API key in the control database; save the profile with clear_api_key=true and migrate to api_key_env_var.",
                     model_profile_id=request.model_profile_id,
                     api_key_env_var=profile.api_key_env_var,
                 )

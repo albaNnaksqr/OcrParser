@@ -325,7 +325,10 @@ async def parse_pdf(
             1 for result in all_pages_layout_data if result.get("status") not in parser.SUCCESS_STATUSES
         )
 
-        uses_shared_postprocess = getattr(parser, "engine", "dotsocr") == "dotsocr"
+        capabilities = getattr(parser.ocr_engine, "capabilities", None)
+        uses_shared_postprocess = bool(
+            getattr(capabilities, "uses_shared_postprocess", False)
+        )
 
         native_document_artifacts = await parser.ocr_engine.finalize_document(
             all_pages_layout_data,
@@ -461,7 +464,13 @@ async def parse_file(
         output_dir=output_dir,
     )
 
-    if parser.enable_resume and not parser.force_reprocess:
+    resume_policy = getattr(parser, "resume_policy", None)
+    may_reuse_output = (
+        resume_policy.may_reuse_existing_output()
+        if resume_policy is not None
+        else parser.enable_resume and not parser.force_reprocess
+    )
+    if may_reuse_output:
         is_processed, md_path = is_file_already_processed(input_path, output_dir, filename, parser._console_write)
         if is_processed:
             parser._console_write(f"Skipping already processed file: {input_path} (MD file exists: {md_path})")

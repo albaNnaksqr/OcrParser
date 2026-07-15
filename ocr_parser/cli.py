@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-from ocr_platform.manifest.models import ManifestItem
+from .contracts import ManifestItem
 
 from .config import DEFAULT_MAX_COMPLETION_TOKENS, DEFAULT_MODEL_DIR, ParserConfig
 
@@ -197,7 +197,10 @@ def _apply_profile_defaults(args, parser_kwargs: Dict[str, Any]) -> None:
     provided_options = getattr(args, "_provided_options", set())
     for key, value in profile.items():
         if key not in provided_options:
-            parser_kwargs[key] = value
+            if key == "skip_blank_pages":
+                args.skip_blank_pages = value
+            else:
+                parser_kwargs[key] = value
 
 
 def _emit_job_event(ocr, event_type: str, **payload: Any) -> None:
@@ -356,6 +359,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--max_completion_tokens", type=int, default=DEFAULT_MAX_COMPLETION_TOKENS)
     parser.add_argument("--num_cpu_workers", type=int, default=32)
+    parser.add_argument(
+        "--disable_process_pool",
+        action="store_true",
+        help="Use the default executor instead of a dedicated process pool (smoke tests and constrained hosts)",
+    )
     parser.add_argument("--page_concurrency", type=_positive_int, default=24)
     parser.add_argument("--file_concurrency", type=_positive_int, default=1,
                         help="Max concurrent files for --input_dir (default: 1)")
@@ -654,6 +662,7 @@ async def _run(args) -> int:
     parser_kwargs = vars(args).copy()
     parser_kwargs["enable_resume"] = not args.disable_resume
     parser_kwargs["enable_warmup"] = not args.no_warmup
+    parser_kwargs["init_process_pool"] = not args.disable_process_pool
     parser_kwargs.pop("input_dir", None)
     parser_kwargs.pop("input_file", None)
     parser_kwargs.pop("input_manifest", None)
@@ -664,6 +673,7 @@ async def _run(args) -> int:
     parser_kwargs.pop("skip_blank_pages", None)
     parser_kwargs.pop("disable_resume", None)
     parser_kwargs.pop("no_warmup", None)
+    parser_kwargs.pop("disable_process_pool", None)
     parser_kwargs.pop("metrics_port", None)
     parser_kwargs.pop("execution_control_file", None)
     parser_kwargs.pop("execution_control_poll_interval_seconds", None)
@@ -672,7 +682,11 @@ async def _run(args) -> int:
     _apply_engine_config(args, parser_kwargs)
 
     ocr = DotsOCRParser(**parser_kwargs)
-    ocr._shutdown_event = shutdown_event
+    runtime = getattr(ocr, "runtime", None)
+    if runtime is not None:
+        runtime._shutdown_event = shutdown_event
+    else:
+        ocr._shutdown_event = shutdown_event
     _emit_job_event(
         ocr,
         "job_started",
@@ -788,7 +802,14 @@ async def _run(args) -> int:
                                 "failure_category": failure_category,
                             }
                         ]
-                    if getattr(ocr, "enable_resume", True) and not getattr(ocr, "force_reprocess", False):
+                    resume_policy = getattr(ocr, "resume_policy", None)
+                    may_reuse_output = (
+                        resume_policy.may_reuse_existing_output()
+                        if resume_policy is not None
+                        else getattr(ocr, "enable_resume", True)
+                        and not getattr(ocr, "force_reprocess", False)
+                    )
+                    if may_reuse_output:
                         from .infra.resume import cleanup_incomplete_output_dir, is_file_already_processed
 
                         is_processed, md_path = is_file_already_processed(

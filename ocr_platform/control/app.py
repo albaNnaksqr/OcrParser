@@ -129,11 +129,24 @@ from .service import (
 API_TOKEN_ENV = "OCR_PLATFORM_API_TOKEN"
 REQUIRE_API_TOKEN_ENV = "OCR_PLATFORM_REQUIRE_API_TOKEN"
 REQUIRE_CURRENT_MIGRATIONS_ENV = "OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS"
+ENABLE_REMOTE_ADMIN_ENV = "OCR_PLATFORM_ENABLE_REMOTE_ADMIN"
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 
 
 def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
+
+
+def _require_remote_admin() -> None:
+    if _env_truthy(ENABLE_REMOTE_ADMIN_ENV):
+        return
+    raise HTTPException(
+        status_code=403,
+        detail=(
+            "Remote worker administration is disabled; set "
+            "OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+        ),
+    )
 
 
 def _configured_api_token() -> str | None:
@@ -757,6 +770,7 @@ def create_app(
 
     @app.get("/api/remote-workers/targets", response_model=RemoteWorkerTargetListResponse)
     def api_remote_worker_targets():
+        _require_remote_admin()
         return RemoteWorkerTargetListResponse(
             targets=[
                 _remote_worker_target_response(target)
@@ -766,36 +780,42 @@ def create_app(
 
     @app.post("/api/remote-workers/preflight", response_model=RemoteWorkerOperationResponse)
     def api_remote_worker_preflight(request: RemoteWorkerPreflightRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_target(request)
         return _remote_worker_response(remote_worker_executor.preflight(request))
 
     @app.post("/api/remote-workers/install-dry-run", response_model=RemoteWorkerOperationResponse)
     def api_remote_worker_install_dry_run(request: RemoteWorkerInstallDryRunRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_target(request)
         return _remote_worker_response(remote_worker_executor.install_dry_run(request))
 
     @app.post("/api/remote-workers/install-apply", response_model=RemoteWorkerOperationResponse)
     def api_remote_worker_install_apply(request: RemoteWorkerInstallDryRunRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_target(request)
         return _remote_worker_response(remote_worker_executor.install_apply(request))
 
     @app.post("/api/remote-workers/scale-plan", response_model=RemoteWorkerScaleResponse)
     def api_remote_worker_scale_plan(request: RemoteWorkerScaleRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_scale_request(request)
         return _remote_worker_scale_response(remote_worker_executor.scale_plan(request))
 
     @app.post("/api/remote-workers/scale-apply", response_model=RemoteWorkerScaleResponse)
     def api_remote_worker_scale_apply(request: RemoteWorkerScaleRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_scale_request(request)
         return _remote_worker_scale_response(remote_worker_executor.scale_apply(request))
 
     @app.post("/api/remote-workers/service", response_model=RemoteWorkerOperationResponse)
     def api_remote_worker_service_action(request: RemoteWorkerServiceRequest):
+        _require_remote_admin()
         request = _with_default_ssh_user(request)
         _validate_remote_worker_target(request)
         return _remote_worker_response(remote_worker_executor.service_action(request))

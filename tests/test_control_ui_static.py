@@ -187,13 +187,13 @@ def test_model_profiles_can_be_loaded_and_saved_from_control_api():
     assert "API key resolved from env var" in html
     assert "API key saved and available for jobs" in html
     assert "API key cleared" in html
-    assert "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS" in html
+    assert "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS" in html
     assert "extra_args must not contain secret-like keys" in html
     assert "token, secret, password, authorization, or API key" in html
     assert 'requestJson("/api/model-profiles")' in html
     assert '`/api/model-profiles/${encodeURIComponent(profileId)}`' in html
     assert "model_profile_id: ui.modelProfile.value" in html
-    assert "Saved profile keys are stored on the control server." in html
+    assert "database-saved keys are legacy-only" in html
     assert "Kept in this browser form only" not in html
 
 
@@ -208,8 +208,9 @@ def test_ui_can_attach_control_api_token_to_requests():
     assert "Promise.allSettled" in html
     assert "doctor.workers" in html
     assert "doctorWorkers.ready" in html
-    assert "localStorage.setItem(API_TOKEN_STORAGE_KEY" in html
-    assert "localStorage.removeItem(API_TOKEN_STORAGE_KEY" in html
+    assert "sessionStorage.setItem(API_TOKEN_STORAGE_KEY" in html
+    assert "sessionStorage.removeItem(API_TOKEN_STORAGE_KEY" in html
+    assert "localStorage.setItem(API_TOKEN_STORAGE_KEY" not in html
     assert 'headers.set("X-API-Key", token)' in html
     assert "fetch(url, apiRequestOptions(options))" in html
     assert "refreshOperationsData({ quiet: !ui.controlApiToken.value.trim() })" in html
@@ -428,7 +429,7 @@ def test_jobs_ui_exposes_production_scale_controls_and_diagnostics():
     assert "Preflight" in html
     assert "model_profile_missing_api_key" in html
     assert "model_profile_saved_api_key" in html
-    assert "model profile API key is stored in DB" in html
+    assert "clear it and migrate to api_key_env_var" in html
     assert "output_path_not_writable" in html
     assert "manifest_root_not_writable" in html
     assert "worker_event_spool_backlog" in html

@@ -26,7 +26,8 @@ def test_default_config_uses_postgres_and_production_guards(tmp_path):
     assert env["OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS"] == "1"
     assert env["OCR_PLATFORM_API_TOKEN"] == "local-dev-token"
     assert env["OCR_PLATFORM_REQUIRE_API_TOKEN"] == "1"
-    assert env["OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS"] == "1"
+    assert env["OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS"] == "0"
+    assert env["OCR_PLATFORM_ENABLE_REMOTE_ADMIN"] == "0"
     assert env["OCR_PLATFORM_PORT"] == "38080"
 
 

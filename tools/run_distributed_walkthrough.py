@@ -32,7 +32,7 @@ def build_job_payload(args: argparse.Namespace) -> dict[str, Any]:
     input_dir = Path(args.shared_root) / "input"
     output_dir = Path(args.shared_root) / "output"
     manifest_root = Path(args.shared_root) / "manifests"
-    return {
+    payload = {
         "input_dir": str(input_dir),
         "output_dir": str(output_dir),
         "engine": args.engine,
@@ -61,6 +61,9 @@ def build_job_payload(args: argparse.Namespace) -> dict[str, Any]:
             "disable_badcase_collection": True,
         },
     }
+    if getattr(args, "disable_process_pool", False):
+        payload["extra_args"]["disable_process_pool"] = True
+    return payload
 
 
 def request_json(
@@ -184,6 +187,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--ocr-host", default="127.0.0.1")
     parser.add_argument("--ocr-port", type=int, default=18000)
     parser.add_argument("--model-name", default="mock-ocr")
+    parser.add_argument("--disable-process-pool", action="store_true")
     parser.add_argument("--pdf-name", default="walkthrough-sample.pdf")
     parser.add_argument("--polls", type=int, default=120)
     parser.add_argument("--interval", type=float, default=1.0)

@@ -1,5 +1,9 @@
 # OcrParser
 
+> v0.2 makes this public repository the single source-code mainline and introduces
+> secure-by-default Control settings. See [architecture](docs/architecture.md) and
+> the [v0.2 security migration](docs/security-migration-v0.2.md).
+
 English | [中文](README.zh-CN.md)
 
 OcrParser is a production-oriented PDF OCR parsing framework for long-running,
@@ -184,20 +188,40 @@ For high-throughput DotsOCR-style services, tune file and page concurrency
 together. For MinerU and PaddleOCR-VL style two-stage engines, start lower and
 use their stage-specific limits first. See [docs/model-serving.md](docs/model-serving.md).
 
+## Python SDK façade
+
+The top-level imports remain stable in v0.2. Configuration is strict: unknown
+keys raise an error instead of being silently ignored.
+
+```python
+import asyncio
+from ocr_parser import DotsOCRParser, ParserConfig
+
+async def main():
+    parser = DotsOCRParser(ParserConfig(ip="127.0.0.1", port=8000))
+    await parser.initialize()
+    try:
+        await parser.parse_file("sample.pdf", output_dir="./output")
+    finally:
+        await parser.shutdown()
+
+asyncio.run(main())
+```
+
 ## Optional Control UI
 
 For local dev:
 
 ```bash
-OCR_PLATFORM_HOST=0.0.0.0 \
 OCR_PLATFORM_PORT=8080 \
 python -m ocr_platform.control
 ```
 
 Open `http://127.0.0.1:8080/ui/`.
 
-When workers run on other machines, configure `OCR_CONTROL_URL` with an address
-they can reach, such as `http://control.example.internal:8080`.
+When workers run on other machines, set a strong `OCR_PLATFORM_API_TOKEN` before
+binding Control to a non-loopback address, then configure `OCR_CONTROL_URL` with
+an address they can reach, such as `http://control.example.internal:8080`.
 
 ## Startup Modes
 

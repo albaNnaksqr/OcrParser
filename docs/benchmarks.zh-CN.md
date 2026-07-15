@@ -39,6 +39,16 @@ python3 tools/run_performance_baseline.py \
 runner 会写出 CSV 和 Markdown summaries，包含 duration、pages per second、
 status、output paths，以及日志中可提取的 runtime metrics。
 
+v0.2 发布候选需要在同一环境运行基线与候选版本，并执行 10% mock 吞吐回退门禁：
+
+```bash
+python3 tools/check_performance_regression.py \
+  /tmp/ocr-benchmark-results/results.csv \
+  --baseline-variant baseline \
+  --candidate-variant current \
+  --max-regression-percent 10
+```
+
 ## DotsOCR：页级并发曲线
 
 Synthetic fixture set：
