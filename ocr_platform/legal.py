@@ -14,7 +14,7 @@ PACKAGE_NAME = "ocrparser-platform"
 SOURCE_REPOSITORY = "https://github.com/albaNnaksqr/OcrParser"
 SOURCE_REVISION_ENV = "OCR_PLATFORM_SOURCE_REVISION"
 SOURCE_URL_ENV = "OCR_PLATFORM_SOURCE_URL"
-VERSION_FALLBACK = "0.3.0rc1"
+VERSION_FALLBACK = "0.3.0"
 
 
 def package_version() -> str:

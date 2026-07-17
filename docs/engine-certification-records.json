@@ -4,32 +4,32 @@
   "records": [
     {
       "engine": "dotsocr",
-      "status": "verified-not-refreshed",
-      "parser_commit": "9c3bea6",
+      "status": "verified-rc1-conditional",
+      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
       "model_revision": null,
       "runtime_image": null,
       "runtime_digest": null,
-      "notes": "Prior release evidence only; v0.3 rc certification must pin model and runtime revisions."
+      "notes": "v0.3.0rc1 parsed the public simple-text fixture successfully with explicit stage success and fallback.used=false. The externally managed service did not expose immutable model or runtime revisions, so this remains a functional verification rather than a reproducible certification."
     },
     {
       "engine": "mineru",
-      "status": "verified-conditional",
-      "parser_commit": "9c3bea6",
+      "status": "verified-rc1-conditional",
+      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
       "model_revision": "d3f5e08d073c21466bbabe21c71bb1e9c2e595da",
       "runtime_image": "nvcr.io/nvidia/vllm:26.03-py3",
-      "runtime_digest": null,
-      "notes": "Functional evidence is valid only for vLLM with MinerULogitsProcessor; resolve and record the immutable image digest during rc certification."
+      "runtime_digest": "sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7",
+      "notes": "v0.3.0rc1 passed both public fixtures with layout, recognition, and output stages successful and fallback.used=false. Evidence is valid only for the pinned NVIDIA vLLM image with MinerULogitsProcessor; broader quality approval remains open."
     },
     {
       "engine": "paddleocr-vl",
-      "status": "verified-conditional",
-      "parser_commit": "9c3bea6",
+      "status": "verified-rc1-conditional",
+      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
       "model_revision": "d911116c363676c602c4786ad0b9667b1aee055f",
       "layout_model_revision": "a0a882d03564ff3a9c9b37e48e2e636e7c236fd6",
       "runtime_image": null,
       "runtime_digest": null,
       "runtime_source_revision": "0fe2dbd42caeb627bd8aca162dab7763d292fda9",
-      "notes": "The shared validation environment was not a reproducible image; v0.3 rc certification must build and record an immutable runtime digest."
+      "notes": "v0.3.0rc1 passed both public fixtures with layout, recognition, and output stages successful and fallback.used=false. The isolated test overlay used sglang-kernel 0.4.4 on the pinned SGLang source revision, but no immutable runtime image exists and narrow-receipt table quality remains weak."
     }
   ]
 }

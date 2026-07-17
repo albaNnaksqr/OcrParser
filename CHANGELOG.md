@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.3.0rc1 - 2026-07-17
+## 0.3.0 - 2026-07-17
 
 - Split the default Parser installation from `platform`, `s3`, `layout`,
   `full`, and `dev` extras; retained all console-script names with actionable
@@ -27,6 +27,11 @@
 - Embedded source revision, UTC build timestamp, and dirty state in every wheel;
   `/source.json` consumes this immutable provenance and release verification
   rejects dirty or tag-mismatched wheels.
+- Revalidated the `v0.3.0rc1` parser against DotsOCR, a digest-pinned MinerU
+  vLLM deployment, and PaddleOCR-VL plus PP-DocLayout; all tested flows emitted
+  successful stages with `fallback.used=false`. Paddle narrow-receipt table
+  quality and reproducible runtime packaging remain documented deployment
+  limitations rather than release blockers.
 
 ## 0.2.1
 

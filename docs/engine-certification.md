@@ -25,18 +25,19 @@ model revisions must not be compared directly as a performance regression.
 
 ## Current Matrix
 
-Evidence commit: `9c3bea6` (`v0.2.0`). Matrix refresh: 2026-07-17.
+Evidence commit: `7ab65c8c029d4c32110baa6ca11b63a58a8c854a`
+(`v0.3.0rc1`). Matrix refresh: 2026-07-17.
 The machine-readable provenance is maintained in
 [`engine-certification-records.json`](engine-certification-records.json).
-Conditional rows intentionally retain a null runtime digest: they cannot become
-**Certified** until the v0.3 rc run records a locked image digest and the exact
-parser commit.
+MinerU now has an immutable runtime digest. DotsOCR and PaddleOCR-VL remain
+conditional because their externally managed or source-based runtimes were not
+available as immutable images.
 
 | Engine | Service topology | Contract | Real service and output | License review | Status |
 | --- | --- | --- | --- | --- | --- |
-| DotsOCR (`dotsocr`) | One OpenAI-compatible VLM endpoint | Pass | Not rerun in this Spark refresh; prior release evidence only | Parser code is MIT; AGPL source offer is implemented; model approval remains deployment-specific | **Verified**, not refreshed |
-| MinerU (`mineru`) | One OpenAI-compatible VLM endpoint for layout and recognition | Pass | Both public fixtures produced readable output with the validated vLLM backend; SGLang produced semantically invalid repeated tokens | Model and validated runtime are Apache-2.0; AGPL source offer is implemented | **Verified**, vLLM only and conditional |
-| PaddleOCR-VL (`paddleocr-vl`) | PP-DocLayoutV2 `/detect` plus OpenAI-compatible VLM | Pass | Both public one-page fixtures completed; text was readable, but the narrow receipt table contained empty cells and page status could not distinguish normal two-stage output from a true fallback | Paddle models and imported layout source are Apache-2.0; AGPL source offer is implemented | **Verified**, conditional |
+| DotsOCR (`dotsocr`) | One OpenAI-compatible VLM endpoint | Pass | RC1 parsed the public simple-text fixture; stages succeeded and `fallback.used=false` | Parser code is MIT; AGPL source offer is implemented; model approval remains deployment-specific | **Verified**, conditional runtime provenance |
+| MinerU (`mineru`) | One OpenAI-compatible VLM endpoint for layout and recognition | Pass | RC1 completed both public fixtures with all stages successful and `fallback.used=false` | Model and validated runtime are Apache-2.0; AGPL source offer is implemented | **Verified**, pinned vLLM runtime; quality approval open |
+| PaddleOCR-VL (`paddleocr-vl`) | PP-DocLayoutV2 `/detect` plus OpenAI-compatible VLM | Pass | RC1 completed both public fixtures with all stages successful and `fallback.used=false`; narrow-receipt table quality remained weak | Paddle models and imported layout source are Apache-2.0; AGPL source offer is implemented | **Verified**, conditional runtime provenance and quality |
 
 The required PyMuPDF dependency is AGPL/commercial dual-licensed. This
 repository implements the AGPL source-offer path; each deployment must still
@@ -49,6 +50,35 @@ Public fixtures used in this refresh:
   `eb542ecf8b1b4052d32b3f69449d3e875f8a9f8074851ec6b964f32ca3c259ff`;
 - `receipt_narrow_1p.pdf` SHA256
   `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`.
+
+## v0.3.0rc1 Refresh
+
+- DotsOCR: the public simple-text fixture completed with document success,
+  `primary_inference` and `postprocess` stage success, complete Markdown/JSON
+  artifacts, and `fallback.used=false`. The managed endpoint did not expose a
+  pinned model revision or runtime image, so this is functional evidence only.
+- MinerU: both public fixtures completed with `layout`, `recognition`, and
+  `output` stage success, complete artifacts, and `fallback.used=false`. The
+  validated runtime was
+  `nvcr.io/nvidia/vllm:26.03-py3@sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7`
+  with `mineru-vl-utils==1.0.5` and
+  `mineru_vl_utils:MinerULogitsProcessor`.
+- PaddleOCR-VL: both public fixtures completed with `layout`, `recognition`, and
+  `output` stage success, complete artifacts, and `fallback.used=false`. The
+  runtime used SGLang source revision
+  `0fe2dbd42caeb627bd8aca162dab7763d292fda9` with an isolated
+  `sglang-kernel==0.4.4` overlay. No immutable runtime image was produced. The
+  simple-text output was readable with minor symbol errors; the narrow receipt
+  retained body text but its table cells were mostly empty, so this does not
+  constitute document-quality certification.
+- Resource boundary: MinerU used a 0.40 vLLM GPU budget. Paddle recognition and
+  layout together stayed below the roughly 60 GiB validation limit. These are
+  deployment observations, not comparable performance measurements.
+- Cleanup: all task-owned model and layout services were stopped after the run;
+  validation ports and GPU compute processes were clear.
+
+No credentials, internal endpoint addresses, or private paths are part of this
+record.
 
 ## MinerU Evidence
 
@@ -83,9 +113,10 @@ Public fixtures used in this refresh:
   `finish_reason=stop` when `max_tokens=512`. SGLang did not load the required
   logits processor and is not certified for this model revision.
 
-The common `success_fallback_text` page status is also present in normal MinerU
-two-stage output, so this backend remains conditional until normal success and
-actual fallback are distinguishable in sidecars.
+The legacy `success_fallback_text` page status remains for compatibility. RC1
+now distinguishes normal success from degradation through structured
+`fallback` and `stages` metadata; both refreshed MinerU fixtures recorded
+`fallback.used=false`.
 
 ## PaddleOCR-VL Evidence
 
@@ -120,11 +151,12 @@ actual fallback are distinguishable in sidecars.
   validation ports no longer listened and no GPU compute process remained. The
   existing shared mock service was not stopped.
 
-The v0.3 development line keeps `success_fallback_text` for compatibility but
-now emits `stages` and structured `fallback` metadata. Normal MinerU/Paddle
-two-stage completion records `fallback.used=false`; real degradation records a
-bounded reason and source stage. The certification remains conditional until the
-v0.3 release candidate is revalidated against the pinned real services.
+The v0.3 line keeps `success_fallback_text` for compatibility but emits
+`stages` and structured `fallback` metadata. Normal MinerU/Paddle two-stage
+completion records `fallback.used=false`; real degradation records a bounded
+reason and source stage. RC1 verified this distinction. Paddle remains
+conditional because its runtime is not an immutable image and the narrow
+receipt exposed a known quality limitation.
 
 ## Minimum Evidence Per Engine
 

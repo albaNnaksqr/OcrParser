@@ -19,17 +19,18 @@ GPU 预算或模型 revision 不同的结果，不能直接判定为性能回退
 
 ## 当前矩阵
 
-证据 commit：`9c3bea6`（`v0.2.0`）；矩阵刷新日期：2026-07-17。
+证据 commit：`7ab65c8c029d4c32110baa6ca11b63a58a8c854a`
+（`v0.3.0rc1`）；矩阵刷新日期：2026-07-17。
 机器可读的来源记录维护在
-[`engine-certification-records.json`](engine-certification-records.json)。条件通过
-记录有意保留空的 runtime digest；只有 v0.3 rc 复验写入锁定镜像 digest 和准确
-parser commit 后，状态才能升级为 **Certified**。
+[`engine-certification-records.json`](engine-certification-records.json)。MinerU 已记录
+不可变 runtime digest；DotsOCR 与 PaddleOCR-VL 因外部托管或源码环境没有不可变镜像，
+仍保持条件通过。
 
 | 引擎 | 服务拓扑 | 契约 | 真实服务与输出 | 许可证审查 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| DotsOCR（`dotsocr`） | 一个 OpenAI-compatible VLM endpoint | 通过 | 本次 Spark 刷新未重跑，仅引用此前发布验证 | Parser 代码 MIT；AGPL 源码入口已实现；模型批准仍取决于部署 | **Verified，未刷新** |
-| MinerU（`mineru`） | 同一个 OpenAI-compatible VLM endpoint 执行 layout 和 recognition | 通过 | 使用已验证的 vLLM backend 时两个公开 fixture 都产生可读输出；SGLang 返回语义无效的重复 token | 模型和已验证 runtime 为 Apache-2.0；AGPL 源码入口已实现 | **Verified，仅 vLLM 且条件通过** |
-| PaddleOCR-VL（`paddleocr-vl`） | PP-DocLayoutV2 `/detect` 加 OpenAI-compatible VLM | 通过 | 两个公开单页 fixture 都完成；正文可读，但窄票据表格出现空单元格，page status 不能区分正常两阶段输出与真实 fallback | Paddle 模型与导入 layout 源码均为 Apache-2.0；AGPL 源码入口已实现 | **Verified，条件通过** |
+| DotsOCR（`dotsocr`） | 一个 OpenAI-compatible VLM endpoint | 通过 | RC1 完成公开纯文本 fixture；阶段成功且 `fallback.used=false` | Parser 代码 MIT；AGPL 源码入口已实现；模型批准仍取决于部署 | **Verified，runtime 来源条件通过** |
+| MinerU（`mineru`） | 同一个 OpenAI-compatible VLM endpoint 执行 layout 和 recognition | 通过 | RC1 完成两个公开 fixture；全部阶段成功且 `fallback.used=false` | 模型和已验证 runtime 为 Apache-2.0；AGPL 源码入口已实现 | **Verified，vLLM runtime 已锁定，质量批准未关闭** |
+| PaddleOCR-VL（`paddleocr-vl`） | PP-DocLayoutV2 `/detect` 加 OpenAI-compatible VLM | 通过 | RC1 完成两个公开 fixture；全部阶段成功且 `fallback.used=false`，窄票据表格质量仍较弱 | Paddle 模型与导入 layout 源码均为 Apache-2.0；AGPL 源码入口已实现 | **Verified，runtime 来源与质量条件通过** |
 
 必需依赖 PyMuPDF 采用 AGPL/商业许可双许可证。本仓库已经实现 AGPL 源码提供路径；
 每次部署仍必须确认 `/source` 指向准确运行源码，详见
@@ -41,6 +42,28 @@ parser commit 后，状态才能升级为 **Certified**。
   `eb542ecf8b1b4052d32b3f69449d3e875f8a9f8074851ec6b964f32ca3c259ff`；
 - `receipt_narrow_1p.pdf` SHA256
   `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`。
+
+## v0.3.0rc1 复验
+
+- DotsOCR：公开纯文本 fixture 为 document success，`primary_inference` 与
+  `postprocess` 阶段成功，Markdown/JSON 产物完整，`fallback.used=false`。托管服务
+  未暴露固定模型 revision 或 runtime 镜像，因此这只是功能证据。
+- MinerU：两个公开 fixture 的 `layout`、`recognition`、`output` 阶段均成功，
+  产物完整且 `fallback.used=false`。已验证 runtime 为
+  `nvcr.io/nvidia/vllm:26.03-py3@sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7`，
+  并加载 `mineru-vl-utils==1.0.5` 与
+  `mineru_vl_utils:MinerULogitsProcessor`。
+- PaddleOCR-VL：两个公开 fixture 的 `layout`、`recognition`、`output` 阶段均成功，
+  产物完整且 `fallback.used=false`。runtime 使用 SGLang source revision
+  `0fe2dbd42caeb627bd8aca162dab7763d292fda9`，并在隔离环境叠加
+  `sglang-kernel==0.4.4`，但没有生成不可变 runtime 镜像。纯文本输出可读但有少量
+  符号误识别；窄票据保留正文，但表格大部分单元格为空，因此不构成文档质量认证。
+- 资源边界：MinerU 使用 0.40 vLLM GPU 预算；Paddle recognition 与 layout 合计
+  低于约 60 GiB 验证限制。这些只是部署观测，不是可比较性能数据。
+- 清理：任务启动的模型和 layout 服务均已停止；验证端口与 GPU compute process
+  均已清空。
+
+本记录不包含凭据、内网 endpoint 地址或私有路径。
 
 ## MinerU 证据
 
@@ -72,8 +95,9 @@ parser commit 后，状态才能升级为 **Certified**。
   `finish_reason=stop` 返回 312 个有效 layout token。SGLang 没有加载必需的
   logits processor，因此不认证该模型 revision 的 SGLang。
 
-正常 MinerU 两阶段输出也被统一记录为 `success_fallback_text`，因此在 sidecar 能够
-区分正常成功和实际 fallback 前，该 backend 只能保持条件通过。
+旧 `success_fallback_text` page status 继续保留以兼容消费者。RC1 现在通过结构化
+`fallback` 和 `stages` 区分正常成功与降级；两个 MinerU fixture 都记录
+`fallback.used=false`。
 
 ## PaddleOCR-VL 证据
 
@@ -105,10 +129,10 @@ parser commit 后，状态才能升级为 **Certified**。
 - 清理：本任务启动的 MinerU、Paddle VLM 与 layout 服务均已停止，验证端口不再
   监听，GPU compute process 为空；原有共享 mock 服务未停止。
 
-v0.3 开发主线为了兼容仍保留 `success_fallback_text`，但已经新增 `stages` 和结构化
-`fallback` 元数据。正常 MinerU/Paddle 两阶段完成记录 `fallback.used=false`，真实
-降级记录受控的 reason 和 source stage。认证仍保持条件通过，直到 v0.3 release
-candidate 使用锁定的真实服务完成复验。
+v0.3 为兼容仍保留 `success_fallback_text`，同时新增 `stages` 和结构化 `fallback`
+元数据。正常 MinerU/Paddle 两阶段完成记录 `fallback.used=false`，真实降级记录受控
+的 reason 和 source stage。RC1 已验证该区分。Paddle 因 runtime 不是不可变镜像，
+且窄票据存在已知质量限制，仍保持条件通过。
 
 ## 每个引擎的最低证据
 
