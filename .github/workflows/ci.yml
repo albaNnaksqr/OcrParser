@@ -51,6 +51,9 @@ jobs:
           python -m venv /tmp/ocrparser-wheel
           /tmp/ocrparser-wheel/bin/python -m pip install dist/*.whl
           /tmp/ocrparser-wheel/bin/python tools/check_installed_console_scripts.py --bin-dir /tmp/ocrparser-wheel/bin
+          # Avoid the build-created source-tree egg-info shadowing the wheel's
+          # installed dist-info during metadata and license inventory checks.
+          cd /tmp
           /tmp/ocrparser-wheel/bin/python - <<'PY'
           from importlib.resources import files
           from importlib.metadata import distribution, entry_points, version
