@@ -1849,6 +1849,32 @@ def test_static_shard_claim_and_update_routes(tmp_path):
     assert next_claim["shard_index"] == 2
 
 
+def test_next_job_returns_running_assigned_job_with_more_static_shards(tmp_path):
+    api, _, _, job = make_static_job_client(tmp_path)
+
+    first_job = api.post("/api/agents/server-a/next-job")
+    first_shard = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    api.post(
+        f"/api/shards/{first_shard['id']}",
+        json={"status": "succeeded", "processed_files": 1},
+    )
+
+    resumed_job = api.post("/api/agents/server-a/next-job")
+    second_shard = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+
+    assert first_job.status_code == 200
+    assert first_job.json()["id"] == job["id"]
+    assert resumed_job.status_code == 200
+    assert resumed_job.json()["id"] == job["id"]
+    assert second_shard["shard_index"] == 2
+
+
 def test_eligible_agent_claims_unassigned_pool_static_job(tmp_path):
     input_root = tmp_path / "input"
     input_root.mkdir()

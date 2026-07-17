@@ -850,6 +850,15 @@ def claim_next_job(session: Session, server_id: str) -> Job | None:
     )
     job = session.execute(select_stmt).scalar_one_or_none()
     if job is None:
+        running_jobs = session.execute(
+            select(Job)
+            .where(Job.assigned_server_id == server_id)
+            .where(Job.status == "running")
+            .order_by(Job.created_at)
+        ).scalars().all()
+        for running_job in running_jobs:
+            if _pool_job_has_claimable_shards(session, running_job.id, utcnow()):
+                return running_job
         return claim_next_pool_job(session, server_id)
 
     started_at = utcnow()
