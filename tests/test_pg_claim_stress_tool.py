@@ -139,3 +139,11 @@ def test_pg_claim_stress_describes_planned_concurrency_checks():
         "scan_unit_claim_skip_locked",
         "scan_unit_completion_shard_index_locking",
     ]
+
+
+def test_pg_claim_stress_uses_run_scoped_worker_ids():
+    source = TOOL_PATH.read_text(encoding="utf-8")
+
+    assert 'worker_run_id = uuid.uuid4().hex[:12]' in source
+    assert 'f"pg-stress-worker-{worker_run_id}-{index}"' in source
+    assert "session.query(Server).filter(Server.id.in_(server_ids)).delete" in source

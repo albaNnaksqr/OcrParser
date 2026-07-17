@@ -380,7 +380,8 @@ def run_stress(
             else None
         )
 
-    server_ids = [f"pg-stress-worker-{index}" for index in range(worker_count)]
+    worker_run_id = uuid.uuid4().hex[:12]
+    server_ids = [f"pg-stress-worker-{worker_run_id}-{index}" for index in range(worker_count)]
     with session_factory() as session:
         for server_id in server_ids:
             session.add(
@@ -479,8 +480,11 @@ def run_stress(
                 session.delete(job)
             if scan_unit_job_id is not None:
                 scan_unit_job = session.get(Job, scan_unit_job_id)
-                if scan_unit_job is not None:
-                    session.delete(scan_unit_job)
+            if scan_unit_job is not None:
+                session.delete(scan_unit_job)
+            session.query(Server).filter(Server.id.in_(server_ids)).delete(
+                synchronize_session=False
+            )
             session.commit()
     return result
 
