@@ -21,6 +21,9 @@
 - Added a composed `AgentRuntime` and supervisor for heartbeat, job polling,
   scan, shard execution, manifest integrity, and spool/replay lanes with one
   cancellation and signal boundary.
+- Split the dependency-free Control UI into CSS and native ES modules for API,
+  auth, state, jobs, workers, profiles, diagnostics, remote administration, and
+  the application entrypoint; all assets remain wheel package data.
 
 ## 0.2.1
 

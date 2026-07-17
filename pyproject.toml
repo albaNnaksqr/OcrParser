@@ -103,5 +103,5 @@ Issues = "https://github.com/albaNnaksqr/OcrParser/issues"
 include = ["ocr_parser*", "ocr_platform*", "dots_ocr*", "services*"]
 
 [tool.setuptools.package-data]
-"ocr_platform.control" = ["migrations/*.sql", "ui/index.html"]
+"ocr_platform.control" = ["migrations/*.sql", "ui/*"]
 "dots_ocr.data_index" = ["configs/*.json"]

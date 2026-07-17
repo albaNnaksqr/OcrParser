@@ -1,11 +1,74 @@
 from pathlib import Path
 
+from fastapi.testclient import TestClient
+
+from ocr_platform.control.app import create_app
+from ocr_platform.control.database import create_session_factory, init_db
+
 
 UI_FILE = Path(__file__).resolve().parents[1] / "ocr_platform" / "control" / "ui" / "index.html"
+UI_ROOT = UI_FILE.parent
+
+
+def ui_source() -> str:
+    """Return the HTML and all first-party modules as one searchable contract."""
+
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in [UI_FILE, *sorted(UI_ROOT.glob("*.js")), UI_ROOT / "styles.css"]
+    )
+
+
+def test_ui_module_resources_load_without_404(tmp_path):
+    session_factory, engine = create_session_factory(f"sqlite:///{tmp_path / 'control.db'}")
+    init_db(engine)
+    client = TestClient(create_app(session_factory=session_factory))
+
+    index = client.get("/ui/")
+    assert index.status_code == 200
+    assert '<script type="module" src="/ui/main.js"></script>' in index.text
+    assert '<link rel="stylesheet" href="/ui/styles.css" />' in index.text
+
+    resources = [
+        "api.js",
+        "auth.js",
+        "diagnostics.js",
+        "jobs.js",
+        "main.js",
+        "profiles.js",
+        "remote-admin.js",
+        "state.js",
+        "workers.js",
+        "styles.css",
+    ]
+    for name in resources:
+        response = client.get(f"/ui/{name}")
+        assert response.status_code == 200, name
+
+
+def test_ui_token_request_reaches_api_auth_boundary(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
+    session_factory, engine = create_session_factory(f"sqlite:///{tmp_path / 'control.db'}")
+    init_db(engine)
+    client = TestClient(create_app(session_factory=session_factory))
+
+    assert client.get("/api/servers").status_code == 401
+    response = client.get("/api/servers", headers={"X-API-Key": "control-secret"})
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_ui_keeps_jobs_workers_and_legal_entry_points_visible():
+    html = UI_FILE.read_text(encoding="utf-8")
+
+    assert 'id="jobsBody"' in html
+    assert 'id="serversBody"' in html
+    assert 'href="/source"' in html
+    assert 'href="/legal/agpl-3.0"' in html
 
 
 def test_ui_exposes_worker_readiness_and_preflight_diagnostics():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "Worker Readiness" in html
     assert "Ready workers" in html
@@ -23,7 +86,7 @@ def test_ui_exposes_worker_readiness_and_preflight_diagnostics():
 
 
 def test_ui_exposes_deployment_doctor_as_first_class_panel():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "System Summary" in html
     assert "Deployment Doctor" in html
@@ -41,7 +104,7 @@ def test_ui_exposes_deployment_doctor_as_first_class_panel():
 
 
 def test_ui_uses_operations_first_layout_for_production_monitoring():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'class="ops-shell"' in html
     assert 'class="ops-sidebar"' in html
@@ -57,7 +120,7 @@ def test_ui_uses_operations_first_layout_for_production_monitoring():
 
 
 def test_ui_exposes_remote_worker_lifecycle_controls():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "Remote worker lifecycle" in html
     assert 'id="remoteWorkerTarget"' in html
@@ -67,11 +130,12 @@ def test_ui_exposes_remote_worker_lifecycle_controls():
     assert 'id="remoteWorkerInstallDryRunBtn"' in html
     assert 'id="remoteWorkerInstallApplyBtn"' in html
     assert 'id="remoteWorkerServiceAction"' in html
-    assert "/api/remote-workers/targets" in html
-    assert "/api/remote-workers/preflight" in html
-    assert "/api/remote-workers/install-dry-run" in html
-    assert "/api/remote-workers/install-apply" in html
-    assert "/api/remote-workers/service" in html
+    assert 'const ROOT = "/api/remote-workers"' in html
+    assert "targets: `${ROOT}/targets`" in html
+    assert "preflight: `${ROOT}/preflight`" in html
+    assert "installDryRun: `${ROOT}/install-dry-run`" in html
+    assert "installApply: `${ROOT}/install-apply`" in html
+    assert "service: `${ROOT}/service`" in html
     assert "applyRemoteWorkerTarget" in html
     assert "manual target" in html
     assert "not an SSH shell" in html
@@ -79,7 +143,7 @@ def test_ui_exposes_remote_worker_lifecycle_controls():
 
 
 def test_ui_exposes_worker_scale_plan_controls_and_structured_results():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "Worker Scale Plan" in html
     assert 'id="workerScalePanel"' in html
@@ -91,8 +155,8 @@ def test_ui_exposes_worker_scale_plan_controls_and_structured_results():
     assert "Preview Scale Plan" in html
     assert "Apply Scale" in html
     assert "Waiting for heartbeat confirmation" in html
-    assert "/api/remote-workers/scale-plan" in html
-    assert "/api/remote-workers/scale-apply" in html
+    assert "scalePlan: `${ROOT}/scale-plan`" in html
+    assert "scaleApply: `${ROOT}/scale-apply`" in html
     assert "renderWorkerScaleResult" in html
     assert "waitForWorkerScaleHeartbeat" in html
     assert "plan_items" in html
@@ -100,7 +164,7 @@ def test_ui_exposes_worker_scale_plan_controls_and_structured_results():
 
 
 def test_ui_surfaces_worker_event_spool_backlog_in_worker_details():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "formatWorkerEventSpool" in html
     assert "workerEventSpoolBacklog" in html
@@ -116,7 +180,7 @@ def test_ui_surfaces_worker_event_spool_backlog_in_worker_details():
 
 
 def test_ui_surfaces_worker_pending_shard_update_backlog_in_worker_details():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "formatWorkerPendingShardUpdates" in html
     assert "workerPendingShardUpdateBacklog" in html
@@ -126,7 +190,7 @@ def test_ui_surfaces_worker_pending_shard_update_backlog_in_worker_details():
 
 
 def test_submit_job_ui_keeps_model_config_in_profile_and_advanced_minimal():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'id="resolvedModelConfig"' in html
     assert 'id="numCpuWorkers"' in html
@@ -164,7 +228,7 @@ def test_submit_job_ui_keeps_model_config_in_profile_and_advanced_minimal():
 
 
 def test_dotsocr_is_the_temporary_default_model_profile():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'const DEFAULT_MODEL_PROFILE = "dotsocr_15";' in html
     assert "DEFAULT_MODEL_PROFILE" in html
@@ -174,7 +238,7 @@ def test_dotsocr_is_the_temporary_default_model_profile():
 
 
 def test_model_profiles_can_be_loaded_and_saved_from_control_api():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'id="modelProfileEditor"' in html
     assert 'id="profileApiKey" type="text"' in html
@@ -190,15 +254,15 @@ def test_model_profiles_can_be_loaded_and_saved_from_control_api():
     assert "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS" in html
     assert "extra_args must not contain secret-like keys" in html
     assert "token, secret, password, authorization, or API key" in html
-    assert 'requestJson("/api/model-profiles")' in html
-    assert '`/api/model-profiles/${encodeURIComponent(profileId)}`' in html
+    assert "requestJson(MODEL_PROFILES_API)" in html
+    assert "requestJson(modelProfileApiPath(profileId)" in html
     assert "model_profile_id: ui.modelProfile.value" in html
     assert "database-saved keys are legacy-only" in html
     assert "Kept in this browser form only" not in html
 
 
 def test_ui_can_attach_control_api_token_to_requests():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'id="controlApiToken"' in html
     assert "OCR_PLATFORM_UI_TOKEN" in html
@@ -212,12 +276,12 @@ def test_ui_can_attach_control_api_token_to_requests():
     assert "sessionStorage.removeItem(API_TOKEN_STORAGE_KEY" in html
     assert "localStorage.setItem(API_TOKEN_STORAGE_KEY" not in html
     assert 'headers.set("X-API-Key", token)' in html
-    assert "fetch(url, apiRequestOptions(options))" in html
+    assert "fetch(url, apiRequestOptions(getToken(), options))" in html
     assert "refreshOperationsData({ quiet: !ui.controlApiToken.value.trim() })" in html
 
 
 def test_ui_displays_agpl_legal_and_corresponding_source_notices():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'aria-label="Open-source legal notice"' in html
     assert 'href="/source"' in html
@@ -227,7 +291,7 @@ def test_ui_displays_agpl_legal_and_corresponding_source_notices():
 
 
 def test_ui_surfaces_database_migration_status_for_operations():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'id="databaseStatus"' in html
     assert "loadDatabaseStatus" in html
@@ -241,7 +305,7 @@ def test_ui_surfaces_database_migration_status_for_operations():
 
 
 def test_manifest_root_defaults_to_platform_manifest_dir_under_shared_root():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert '.ocr_platform/manifests' in html
     assert "inferDefaultManifestRoot" in html
@@ -250,7 +314,7 @@ def test_manifest_root_defaults_to_platform_manifest_dir_under_shared_root():
 
 
 def test_create_job_reuses_preflight_worker_scope_for_shared_path_message():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
     start = html.index("async function createJob()")
     end = html.index("async function stopJob", start)
     body = html[start:end]
@@ -261,7 +325,7 @@ def test_create_job_reuses_preflight_worker_scope_for_shared_path_message():
 
 
 def test_manifest_integrity_ui_distinguishes_worker_only_paths_from_failed_checks():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'payload.status === "not_accessible_from_control"' in html
     assert "not accessible" in html
@@ -273,7 +337,7 @@ def test_manifest_integrity_ui_distinguishes_worker_only_paths_from_failed_check
 
 
 def test_jobs_ui_surfaces_job_overview_and_attention_shards():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "explainJobStatus" in html
     assert "formatJobStatusExplanation" in html
@@ -322,7 +386,7 @@ def test_jobs_ui_surfaces_job_overview_and_attention_shards():
 
 
 def test_jobs_progress_does_not_render_unknown_page_total_as_question_mark():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
     start = html.index("function rowProgress")
     end = html.index("function rowShards", start)
     body = html[start:end]
@@ -334,7 +398,7 @@ def test_jobs_progress_does_not_render_unknown_page_total_as_question_mark():
 
 
 def test_jobs_ui_exposes_production_scale_controls_and_diagnostics():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert 'id="jobStatusFilter"' in html
     assert 'id="jobPageSize"' in html
@@ -435,7 +499,7 @@ def test_jobs_ui_exposes_production_scale_controls_and_diagnostics():
 
     assert 'id="preflightJobBtn"' in html
     assert "runJobPreflight" in html
-    assert "/api/jobs/preflight" in html
+    assert "`${JOBS_API_ROOT}/preflight`" in html
     assert "Preflight" in html
     assert "model_profile_missing_api_key" in html
     assert "model_profile_saved_api_key" in html
@@ -470,7 +534,7 @@ def test_jobs_ui_exposes_production_scale_controls_and_diagnostics():
 
 
 def test_jobs_ui_surfaces_failure_category_count_summaries():
-    html = UI_FILE.read_text(encoding="utf-8")
+    html = ui_source()
 
     assert "formatFailureCategoryCounts" in html
     assert "failure_category_counts" in html

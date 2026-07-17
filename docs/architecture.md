@@ -71,6 +71,14 @@ integrity, and spool/replay. It provides a shared signal, cancellation, retry,
 and shutdown boundary; a lane cannot start after shutdown begins, and late
 failure/replay results are not reported after that boundary.
 
+## Control UI modules
+
+The Control UI remains dependency-free native HTML, CSS, and JavaScript. Its ES
+module boundary separates API transport, session-only auth, shared state, jobs,
+workers, model profiles, diagnostics, remote administration, and the main
+entrypoint. No Node runtime or frontend framework is required in production;
+the wheel ships every module as static package data.
+
 ## Compatibility boundary
 
 v0.3 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,
