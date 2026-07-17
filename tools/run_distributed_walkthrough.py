@@ -203,7 +203,7 @@ def run_walkthrough(args: argparse.Namespace) -> int:
     job_id = str(job["id"])
     print(f"JOB_ID {job_id}")
 
-    last: dict[str, Any] | None = None
+    last_state: dict[str, Any] | None = None
     summary: dict[str, Any] = {}
     for poll in range(1, args.polls + 1):
         summary = request_json(
@@ -213,9 +213,10 @@ def run_walkthrough(args: argparse.Namespace) -> int:
             path=f"/api/jobs/{job_id}/summary",
         )
         compact = compact_summary(summary, poll)
-        if compact != last:
+        state = {key: value for key, value in compact.items() if key != "poll"}
+        if state != last_state:
             print("SUMMARY " + json.dumps(compact, ensure_ascii=False, sort_keys=True))
-            last = compact
+            last_state = state
         if summary.get("status") in TERMINAL_STATUSES:
             break
         time.sleep(args.interval)

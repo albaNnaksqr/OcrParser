@@ -302,6 +302,46 @@ def scan_sidecars(output_dir: Path) -> tuple[dict[str, int], dict[str, int], lis
     return dict(sorted(stage_counts.items())), dict(sorted(fallback_counts.items())), sorted(unknown), failed_samples[:20]
 
 
+def audit_directory_outputs(*, input_dir: Path, output_dir: Path) -> dict[str, Any]:
+    expected_stems = {path.stem for path in input_dir.glob("*.pdf")}
+    missing_sidecars: list[str] = []
+    missing_markdown: list[str] = []
+    failed_documents: list[dict[str, str]] = []
+    for stem in sorted(expected_stems):
+        document_dir = output_dir / stem
+        sidecar_path = document_dir / ".ocr_status.json"
+        if not sidecar_path.is_file():
+            missing_sidecars.append(stem)
+        else:
+            try:
+                payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+                status = str(payload.get("status") or "unknown")
+            except (OSError, json.JSONDecodeError):
+                status = "unreadable"
+            if status not in SUCCESS_DOCUMENT_STATUSES:
+                failed_documents.append({"stem": stem, "status": status})
+        combined = [
+            path
+            for path in document_dir.rglob(f"{stem}.md")
+            if not path.name.startswith("page_")
+        ]
+        if len(combined) != 1:
+            missing_markdown.append(stem)
+    actual_stems = {path.parent.name for path in output_dir.glob("*/.ocr_status.json")}
+    unexpected_stems = sorted(actual_stems - expected_stems)
+    ok = not (missing_sidecars or missing_markdown or failed_documents or unexpected_stems)
+    return {
+        "ok": ok,
+        "mode": "directory",
+        "expected_document_count": len(expected_stems),
+        "actual_sidecar_count": len(actual_stems),
+        "missing_sidecars": missing_sidecars,
+        "missing_or_duplicate_combined_markdown": missing_markdown,
+        "failed_documents": failed_documents,
+        "unexpected_stems": unexpected_stems,
+    }
+
+
 def parse_final_summary(text: str) -> tuple[str | None, dict[str, Any]]:
     job_id: str | None = None
     summary: dict[str, Any] = {}
@@ -433,6 +473,12 @@ def execute_cycle(
             )
         except (OSError, ValueError, json.JSONDecodeError, urllib.error.URLError) as exc:
             integrity = {"ok": False, "error": str(exc)}
+        if mode == "directory" and integrity.get("status") == "missing_manifest":
+            integrity = {
+                "ok": True,
+                "status": "not_applicable",
+                "reason": "directory mode does not create a manifest",
+            }
         manifest_path = integrity.get("manifest_path")
         if manifest_path and Path(str(manifest_path)).is_file():
             try:
@@ -445,6 +491,11 @@ def execute_cycle(
                 ).to_dict()
             except (OSError, ValueError) as exc:
                 audit = {"ok": False, "error": str(exc)}
+        elif mode == "directory":
+            audit = audit_directory_outputs(
+                input_dir=cycle_root / "input",
+                output_dir=cycle_root / "output",
+            )
     stages, fallbacks, unknown, sidecar_failures = scan_sidecars(cycle_root / "output")
     failed_samples.extend(sidecar_failures)
     status = "pass" if returncode == 0 else "fail"

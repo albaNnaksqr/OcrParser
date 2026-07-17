@@ -116,6 +116,28 @@ def test_sidecar_scan_reports_bounded_stages_fallbacks_and_failures(tmp_path):
     assert failures[0]["status"] == "failed"
 
 
+def test_directory_output_audit_requires_one_success_sidecar_and_combined_markdown(tmp_path):
+    input_dir = tmp_path / "input"
+    output_dir = tmp_path / "output"
+    input_dir.mkdir()
+    (input_dir / "document.pdf").write_bytes(b"public fixture")
+    document_dir = output_dir / "document" / "native" / "dotsocr"
+    document_dir.mkdir(parents=True)
+    (output_dir / "document" / ".ocr_status.json").write_text(
+        json.dumps({"status": "success"}),
+        encoding="utf-8",
+    )
+    (document_dir / "document.md").write_text("ok\n", encoding="utf-8")
+
+    healthy = soak.audit_directory_outputs(input_dir=input_dir, output_dir=output_dir)
+    assert healthy["ok"] is True
+
+    (document_dir / "document.md").unlink()
+    broken = soak.audit_directory_outputs(input_dir=input_dir, output_dir=output_dir)
+    assert broken["ok"] is False
+    assert broken["missing_or_duplicate_combined_markdown"] == ["document"]
+
+
 def make_cycle(index: int, *, duration: float, ok: bool = True) -> soak.CycleResult:
     return soak.CycleResult(
         cycle=index,
