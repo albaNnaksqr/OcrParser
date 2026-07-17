@@ -147,3 +147,4 @@ def test_pg_claim_stress_uses_run_scoped_worker_ids():
     assert 'worker_run_id = uuid.uuid4().hex[:12]' in source
     assert 'f"pg-stress-worker-{worker_run_id}-{index}"' in source
     assert "session.query(Server).filter(Server.id.in_(server_ids)).delete" in source
+    assert "if scan_unit_job_id is not None:\n                scan_unit_job =" in source

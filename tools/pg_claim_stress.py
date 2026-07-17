@@ -480,8 +480,8 @@ def run_stress(
                 session.delete(job)
             if scan_unit_job_id is not None:
                 scan_unit_job = session.get(Job, scan_unit_job_id)
-            if scan_unit_job is not None:
-                session.delete(scan_unit_job)
+                if scan_unit_job is not None:
+                    session.delete(scan_unit_job)
             session.query(Server).filter(Server.id.in_(server_ids)).delete(
                 synchronize_session=False
             )
