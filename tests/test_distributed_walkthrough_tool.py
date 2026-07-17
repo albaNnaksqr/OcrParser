@@ -1,5 +1,6 @@
 from argparse import Namespace
 import json
+import urllib.error
 
 from tools import run_distributed_walkthrough
 
@@ -123,3 +124,48 @@ def test_walkthrough_tool_generates_public_batch_and_manifest(tmp_path):
         "sample-00003.pdf",
     ]
     assert all(row["size_bytes"] > 0 for row in rows)
+
+
+def test_walkthrough_polling_recovers_after_control_outage(tmp_path, monkeypatch, capsys):
+    responses = iter(
+        [
+            {"id": "job-1"},
+            urllib.error.URLError(OSError("control stopped")),
+            {"status": "succeeded", "lifecycle_stage": "completed"},
+        ]
+    )
+
+    def fake_request_json(**_kwargs):
+        response = next(responses)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(run_distributed_walkthrough, "request_json", fake_request_json)
+    monkeypatch.setattr(run_distributed_walkthrough.time, "sleep", lambda _seconds: None)
+    args = Namespace(
+        shared_root=str(tmp_path / "shared"),
+        pdf_name="sample.pdf",
+        document_count=1,
+        input_mode="directory",
+        worker_id="worker-a",
+        allowed_worker_id=[],
+        target_files_per_shard=1,
+        max_shard_attempts=3,
+        engine="dotsocr",
+        ocr_host="127.0.0.1",
+        ocr_port=18000,
+        model_name="mock-ocr",
+        disable_process_pool=True,
+        api_key_env_var=None,
+        control_url="http://127.0.0.1:38080",
+        api_token="runtime-only",
+        polls=3,
+        interval=0.01,
+    )
+
+    assert run_distributed_walkthrough.run_walkthrough(args) == 0
+    output = capsys.readouterr().out
+    assert "CONTROL_UNAVAILABLE OSError" in output
+    assert "CONTROL_RECOVERED" in output
+    assert 'FINAL_SUMMARY {"lifecycle_stage": "completed", "status": "succeeded"}' in output

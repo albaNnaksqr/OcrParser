@@ -204,14 +204,25 @@ def run_walkthrough(args: argparse.Namespace) -> int:
     print(f"JOB_ID {job_id}")
 
     last_state: dict[str, Any] | None = None
+    control_unavailable = False
     summary: dict[str, Any] = {}
     for poll in range(1, args.polls + 1):
-        summary = request_json(
-            control_url=args.control_url,
-            token=args.api_token,
-            method="GET",
-            path=f"/api/jobs/{job_id}/summary",
-        )
+        try:
+            summary = request_json(
+                control_url=args.control_url,
+                token=args.api_token,
+                method="GET",
+                path=f"/api/jobs/{job_id}/summary",
+            )
+        except urllib.error.URLError as exc:
+            if not control_unavailable:
+                print(f"CONTROL_UNAVAILABLE {type(exc.reason).__name__}")
+                control_unavailable = True
+            time.sleep(args.interval)
+            continue
+        if control_unavailable:
+            print("CONTROL_RECOVERED")
+            control_unavailable = False
         compact = compact_summary(summary, poll)
         state = {key: value for key, value in compact.items() if key != "poll"}
         if state != last_state:
@@ -223,12 +234,18 @@ def run_walkthrough(args: argparse.Namespace) -> int:
     else:
         print("TIMEOUT")
 
-    final = request_json(
-        control_url=args.control_url,
-        token=args.api_token,
-        method="GET",
-        path=f"/api/jobs/{job_id}/summary",
-    )
+    final = summary
+    if not final or final.get("status") not in TERMINAL_STATUSES:
+        try:
+            final = request_json(
+                control_url=args.control_url,
+                token=args.api_token,
+                method="GET",
+                path=f"/api/jobs/{job_id}/summary",
+            )
+        except urllib.error.URLError as exc:
+            print(f"FINAL_SUMMARY_UNAVAILABLE {type(exc.reason).__name__}")
+            return 1
     print("FINAL_SUMMARY " + json.dumps(final, ensure_ascii=False, sort_keys=True))
     print("OUTPUT_FILES")
     for path in sorted(output_dir.rglob("*")):
