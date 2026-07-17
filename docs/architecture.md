@@ -79,6 +79,14 @@ workers, model profiles, diagnostics, remote administration, and the main
 entrypoint. No Node runtime or frontend framework is required in production;
 the wheel ships every module as static package data.
 
+## Build provenance
+
+Every wheel embeds its source revision, UTC build timestamp, and dirty state in
+`ocr_platform/_build_info.json`. `/source.json` prefers this immutable metadata
+over the version-tag fallback (an explicit source environment override remains
+available for patched deployments). A release wheel must be clean and its
+revision must equal the commit addressed by its release tag.
+
 ## Compatibility boundary
 
 v0.3 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,

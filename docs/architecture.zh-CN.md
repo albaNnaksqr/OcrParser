@@ -67,6 +67,13 @@ Control UI 继续使用无构建依赖的原生 HTML、CSS 和 JavaScript。ES m
 diagnostics、remote administration 和 main entrypoint。生产环境不需要 Node 或前端
 框架，wheel 会把全部模块作为静态 package data 一并安装。
 
+## Build provenance
+
+每个 wheel 都在 `ocr_platform/_build_info.json` 写入源码 revision、UTC build
+timestamp 和 dirty state。`/source.json` 优先读取这份不可变元数据，再回退到版本
+tag（patched deployment 仍可显式覆盖源码地址）。正式 release wheel 必须是 clean
+build，且 revision 必须等于同名 release tag 指向的 commit。
+
 ## 兼容边界
 
 v0.3 保持 CLI 参数和退出码、HTTP 路径和 schema、migration 历史、manifest

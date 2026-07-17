@@ -234,6 +234,28 @@ def test_agpl_source_offer_can_use_an_explicit_archive_url(tmp_path, monkeypatch
     )
 
 
+def test_source_offer_prefers_immutable_wheel_build_provenance(tmp_path, monkeypatch):
+    monkeypatch.delenv("OCR_PLATFORM_SOURCE_REVISION", raising=False)
+    monkeypatch.delenv("OCR_PLATFORM_SOURCE_URL", raising=False)
+    monkeypatch.setattr(
+        "ocr_platform.legal.build_provenance",
+        lambda: {
+            "source_revision": "abc123def456",
+            "build_timestamp": "2026-07-17T06:00:00Z",
+            "dirty": False,
+        },
+    )
+    client = make_client(tmp_path)
+
+    payload = client.get("/source.json").json()
+
+    assert payload["source_revision"] == "abc123def456"
+    assert payload["source_revision_origin"] == "build"
+    assert payload["build_timestamp"] == "2026-07-17T06:00:00Z"
+    assert payload["build_dirty"] is False
+    assert payload["release_build"] is True
+
+
 def test_system_diagnostics_summarizes_deployment_readiness_for_ui(tmp_path, monkeypatch):
     monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
     client = make_client(tmp_path)

@@ -31,6 +31,10 @@ OCR_PLATFORM_SOURCE_URL=https://downloads.example/source/ocrparser-<commit>.tar.
 分发和支持周期内持续可用。带补丁的部署不得指向旧 release tag，也不能只指向未说明
 实际部署 commit 的移动分支。
 
+wheel 还会写入准确 build revision、timestamp 和 dirty state。没有显式部署覆盖时，
+`/source.json` 使用该 revision，不再只根据 package version 推断源码。
+`release_build=false` 或 `build_dirty=true` 表示这不是正式发布构建。
+
 ## Corresponding Source 边界
 
 源码地址必须包含准确运行版本的 OcrParser 源码，以及构建、安装、运行和修改所需的

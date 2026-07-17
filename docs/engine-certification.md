@@ -26,6 +26,11 @@ model revisions must not be compared directly as a performance regression.
 ## Current Matrix
 
 Evidence commit: `9c3bea6` (`v0.2.0`). Matrix refresh: 2026-07-17.
+The machine-readable provenance is maintained in
+[`engine-certification-records.json`](engine-certification-records.json).
+Conditional rows intentionally retain a null runtime digest: they cannot become
+**Certified** until the v0.3 rc run records a locked image digest and the exact
+parser commit.
 
 | Engine | Service topology | Contract | Real service and output | License review | Status |
 | --- | --- | --- | --- | --- | --- |

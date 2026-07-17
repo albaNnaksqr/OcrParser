@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-07-17",
+  "records": [
+    {
+      "engine": "dotsocr",
+      "status": "verified-not-refreshed",
+      "parser_commit": "9c3bea6",
+      "model_revision": null,
+      "runtime_image": null,
+      "runtime_digest": null,
+      "notes": "Prior release evidence only; v0.3 rc certification must pin model and runtime revisions."
+    },
+    {
+      "engine": "mineru",
+      "status": "verified-conditional",
+      "parser_commit": "9c3bea6",
+      "model_revision": "d3f5e08d073c21466bbabe21c71bb1e9c2e595da",
+      "runtime_image": "nvcr.io/nvidia/vllm:26.03-py3",
+      "runtime_digest": null,
+      "notes": "Functional evidence is valid only for vLLM with MinerULogitsProcessor; resolve and record the immutable image digest during rc certification."
+    },
+    {
+      "engine": "paddleocr-vl",
+      "status": "verified-conditional",
+      "parser_commit": "9c3bea6",
+      "model_revision": "d911116c363676c602c4786ad0b9667b1aee055f",
+      "layout_model_revision": "a0a882d03564ff3a9c9b37e48e2e636e7c236fd6",
+      "runtime_image": null,
+      "runtime_digest": null,
+      "runtime_source_revision": "0fe2dbd42caeb627bd8aca162dab7763d292fda9",
+      "notes": "The shared validation environment was not a reproducible image; v0.3 rc certification must build and record an immutable runtime digest."
+    }
+  ]
+}

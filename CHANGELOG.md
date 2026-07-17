@@ -24,6 +24,9 @@
 - Split the dependency-free Control UI into CSS and native ES modules for API,
   auth, state, jobs, workers, profiles, diagnostics, remote administration, and
   the application entrypoint; all assets remain wheel package data.
+- Embedded source revision, UTC build timestamp, and dirty state in every wheel;
+  `/source.json` consumes this immutable provenance and release verification
+  rejects dirty or tag-mismatched wheels.
 
 ## 0.2.1
 

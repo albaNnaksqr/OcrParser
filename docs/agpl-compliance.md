@@ -38,6 +38,11 @@ required distribution and support period. Do not point a patched deployment at
 an older release tag or at a moving branch without identifying the deployed
 commit.
 
+Packaged wheels also embed the exact build revision, timestamp, and dirty state.
+When no explicit deployment override is set, `/source.json` uses that revision
+instead of inferring source solely from the package version. `release_build=false`
+or `build_dirty=true` identifies a non-release build.
+
 ## Corresponding Source boundary
 
 The source location must contain the exact deployed OcrParser source plus the

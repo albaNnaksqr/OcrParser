@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import os
+import json
 from importlib.metadata import PackageNotFoundError, distribution, version
+from importlib.resources import files
 from pathlib import Path
 from urllib.parse import quote
 
@@ -22,12 +24,26 @@ def package_version() -> str:
         return VERSION_FALLBACK
 
 
+def build_provenance() -> dict[str, object]:
+    """Read immutable wheel metadata, falling back cleanly in a source checkout."""
+
+    try:
+        payload = json.loads(
+            files("ocr_platform").joinpath("_build_info.json").read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, ModuleNotFoundError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
 def source_offer() -> dict[str, object]:
     """Return the public corresponding-source offer for this deployment."""
 
     deployed_version = package_version()
+    provenance = build_provenance()
     explicit_revision = os.getenv(SOURCE_REVISION_ENV, "").strip()
-    revision = explicit_revision or f"v{deployed_version}"
+    built_revision = str(provenance.get("source_revision") or "").strip()
+    revision = explicit_revision or built_revision or f"v{deployed_version}"
     explicit_url = os.getenv(SOURCE_URL_ENV, "").strip()
     source_url = explicit_url or f"{SOURCE_REPOSITORY}/tree/{quote(revision, safe='')}"
     return {
@@ -36,6 +52,14 @@ def source_offer() -> dict[str, object]:
         "source_revision": revision,
         "source_url": source_url,
         "source_revision_explicit": bool(explicit_revision or explicit_url),
+        "source_revision_origin": (
+            "environment" if explicit_revision or explicit_url else (
+                "build" if built_revision else "version-tag-fallback"
+            )
+        ),
+        "build_timestamp": provenance.get("build_timestamp"),
+        "build_dirty": provenance.get("dirty"),
+        "release_build": provenance.get("dirty") is False and bool(built_revision),
         "license": "GNU Affero General Public License v3 for deployments using the AGPL build of PyMuPDF",
         "license_url": "/legal/agpl-3.0",
         "copyright": "Copyright (c) 2026 OCR Parser contributors",

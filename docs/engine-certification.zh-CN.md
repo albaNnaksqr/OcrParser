@@ -20,6 +20,10 @@ GPU 预算或模型 revision 不同的结果，不能直接判定为性能回退
 ## 当前矩阵
 
 证据 commit：`9c3bea6`（`v0.2.0`）；矩阵刷新日期：2026-07-17。
+机器可读的来源记录维护在
+[`engine-certification-records.json`](engine-certification-records.json)。条件通过
+记录有意保留空的 runtime digest；只有 v0.3 rc 复验写入锁定镜像 digest 和准确
+parser commit 后，状态才能升级为 **Certified**。
 
 | 引擎 | 服务拓扑 | 契约 | 真实服务与输出 | 许可证审查 | 状态 |
 | --- | --- | --- | --- | --- | --- |
