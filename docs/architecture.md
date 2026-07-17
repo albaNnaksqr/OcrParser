@@ -50,6 +50,19 @@ and `fallback.source_stage` to distinguish normal two-stage completion from a
 real fallback. Metrics normalize unknown engine, stage, failure, and fallback
 values to `other` before using them as labels.
 
+## Control domains
+
+The Control application is a composition root: it owns lifecycle, middleware,
+dependency wiring, router registration, and static assets. Business behavior is
+split into six domains under `ocr_platform.control.domains`: jobs, workers,
+manifests, model profiles, remote administration, and diagnostics. Each domain
+owns its HTTP adapter, command/query surface, service implementation, and schema
+conversion. ORM models remain centralized for v0.3.
+
+The historical `ocr_platform.control.service` import path is a compatibility
+façade for v0.3. New integrations must import the owning domain instead; the
+5,000-line monolithic service module no longer exists.
+
 ## Compatibility boundary
 
 v0.3 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,

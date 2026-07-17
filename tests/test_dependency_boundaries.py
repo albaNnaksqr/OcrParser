@@ -93,3 +93,38 @@ def test_parser_facade_is_composed_without_class_level_method_grafts() -> None:
     assert isinstance(parser.resume_policy, ResumePolicy)
     assert "initialize" not in DotsOCRParser.__dict__
     assert "_run_inference_with_retries" not in DotsOCRParser.__dict__
+
+
+def test_control_application_is_only_a_composition_root() -> None:
+    control_root = Path(__file__).parents[1] / "ocr_platform" / "control"
+    app_path = control_root / "app.py"
+    app_tree = ast.parse(app_path.read_text(encoding="utf-8"), filename=str(app_path))
+
+    route_handlers = [
+        node
+        for node in ast.walk(app_tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name.startswith("api_")
+    ]
+
+    assert {node.name for node in route_handlers} <= {"api_root", "api_token_auth"}
+    assert len(app_path.read_text(encoding="utf-8").splitlines()) < 200
+    assert not (control_root / "service.py").exists()
+
+
+def test_control_domains_do_not_import_legacy_service_facade() -> None:
+    domains_root = Path(__file__).parents[1] / "ocr_platform" / "control" / "domains"
+    violations: list[str] = []
+
+    for path in domains_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            module = node.module or ""
+            if module == "ocr_platform.control.service" or (
+                node.level == 3 and module == "service"
+            ):
+                violations.append(f"{path.relative_to(domains_root.parent.parent.parent)}:{node.lineno}")
+
+    assert violations == []

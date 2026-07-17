@@ -15,6 +15,9 @@
 - Added one checksum-aware `MigrationRunner`, PostgreSQL advisory locking,
   migration `0019`, and the `ocr-platform-migrate status|plan|apply|verify`
   command shared by startup, diagnostics, deployment tooling, and CI.
+- Split the Control monolith into jobs, workers, manifests, model profiles,
+  remote administration, and diagnostics domains while preserving HTTP and
+  OpenAPI behavior and a one-release Python import compatibility façade.
 
 ## 0.2.1
 
