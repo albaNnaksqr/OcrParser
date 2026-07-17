@@ -101,8 +101,10 @@ GPU 预算或模型 revision 不同的结果，不能直接判定为性能回退
 - 清理：本任务启动的 MinerU、Paddle VLM 与 layout 服务均已停止，验证端口不再
   监听，GPU compute process 为空；原有共享 mock 服务未停止。
 
-统一使用 `success_fallback_text` 是一个可观测性缺陷：当前正常两阶段完成和真实
-fallback 都会写成该状态。在拆分状态与 fallback reason 前，认证只能保持条件通过。
+v0.3 开发主线为了兼容仍保留 `success_fallback_text`，但已经新增 `stages` 和结构化
+`fallback` 元数据。正常 MinerU/Paddle 两阶段完成记录 `fallback.used=false`，真实
+降级记录受控的 reason 和 source stage。认证仍保持条件通过，直到 v0.3 release
+candidate 使用锁定的真实服务完成复验。
 
 ## 每个引擎的最低证据
 

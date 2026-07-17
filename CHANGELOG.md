@@ -7,6 +7,11 @@
   missing-extra errors and added empty-environment installation coverage.
 - Included the runtime JSON configuration files required by the packaged
   `dots_ocr.data_index` helpers.
+- Added structured engine stage and fallback contracts to page/file events,
+  status sidecars, and artifact metadata while retaining legacy fallback page
+  statuses for compatibility.
+- Distinguished normal MinerU/Paddle two-stage completion from real degraded
+  paths and added bounded-cardinality stage/fallback metrics.
 
 ## 0.2.1
 

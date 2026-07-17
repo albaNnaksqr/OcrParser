@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Protocol
 
+from .execution import EngineExecutionTrace
+
 
 @dataclass(frozen=True)
 class EngineCapabilities:
@@ -24,6 +26,7 @@ class EnginePageResult:
     page_json_path: Optional[str] = None
     page_layout_path: Optional[str] = None
     error: Optional[str] = None
+    execution_trace: Optional[EngineExecutionTrace] = None
 
     def to_layout_result(self) -> Dict[str, Any]:
         payload = {
@@ -41,6 +44,13 @@ class EnginePageResult:
         payload["page_layout_path"] = self.page_layout_path
         if self.error:
             payload["error"] = self.error
+        if self.execution_trace is not None:
+            execution = self.execution_trace.to_dict()
+            payload.update(execution)
+            payload["native_artifacts"] = [
+                {**artifact, **execution}
+                for artifact in self.native_artifacts
+            ]
         return payload
 
 

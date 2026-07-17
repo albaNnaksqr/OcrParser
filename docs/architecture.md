@@ -36,9 +36,23 @@ Engines receive `ParserEngineContext`, not the parser façade. Engine-specific
 branches are expressed as `EngineCapabilities`, including shared cross-page
 post-processing, native artifacts, and layout-service requirements.
 
+Engine execution metadata uses three neutral contracts:
+
+- `StageOutcome` records a bounded stage name, outcome, optional failure category,
+  and optional duration.
+- `FallbackInfo` distinguishes a real degraded path from the legacy page status.
+- `EngineExecutionTrace` carries both structures into page/file events, status
+  sidecars, and artifact metadata.
+
+The legacy `success_fallback_text` and `success_fallback_image` statuses remain
+accepted through v0.3. Consumers should use `fallback.used`, `fallback.reason`,
+and `fallback.source_stage` to distinguish normal two-stage completion from a
+real fallback. Metrics normalize unknown engine, stage, failure, and fallback
+values to `other` before using them as labels.
+
 ## Compatibility boundary
 
-v0.2 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,
+v0.3 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,
 manifest JSONL, output directory layout, Markdown/JSON/sidecars, and top-level
 `ParserConfig`, `DotsOCRParser`, and `DotsOCRParserOptimized` imports. Internal
 modules, dynamic attributes, and semi-public helpers are not compatibility APIs.

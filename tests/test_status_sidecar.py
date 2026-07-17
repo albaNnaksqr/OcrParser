@@ -175,3 +175,50 @@ def test_status_sidecar_records_manifest_relative_path(tmp_path):
     payload = json.loads((save_dir / ".ocr_status.json").read_text(encoding="utf-8"))
 
     assert payload["manifest_relative_path"] == "nested/canonical.pdf"
+
+
+def test_status_sidecar_records_execution_trace_on_document_and_artifact(tmp_path):
+    input_file = tmp_path / "input.pdf"
+    input_file.write_bytes(b"%PDF-1.4\n")
+    artifact = tmp_path / "out" / "input" / "native" / "page.md"
+    artifact.parent.mkdir(parents=True)
+    artifact.write_text("ok", encoding="utf-8")
+
+    result = [
+        {
+            "page_no": 1,
+            "status": "success_fallback_text",
+            "stages": [
+                {"stage": "layout", "status": "failed", "failure_category": "model_unreachable"},
+                {"stage": "single_stage_ocr", "status": "success"},
+            ],
+            "fallback": {
+                "used": True,
+                "reason": "layout_unavailable",
+                "source_stage": "layout",
+            },
+            "native_artifacts": [
+                {"kind": "markdown", "path": str(artifact), "engine": "paddleocr-vl"}
+            ],
+        }
+    ]
+
+    write_status_sidecar(
+        parser=ParserWithSecretConfig(),
+        save_dir=str(tmp_path / "out" / "input"),
+        input_path=str(input_file),
+        filename="input",
+        status="success",
+        error=None,
+        result=result,
+        duration_seconds=1.25,
+    )
+
+    payload = json.loads((tmp_path / "out" / "input" / ".ocr_status.json").read_text())
+    assert payload["fallback"] == {
+        "used": True,
+        "reason": "layout_unavailable",
+        "source_stage": "layout",
+    }
+    assert payload["stages"][0]["page_no"] == 1
+    assert payload["artifacts"][0]["fallback"] == payload["fallback"]

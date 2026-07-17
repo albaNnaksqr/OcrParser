@@ -144,11 +144,34 @@ def test_mineru_records_two_stage_metrics(tmp_path):
     result = asyncio.run(engine.process_page(page_data))
 
     assert "Recognized text" in result.md_content
+    assert result.execution_trace.fallback.used is False
+    assert [stage.stage for stage in result.execution_trace.stages] == [
+        "layout",
+        "recognition",
+        "output",
+    ]
     assert parser.two_stage_metrics["two_stage_engine"] == "mineru"
     assert parser.two_stage_metrics["two_stage_blocks_detected"] == 2
     assert parser.two_stage_metrics["two_stage_blocks_recognized"] == 2
     assert parser.two_stage_metrics["two_stage_blocks_skipped"] == 0
     assert parser.two_stage_metrics["two_stage_max_block_queue_depth"] == 2
+
+
+def test_mineru_layout_only_output_is_recorded_as_real_fallback(tmp_path):
+    parser = FakeParser("")
+    engine = NativeOpenAIEngine(parser, "mineru")
+
+    async def fake_infer_raw(*_args, **_kwargs):
+        return "layout response without parseable boxes"
+
+    engine._infer_raw = fake_infer_raw
+    result = asyncio.run(engine.process_page(_make_page_data(tmp_path)))
+
+    assert result.execution_trace.fallback.to_dict() == {
+        "used": True,
+        "reason": "layout_output_unusable",
+        "source_stage": "layout",
+    }
 
 
 def test_mineru_dynamic_recognition_limiter_does_not_replace_active_slots():

@@ -176,6 +176,12 @@ def test_process_page_two_stage(tmp_path):
         result = asyncio.run(engine.process_page(page_data))
 
     assert result.status == "success_fallback_text"
+    assert result.execution_trace.fallback.used is False
+    assert [stage.stage for stage in result.execution_trace.stages] == [
+        "layout",
+        "recognition",
+        "output",
+    ]
     # both blocks produce content → md_content is non-empty
     assert result.md_content
     # artifacts written
@@ -199,6 +205,11 @@ def test_process_page_fallback_on_layout_failure(tmp_path):
         result = asyncio.run(engine.process_page(page_data))
 
     assert result.md_content == "Fallback OCR text"
+    assert result.execution_trace.fallback.to_dict() == {
+        "used": True,
+        "reason": "layout_unavailable",
+        "source_stage": "layout",
+    }
 
 
 def test_process_page_empty_boxes_fallback(tmp_path):
@@ -211,6 +222,7 @@ def test_process_page_empty_boxes_fallback(tmp_path):
         result = asyncio.run(engine.process_page(page_data))
 
     assert result.md_content == "Single stage result"
+    assert result.execution_trace.fallback.reason == "layout_empty"
 
 
 def test_process_page_records_layout_failure_fallback_metrics(tmp_path):

@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from .contracts import ManifestItem
+from .contracts.execution import execution_metadata
 
 from .config import DEFAULT_MAX_COMPLETION_TOKENS, DEFAULT_MODEL_DIR, ParserConfig
 
@@ -792,6 +793,7 @@ async def _run(args) -> int:
                             status="failed",
                             error=error_message,
                             failure_category=failure_category,
+                            **execution_metadata(None),
                         )
                         return [
                             {
@@ -832,6 +834,7 @@ async def _run(args) -> int:
                                 status="skipped",
                                 output_path=md_path,
                                 error=None,
+                                **execution_metadata(None),
                             )
                             return [
                                 {

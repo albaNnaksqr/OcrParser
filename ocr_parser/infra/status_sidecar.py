@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from ..contracts.execution import aggregate_execution_metadata, execution_metadata
 from .failure_category import infer_failure_category
 from .resume import STATUS_SIDECAR_NAME
 
@@ -29,27 +30,34 @@ def _first_output_md_path(result: list[dict[str, Any]]) -> str | None:
     return None
 
 
-def _artifact_paths_from_result(result: list[dict[str, Any]]) -> list[dict[str, str]]:
-    artifacts: list[dict[str, str]] = []
+def _artifact_paths_from_result(result: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    artifacts: list[dict[str, Any]] = []
     seen_paths: set[str] = set()
+    document_execution = aggregate_execution_metadata(result)
 
-    def add_artifact(kind: str, path: Any, engine: Any = None) -> None:
+    def add_artifact(
+        kind: str,
+        path: Any,
+        engine: Any = None,
+        execution: dict[str, Any] | None = None,
+    ) -> None:
         if not path:
             return
         path_value = str(path)
         if path_value in seen_paths:
             return
         seen_paths.add(path_value)
-        artifact = {"kind": kind, "path": path_value}
+        artifact = {"kind": kind, "path": path_value, **(execution or document_execution)}
         if engine:
             artifact["engine"] = str(engine)
         artifacts.append(artifact)
 
     for row in result or []:
-        add_artifact("document_markdown", row.get("output_md_path"))
-        add_artifact("origin_markdown", row.get("origin_md_path"))
-        add_artifact("layout_pdf", row.get("layout_pdf_path"))
-        add_artifact("document_json", row.get("document_json_path"))
+        row_execution = execution_metadata(row)
+        add_artifact("document_markdown", row.get("output_md_path"), execution=document_execution)
+        add_artifact("origin_markdown", row.get("origin_md_path"), execution=document_execution)
+        add_artifact("layout_pdf", row.get("layout_pdf_path"), execution=document_execution)
+        add_artifact("document_json", row.get("document_json_path"), execution=document_execution)
         for native_artifact in row.get("native_artifacts") or []:
             if not isinstance(native_artifact, dict):
                 continue
@@ -57,6 +65,7 @@ def _artifact_paths_from_result(result: list[dict[str, Any]]) -> list[dict[str, 
                 str(native_artifact.get("kind") or "native_artifact"),
                 native_artifact.get("path"),
                 native_artifact.get("engine"),
+                execution=execution_metadata(native_artifact) if "fallback" in native_artifact else row_execution,
             )
     return artifacts
 
@@ -180,6 +189,7 @@ def write_status_sidecar(
     sidecar_path = Path(save_dir) / STATUS_SIDECAR_NAME
     sidecar_path.parent.mkdir(parents=True, exist_ok=True)
     failure_category = _failure_category_for_sidecar(status, error, result)
+    execution = aggregate_execution_metadata(result)
     payload = {
         "status": status,
         "file_path": input_path,
@@ -190,6 +200,7 @@ def write_status_sidecar(
         "error_type": _error_type_for_sidecar(status, result, error_type),
         "output_md_path": _first_output_md_path(result),
         "artifacts": _artifact_paths_from_result(result),
+        **execution,
         "pages": len(result or []),
         **_page_status_summary(parser, result),
         "duration_seconds": round(max(duration_seconds, 0.0), 3),

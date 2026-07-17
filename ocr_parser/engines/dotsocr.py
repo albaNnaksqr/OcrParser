@@ -15,7 +15,14 @@ from dots_ocr.utils.format_transformer_v3 import (
 )
 from dots_ocr.utils.layout_utils import post_process_output
 
-from .base import EngineCapabilities, EnginePageResult
+from .base import (
+    EngineCapabilities,
+    EngineExecutionTrace,
+    EnginePageResult,
+    FallbackInfo,
+    StageOutcome,
+)
+from ..infra.failure_category import infer_failure_category
 
 
 class DotsOCREngine:
@@ -125,6 +132,35 @@ class DotsOCREngine:
         use_concurrent_for_data_issue = False
         concurrent_issue_reason = "malformed model output"
 
+        def _success_trace() -> EngineExecutionTrace:
+            return EngineExecutionTrace(
+                stages=(
+                    StageOutcome(stage="primary_inference", status="success"),
+                    StageOutcome(stage="postprocess", status="success"),
+                ),
+                fallback=FallbackInfo(),
+            )
+
+        def _failed_primary_stages() -> tuple[StageOutcome, ...]:
+            category = infer_failure_category({"error": str(last_error or "")})
+            if last_raw_response_for_fallback:
+                return (
+                    StageOutcome(stage="primary_inference", status="success"),
+                    StageOutcome(
+                        stage="postprocess",
+                        status="failed",
+                        failure_category=category,
+                    ),
+                )
+            return (
+                StageOutcome(
+                    stage="primary_inference",
+                    status="failed",
+                    failure_category=category,
+                ),
+                StageOutcome(stage="postprocess", status="skipped"),
+            )
+
         async def _run_concurrent_retries_for_data_issue(reason_label: str):
             nonlocal primary_attempts_used, last_error, last_raw_response_for_fallback, primary_success
 
@@ -192,6 +228,7 @@ class DotsOCREngine:
                     original_cells=race_original_cells,
                     page_json_path=json_path,
                     page_layout_path=layout_path,
+                    execution_trace=_success_trace(),
                 )
             except Exception as race_exc:
                 last_error = race_exc
@@ -324,6 +361,7 @@ class DotsOCREngine:
                 original_cells=original_cells,
                 page_json_path=json_path,
                 page_layout_path=layout_path,
+                execution_trace=_success_trace(),
             )
 
         if not primary_success and last_error is not None:
@@ -394,6 +432,7 @@ class DotsOCREngine:
                     original_cells=race_original_cells,
                     page_json_path=json_path,
                     page_layout_path=layout_path,
+                    execution_trace=_success_trace(),
                 )
             except Exception as exc:
                 last_error = exc
@@ -457,6 +496,18 @@ class DotsOCREngine:
                             cells=[],
                             page_json_path=None,
                             page_layout_path=None,
+                            execution_trace=EngineExecutionTrace(
+                                stages=(*_failed_primary_stages(), StageOutcome(stage="text_fallback", status="success")),
+                                fallback=FallbackInfo(
+                                    used=True,
+                                    reason="primary_stage_failed",
+                                    source_stage=(
+                                        "postprocess"
+                                        if last_raw_response_for_fallback
+                                        else "primary_inference"
+                                    ),
+                                ),
+                            ),
                         )
             except Exception as text_fallback_error:
                 parser._console_write(
@@ -513,6 +564,18 @@ class DotsOCREngine:
                 cells=[],
                 page_json_path=None,
                 page_layout_path=None,
+                execution_trace=EngineExecutionTrace(
+                    stages=(
+                        *_failed_primary_stages(),
+                        StageOutcome(stage="text_fallback", status="failed", failure_category="parser_failed"),
+                        StageOutcome(stage="image_fallback", status="success"),
+                    ),
+                    fallback=FallbackInfo(
+                        used=True,
+                        reason="text_fallback_unavailable",
+                        source_stage="text_fallback",
+                    ),
+                ),
             )
         except Exception as exc:
             parser._console_write(
@@ -526,6 +589,18 @@ class DotsOCREngine:
                 error=f"{type(last_error).__name__}: {last_error} | plus: {exc}",
                 page_json_path=None,
                 page_layout_path=None,
+                execution_trace=EngineExecutionTrace(
+                    stages=(
+                        *_failed_primary_stages(),
+                        StageOutcome(stage="text_fallback", status="failed", failure_category="parser_failed"),
+                        StageOutcome(stage="image_fallback", status="failed", failure_category="output_unwritable"),
+                    ),
+                    fallback=FallbackInfo(
+                        used=True,
+                        reason="text_fallback_unavailable",
+                        source_stage="text_fallback",
+                    ),
+                ),
             )
 
     async def finalize_document(

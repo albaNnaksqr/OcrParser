@@ -32,7 +32,14 @@ from PIL import Image
 from ocr_parser.output.native_writer import async_write_native_json, async_write_native_text
 
 from .api import create_chat_completion, run_in_encode_lane
-from .base import EngineCapabilities, EnginePageResult
+from .base import (
+    EngineCapabilities,
+    EngineExecutionTrace,
+    EnginePageResult,
+    FallbackInfo,
+    StageOutcome,
+)
+from ..infra.failure_category import infer_failure_category
 from .otsl2html import convert_otsl_to_html
 from .two_stage import LayoutBlock, TwoStageMetrics, recognize_layout_blocks, record_two_stage_metrics
 
@@ -622,7 +629,7 @@ class PaddleOCRVLEngine:
 
     async def _infer_two_stage(
         self, image_path: str, save_dir: str = "", page_num: int = 0
-    ) -> Tuple[List[Dict[str, Any]], str]:
+    ) -> Tuple[List[Dict[str, Any]], str, EngineExecutionTrace]:
         with Image.open(image_path) as img:
             original = img.convert("RGB")
 
@@ -630,14 +637,30 @@ class PaddleOCRVLEngine:
         layout_start = time.monotonic()
         try:
             boxes = await self._detect_layout(original)
-        except Exception:
+        except Exception as exc:
             layout_latency = max(0.0, time.monotonic() - layout_start)
             metrics.layout_latency_seconds_total += layout_latency
             self._add_float_metric("paddle_layout_latency_seconds_total", layout_latency)
             self._increment_metric("paddle_layout_failures")
             self._increment_metric("paddle_single_stage_fallbacks")
             record_two_stage_metrics(self.parser, metrics)
-            return await self._infer_single_stage(original)
+            blocks, text = await self._infer_single_stage(original)
+            return blocks, text, EngineExecutionTrace(
+                stages=(
+                    StageOutcome(
+                        stage="layout",
+                        status="failed",
+                        failure_category=infer_failure_category({"error": str(exc)}),
+                        duration_seconds=layout_latency,
+                    ),
+                    StageOutcome(stage="single_stage_ocr", status="success"),
+                ),
+                fallback=FallbackInfo(
+                    used=True,
+                    reason="layout_unavailable",
+                    source_stage="layout",
+                ),
+            )
         layout_latency = max(0.0, time.monotonic() - layout_start)
         metrics.layout_latency_seconds_total += layout_latency
         self._add_float_metric("paddle_layout_latency_seconds_total", layout_latency)
@@ -645,7 +668,23 @@ class PaddleOCRVLEngine:
         if not boxes:
             self._increment_metric("paddle_single_stage_fallbacks")
             record_two_stage_metrics(self.parser, metrics)
-            return await self._infer_single_stage(original)
+            blocks, text = await self._infer_single_stage(original)
+            return blocks, text, EngineExecutionTrace(
+                stages=(
+                    StageOutcome(
+                        stage="layout",
+                        status="failed",
+                        failure_category="model_output_invalid",
+                        duration_seconds=layout_latency,
+                    ),
+                    StageOutcome(stage="single_stage_ocr", status="success"),
+                ),
+                fallback=FallbackInfo(
+                    used=True,
+                    reason="layout_empty",
+                    source_stage="layout",
+                ),
+            )
 
         images_dir: Optional[str] = None
         if save_dir and any(b["label"] in _IMAGE_LABELS for b in boxes):
@@ -719,7 +758,21 @@ class PaddleOCRVLEngine:
             recognized.append({**block, "content": result.content.strip(), "img_path": img_path})
 
         blocks = list(recognized)
-        return blocks, self._assemble_markdown(blocks)
+        return blocks, self._assemble_markdown(blocks), EngineExecutionTrace(
+            stages=(
+                StageOutcome(
+                    stage="layout",
+                    status="success",
+                    duration_seconds=metrics.layout_latency_seconds_total,
+                ),
+                StageOutcome(
+                    stage="recognition",
+                    status="success",
+                    duration_seconds=metrics.recognition_latency_seconds_total,
+                ),
+            ),
+            fallback=FallbackInfo(),
+        )
 
     # ── markdown assembly ─────────────────────────────────────────────────────
 
@@ -800,7 +853,7 @@ class PaddleOCRVLEngine:
         save_dir = page_data["save_dir"]
         image_path = page_data.get("processed_image_path") or page_data.get("origin_image_path")
 
-        blocks, md_content = await self._run_with_retries(
+        blocks, md_content, execution_trace = await self._run_with_retries(
             lambda: self._infer_two_stage(image_path, save_dir=save_dir, page_num=original_page_num)
         )
 
@@ -824,6 +877,10 @@ class PaddleOCRVLEngine:
                 )).__dict__
             )
 
+        execution_trace = EngineExecutionTrace(
+            stages=(*execution_trace.stages, StageOutcome(stage="output", status="success")),
+            fallback=execution_trace.fallback,
+        )
         return EnginePageResult(
             page_no=page_idx,
             original_page_num=original_page_num,
@@ -832,6 +889,7 @@ class PaddleOCRVLEngine:
             md_content=md_content,
             cells=blocks if blocks else None,
             native_artifacts=artifacts,
+            execution_trace=execution_trace,
         )
 
     async def finalize_document(

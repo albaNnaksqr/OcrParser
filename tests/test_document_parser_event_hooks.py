@@ -267,6 +267,44 @@ def test_parse_file_done_event_includes_runtime_snapshot(monkeypatch, tmp_path):
     assert parser.event_writer.events[-1][1]["runtime"] == parser.runtime_snapshot
 
 
+def test_parse_file_done_event_includes_aggregated_execution_trace(monkeypatch, tmp_path):
+    input_file = tmp_path / "sample.pdf"
+    input_file.write_bytes(b"%PDF")
+    parser = ParserStub()
+
+    async def parse_pdf_stub(*args, **kwargs):
+        return [
+            {
+                "page_no": 1,
+                "file_path": str(input_file),
+                "status": "success_fallback_text",
+                "error": None,
+                "filename": "sample",
+                "stages": [
+                    {"stage": "layout", "status": "failed", "failure_category": "model_unreachable"},
+                    {"stage": "single_stage_ocr", "status": "success"},
+                ],
+                "fallback": {
+                    "used": True,
+                    "reason": "layout_unavailable",
+                    "source_stage": "layout",
+                },
+            }
+        ]
+
+    monkeypatch.setattr(document_parser, "parse_pdf", parse_pdf_stub)
+
+    asyncio.run(parse_file(parser, str(input_file), output_dir=str(tmp_path / "out")))
+
+    payload = parser.event_writer.events[-1][1]
+    assert payload["fallback"] == {
+        "used": True,
+        "reason": "layout_unavailable",
+        "source_stage": "layout",
+    }
+    assert payload["stages"][0]["page_no"] == 1
+
+
 def test_parse_file_writes_success_status_sidecar(monkeypatch, tmp_path):
     input_file = tmp_path / "sample.pdf"
     input_file.write_bytes(b"%PDF")

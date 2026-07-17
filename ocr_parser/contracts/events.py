@@ -9,3 +9,5 @@ class JobEventPayload(TypedDict, total=False):
     type: str
     payload: dict[str, Any]
     failure_category: FailureCategory
+    stages: list[dict[str, Any]]
+    fallback: dict[str, Any]

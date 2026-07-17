@@ -10,7 +10,8 @@ from typing import Any, Dict, List, Optional
 
 import fitz
 
-from ..infra.metrics import DOCUMENTS, PAGES, PAGES_IN_FLIGHT
+from ..contracts.execution import aggregate_execution_metadata, execution_metadata
+from ..infra.metrics import DOCUMENTS, PAGES, PAGES_IN_FLIGHT, record_engine_execution_trace
 from ..models import PageTask
 from ..output import write_document_outputs
 from ..domain.pdf_worker import process_pdf_page_worker
@@ -182,6 +183,7 @@ async def _page_consumer(
                     page_no=page_num,
                     status=status,
                     error=event_error,
+                    **execution_metadata(None),
                 )
                 if page_progress_callback:
                     page_progress_callback()
@@ -217,6 +219,11 @@ async def _page_consumer(
             status = result.get("status", "unknown")
             error = result.get("error") if status not in parser.SUCCESS_STATUSES else None
             PAGES.labels(status=status).inc()
+            trace = execution_metadata(result)
+            record_engine_execution_trace(
+                str(getattr(parser.ocr_engine, "name", getattr(parser, "engine", "other"))),
+                trace,
+            )
             _emit_event(
                 parser,
                 "page_done",
@@ -225,6 +232,7 @@ async def _page_consumer(
                 page_no=page_num,
                 status=status,
                 error=error,
+                **trace,
             )
 
             if page_progress_callback:
@@ -252,6 +260,7 @@ async def _page_consumer(
                 page_no=page_num,
                 status="error",
                 error=str(exc),
+                **execution_metadata(None),
             )
             if page_progress_callback:
                 page_progress_callback()
@@ -401,15 +410,19 @@ async def parse_pdf(
         for index in range(total_pages_expected):
             result = results_storage.get(index + 1, {})
             status = result.get("status", "unknown_error")
-            all_results_for_jsonl.append(
-                {
+            item = {
                     "page_no": result.get("original_page_num", index + 1),
                     "file_path": input_path,
                     "status": status,
                     "filename": filename,
                     "error": result.get("error") if status not in parser.SUCCESS_STATUSES else None,
+                    **execution_metadata(result),
                 }
-            )
+            if result.get("native_artifacts"):
+                item["native_artifacts"] = [dict(artifact) for artifact in result["native_artifacts"]]
+            all_results_for_jsonl.append(item)
+
+        document_execution = aggregate_execution_metadata(all_results_for_jsonl)
 
         for item in all_results_for_jsonl:
             if item["status"] in parser.SUCCESS_STATUSES:
@@ -422,7 +435,10 @@ async def parse_pdf(
                     if artifacts.document_json_path:
                         item["document_json_path"] = artifacts.document_json_path
                 if native_document_artifacts:
-                    item["native_artifacts"] = native_document_artifacts
+                    item.setdefault("native_artifacts", []).extend(
+                        {**artifact, **document_execution}
+                        for artifact in native_document_artifacts
+                    )
                 if data_index_summary:
                     item.update(data_index_summary)
                 break
@@ -479,6 +495,7 @@ async def parse_file(
                 "filename": filename,
                 "status": "skipped",
                 "error": None,
+                **execution_metadata(None),
             }
             runtime = _runtime_snapshot(parser)
             if runtime is not None:
@@ -539,6 +556,7 @@ async def parse_file(
             "filename": filename,
             "status": file_status,
             "error": file_error,
+            **aggregate_execution_metadata(result),
         }
         if file_status != "success":
             payload["failure_category"] = infer_failure_category({"error": file_error})
@@ -576,6 +594,7 @@ async def parse_file(
             "status": "failed",
             "error": str(exc),
             "failure_category": failure_category,
+            **execution_metadata(None),
         }
         runtime = _runtime_snapshot(parser)
         if runtime is not None:

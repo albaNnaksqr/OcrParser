@@ -115,10 +115,11 @@ actual fallback are distinguishable in sidecars.
   validation ports no longer listened and no GPU compute process remained. The
   existing shared mock service was not stopped.
 
-The common `success_fallback_text` status is an observability defect: it is
-currently emitted for both normal two-stage completion and actual fallback.
-Certification must remain conditional until the status and fallback reason are
-separated.
+The v0.3 development line keeps `success_fallback_text` for compatibility but
+now emits `stages` and structured `fallback` metadata. Normal MinerU/Paddle
+two-stage completion records `fallback.used=false`; real degradation records a
+bounded reason and source stage. The certification remains conditional until the
+v0.3 release candidate is revalidated against the pinned real services.
 
 ## Minimum Evidence Per Engine
 

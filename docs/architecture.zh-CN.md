@@ -31,9 +31,20 @@ manifest 导入路径在 v0.2 仍作为 re-export 保留，因此 JSONL wire for
 引擎接收 `ParserEngineContext`，不再接收完整 Parser façade。共享跨页后处理、
 原生产物和布局服务依赖由 `EngineCapabilities` 表达。
 
+引擎执行元数据使用三个中立契约：
+
+- `StageOutcome` 记录受控的阶段名、结果、可选失败类别和可选耗时；
+- `FallbackInfo` 将真实降级路径与旧 page status 分离；
+- `EngineExecutionTrace` 将两者传递到 page/file event、status sidecar 和产物元数据。
+
+v0.3 继续兼容 `success_fallback_text` 和 `success_fallback_image`。消费者应使用
+`fallback.used`、`fallback.reason` 和 `fallback.source_stage` 区分正常两阶段完成与
+真实 fallback。指标写入 label 前会把未知 engine、stage、failure 和 fallback 值
+统一归一化为 `other`。
+
 ## 兼容边界
 
-v0.2 保持 CLI 参数和退出码、HTTP 路径和 schema、migration 历史、manifest
+v0.3 保持 CLI 参数和退出码、HTTP 路径和 schema、migration 历史、manifest
 JSONL、输出目录、Markdown/JSON/sidecar，以及顶层 `ParserConfig`、
 `DotsOCRParser`、`DotsOCRParserOptimized` 导入。内部模块、动态属性和半公开 helper
 不属于兼容 API。

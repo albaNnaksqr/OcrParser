@@ -13,7 +13,13 @@ from PIL import Image
 from ocr_parser.output.native_writer import async_write_native_json, async_write_native_text
 
 from .api import create_chat_completion, prepare_image_payload, run_in_encode_lane
-from .base import EngineCapabilities, EnginePageResult
+from .base import (
+    EngineCapabilities,
+    EngineExecutionTrace,
+    EnginePageResult,
+    FallbackInfo,
+    StageOutcome,
+)
 from .otsl2html import convert_otsl_to_html
 from .two_stage import LayoutBlock, TwoStageMetrics, recognize_layout_blocks, record_two_stage_metrics
 
@@ -306,7 +312,7 @@ class NativeOpenAIEngine:
         prompt: str,
         save_dir: str = "",
         page_num: int = 0,
-    ) -> str:
+    ) -> Tuple[str, EngineExecutionTrace]:
         loop = asyncio.get_event_loop()
 
         with Image.open(image_path) as original_image:
@@ -331,7 +337,22 @@ class NativeOpenAIEngine:
 
         if not blocks:
             record_two_stage_metrics(self.parser, metrics)
-            return layout_response
+            return layout_response, EngineExecutionTrace(
+                stages=(
+                    StageOutcome(
+                        stage="layout",
+                        status="failed",
+                        failure_category="model_output_invalid",
+                        duration_seconds=metrics.layout_latency_seconds_total,
+                    ),
+                    StageOutcome(stage="recognition", status="skipped"),
+                ),
+                fallback=FallbackInfo(
+                    used=True,
+                    reason="layout_output_unusable",
+                    source_stage="layout",
+                ),
+            )
 
         filtered = [b for b in blocks if not self._should_filter_mineru_block(b)]
         self._record_mineru_filtered_blocks(len(blocks) - len(filtered))
@@ -425,7 +446,21 @@ class NativeOpenAIEngine:
         for result in recognized_results:
             block, _data_url, img_path = result.block.payload
             recognized_blocks.append({**block, "content": result.content.strip(), "img_path": img_path})
-        return self._assemble_mineru_markdown(list(recognized_blocks))
+        return self._assemble_mineru_markdown(list(recognized_blocks)), EngineExecutionTrace(
+            stages=(
+                StageOutcome(
+                    stage="layout",
+                    status="success",
+                    duration_seconds=metrics.layout_latency_seconds_total,
+                ),
+                StageOutcome(
+                    stage="recognition",
+                    status="success",
+                    duration_seconds=metrics.recognition_latency_seconds_total,
+                ),
+            ),
+            fallback=FallbackInfo(),
+        )
 
     def _parse_mineru_layout(self, layout_response: str) -> List[Dict[str, Any]]:
         blocks = []
@@ -508,14 +543,19 @@ class NativeOpenAIEngine:
         prompt: str,
         save_dir: str = "",
         page_num: int = 0,
-    ) -> str:
+    ) -> Tuple[str, EngineExecutionTrace]:
         if self.name == "mineru":
             return await self._run_with_retries(
                 lambda: self._infer_mineru(image_path, prompt, save_dir=save_dir, page_num=page_num)
             )
         if self.name == "paddleocr-vl":
-            return await self._run_with_retries(lambda: self._infer_paddleocr_vl(image_path, prompt))
-        return await self._run_with_retries(lambda: self._infer(image_path, prompt))
+            text = await self._run_with_retries(lambda: self._infer_paddleocr_vl(image_path, prompt))
+        else:
+            text = await self._run_with_retries(lambda: self._infer(image_path, prompt))
+        return text, EngineExecutionTrace(
+            stages=(StageOutcome(stage="primary_inference", status="success"),),
+            fallback=FallbackInfo(),
+        )
 
     async def process_page(self, page_data: Dict[str, Any]) -> EnginePageResult:
         page_idx = page_data["page_idx"]
@@ -523,7 +563,7 @@ class NativeOpenAIEngine:
         save_dir = page_data["save_dir"]
         image_path = page_data.get("processed_image_path") or page_data.get("origin_image_path")
 
-        md_content = await self._infer_with_retries(
+        md_content, execution_trace = await self._infer_with_retries(
             image_path, self._prompt(), save_dir=save_dir, page_num=original_page_num
         )
 
@@ -548,6 +588,10 @@ class NativeOpenAIEngine:
                 )).__dict__
             )
 
+        execution_trace = EngineExecutionTrace(
+            stages=(*execution_trace.stages, StageOutcome(stage="output", status="success")),
+            fallback=execution_trace.fallback,
+        )
         return EnginePageResult(
             page_no=page_idx,
             original_page_num=original_page_num,
@@ -555,6 +599,7 @@ class NativeOpenAIEngine:
             raw_response=md_content,
             md_content=md_content,
             native_artifacts=artifacts,
+            execution_trace=execution_trace,
         )
 
     async def finalize_document(

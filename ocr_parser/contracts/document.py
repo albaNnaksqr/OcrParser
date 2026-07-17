@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
+from .execution import EngineExecutionTrace
+
 
 @dataclass(frozen=True)
 class ArtifactMetadata:
@@ -10,6 +12,20 @@ class ArtifactMetadata:
     path: str
     size_bytes: Optional[int] = None
     sha256: Optional[str] = None
+    execution_trace: Optional[EngineExecutionTrace] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {
+            "kind": self.kind,
+            "path": self.path,
+        }
+        if self.size_bytes is not None:
+            payload["size_bytes"] = self.size_bytes
+        if self.sha256 is not None:
+            payload["sha256"] = self.sha256
+        if self.execution_trace is not None:
+            payload.update(self.execution_trace.to_dict())
+        return payload
 
 
 @dataclass
