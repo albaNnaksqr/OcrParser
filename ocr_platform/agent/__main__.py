@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Optional, TypeVar
 
 from ocr_parser.infra.failure_category import infer_failure_category
+from ocr_platform.optional import PLATFORM_MODULES, require_extra
 from ocr_platform.agent.client import ControlClient
 from ocr_platform.agent.config import AgentConfig, parse_args
 from ocr_platform.agent.manifest_integrity import build_worker_manifest_integrity_report
@@ -414,6 +415,7 @@ async def amain(argv: Optional[list[str]] = None) -> None:
 
 
 def main() -> None:
+    require_extra("platform", PLATFORM_MODULES)
     asyncio.run(amain())
 
 

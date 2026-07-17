@@ -121,13 +121,30 @@ tests/            pytest coverage for parser and platform behavior
 - PostgreSQL for production control-plane deployments
 - Shared storage for multi-worker platform jobs
 
-Install dependencies:
+The default install contains the Parser, remote-engine clients, and PDF/image
+processing only. Package-index installations use these profiles:
+
+```bash
+pip install ocrparser-platform
+pip install 'ocrparser-platform[platform]'
+pip install 'ocrparser-platform[s3]'
+pip install 'ocrparser-platform[layout]'
+pip install 'ocrparser-platform[full]'
+pip install 'ocrparser-platform[dev]'
+```
+
+For development from a source checkout:
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
+
+`full` intentionally excludes the hardware-specific local layout runtime. A
+base installation still provides all three console-script names; invoking a
+Platform command without `[platform]` exits with the exact install command
+instead of exposing an import traceback.
 
 ## Quickstart: Control Flow Without A Real Model
 
@@ -210,7 +227,7 @@ asyncio.run(main())
 
 ## Optional Control UI
 
-For local dev:
+Install `[platform]`, then for local development run:
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

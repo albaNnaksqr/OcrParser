@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import os
 import ipaddress
+from importlib import import_module
 
-import uvicorn
+from ocr_platform.optional import PLATFORM_MODULES, require_extra
 
 
 API_TOKEN_ENV = "OCR_PLATFORM_API_TOKEN"
@@ -29,6 +30,8 @@ def validate_control_bind(host: str) -> None:
 
 
 def main() -> None:
+    require_extra("platform", PLATFORM_MODULES)
+    uvicorn = import_module("uvicorn")
     host = os.environ.get("OCR_PLATFORM_HOST", "127.0.0.1")
     port = int(os.environ.get("OCR_PLATFORM_PORT", "8080"))
     validate_control_bind(host)

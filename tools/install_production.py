@@ -457,8 +457,8 @@ def build_install_plan(
                     "-m",
                     "pip",
                     "install",
-                    "-r",
-                    str(config.repo_dir / "requirements.txt"),
+                    "-e",
+                    f"{config.repo_dir}[platform]",
                 ],
             )
         )

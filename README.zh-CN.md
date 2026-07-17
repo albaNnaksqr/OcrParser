@@ -108,13 +108,29 @@ tests/            parser 和 platform 行为的 pytest 覆盖
 - 生产 control-plane 部署需要 PostgreSQL
 - 多 worker platform job 需要共享存储
 
-安装依赖：
+默认安装只包含 Parser、远程引擎 client 和 PDF/图片处理。从 package index 安装时
+使用以下 profile：
+
+```bash
+pip install ocrparser-platform
+pip install 'ocrparser-platform[platform]'
+pip install 'ocrparser-platform[s3]'
+pip install 'ocrparser-platform[layout]'
+pip install 'ocrparser-platform[full]'
+pip install 'ocrparser-platform[dev]'
+```
+
+从源码 checkout 开发时：
 
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
 ```
+
+`full` 明确不包含硬件相关的本地 layout runtime。基础安装仍会提供三个 console
+script 名称；如果没有安装 `[platform]` 就运行 Platform 命令，程序会输出准确安装命令
+并退出，不会暴露 import traceback。
 
 ## 快速开始：不用真实模型验证控制流
 
@@ -195,7 +211,7 @@ asyncio.run(main())
 
 ## 可选 Control UI
 
-本地开发启动：
+先安装 `[platform]`，然后在本地开发环境启动：
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

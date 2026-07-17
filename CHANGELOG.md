@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Split the default Parser installation from `platform`, `s3`, `layout`,
+  `full`, and `dev` extras; retained all console-script names with actionable
+  missing-extra errors and added empty-environment installation coverage.
+- Included the runtime JSON configuration files required by the packaged
+  `dots_ocr.data_index` helpers.
+
 ## 0.2.1
 
 - Added an engineering third-party license inventory, complete bundled license

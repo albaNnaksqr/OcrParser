@@ -26,12 +26,7 @@ classifiers = [
 ]
 dependencies = [
   "aiofiles",
-  "aiohttp==3.12.15",
-  "aiobotocore==2.13.0",
-  "botocore>=1.34.0,<1.35.0",
-  "fastapi",
   "httpx==0.28.1",
-  "idna",
   "ImageHash==4.3.2",
   "json_repair==0.51.0",
   "numpy==2.1.2",
@@ -39,22 +34,59 @@ dependencies = [
   "openai==1.90.0",
   "pillow",
   "prometheus_client",
-  "psycopg[binary]>=3.1,<4.0",
   "pydantic>=2.0.0,<3.0",
   "PyMuPDF==1.26.3",
-  "python-dotenv",
   "PyYAML",
   "pyzbar==0.1.9",
   "requests==2.32.4",
-  "SQLAlchemy>=2.0,<3.0",
-  "tqdm==4.67.1",
-  "uvicorn[standard]"
+  "tqdm==4.67.1"
 ]
 
 [project.optional-dependencies]
+platform = [
+  "fastapi",
+  "psycopg[binary]>=3.1,<4.0",
+  "SQLAlchemy>=2.0,<3.0",
+  "uvicorn[standard]"
+]
+s3 = [
+  "aiohttp==3.12.15",
+  "aiobotocore==2.13.0",
+  "botocore>=1.34.0,<1.35.0",
+  "idna"
+]
+layout = [
+  "fastapi",
+  "huggingface-hub>=0.25",
+  "torch>=2.3",
+  "torchvision>=0.18",
+  "transformers>=4.50,<6.0",
+  "uvicorn[standard]"
+]
+full = [
+  "aiohttp==3.12.15",
+  "aiobotocore==2.13.0",
+  "botocore>=1.34.0,<1.35.0",
+  "fastapi",
+  "idna",
+  "psycopg[binary]>=3.1,<4.0",
+  "python-dotenv",
+  "SQLAlchemy>=2.0,<3.0",
+  "uvicorn[standard]"
+]
 dev = [
+  "aiohttp==3.12.15",
+  "aiobotocore==2.13.0",
+  "botocore>=1.34.0,<1.35.0",
+  "build",
+  "fastapi",
+  "idna",
+  "psycopg[binary]>=3.1,<4.0",
+  "python-dotenv",
   "pytest",
-  "pytest-asyncio"
+  "pytest-asyncio",
+  "SQLAlchemy>=2.0,<3.0",
+  "uvicorn[standard]"
 ]
 
 [project.scripts]
@@ -71,3 +103,4 @@ include = ["ocr_parser*", "ocr_platform*", "dots_ocr*", "services*"]
 
 [tool.setuptools.package-data]
 "ocr_platform.control" = ["migrations/*.sql", "ui/index.html"]
+"dots_ocr.data_index" = ["configs/*.json"]

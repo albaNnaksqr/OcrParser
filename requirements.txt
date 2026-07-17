@@ -1,6 +1,8 @@
 # Dots.OCR 推理客户端依赖
 # 用于连接已部署的vLLM服务进行文档解析
 # Python版本要求: >=3.10
+# 此文件保留 v0.2 的完整非 GPU 安装语义；新部署优先使用
+# `pip install 'ocrparser-platform[full]'`，基础 Parser 使用默认安装。
 
 # 核心依赖
 # pillow-simd==9.5.0.post2 # 图像处理

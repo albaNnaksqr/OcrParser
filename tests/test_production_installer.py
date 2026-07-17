@@ -359,6 +359,21 @@ def test_build_control_plan_warns_when_auth_disabled_on_public_bind():
     assert any(action.description == "write control env file" for action in plan.actions)
 
 
+def test_production_roles_install_platform_extra():
+    config = installer.ControlInstallConfig(
+        role="control",
+        service_user="ocr_user",
+        service_group="ocr-runtime",
+        database_url="postgresql+psycopg://ocr_platform:secret@db:5432/ocr_platform",
+        install_dependencies=True,
+    )
+
+    plan = installer.build_install_plan(config, validation_errors=[])
+    action = next(item for item in plan.actions if item.description == "install Python dependencies")
+
+    assert action.command[-2:] == ["-e", "/opt/ocr-platform/ocrparser[platform]"]
+
+
 def test_non_loopback_control_install_requires_enabled_token_auth():
     config = installer.ControlInstallConfig(
         role="control",

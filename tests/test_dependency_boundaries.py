@@ -37,6 +37,26 @@ def test_parser_does_not_import_platform() -> None:
     assert violations == []
 
 
+def test_s3_client_dependencies_are_isolated_from_parser_imports() -> None:
+    parser_root = Path(__file__).parents[1] / "ocr_parser"
+    forbidden = {"aiobotocore", "botocore"}
+    violations: list[str] = []
+
+    for path in parser_root.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                names = [alias.name.split(".", 1)[0] for alias in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                names = [(node.module or "").split(".", 1)[0]]
+            else:
+                continue
+            if forbidden.intersection(names):
+                violations.append(f"{path.relative_to(parser_root.parent)}:{node.lineno}")
+
+    assert violations == []
+
+
 def test_legacy_manifest_import_is_a_contract_reexport() -> None:
     assert LegacyManifestItem is ManifestItem
 
