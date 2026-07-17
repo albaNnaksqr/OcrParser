@@ -147,7 +147,19 @@ def make_cycle(index: int, *, duration: float, ok: bool = True) -> soak.CycleRes
         status="pass" if ok else "fail",
         duration_seconds=duration,
         job_summary={"status": "succeeded" if ok else "failed"},
+        manifest_integrity={"ok": ok},
+        output_audit={"ok": ok},
     )
+
+
+def test_cycle_rejects_empty_audit_or_failed_samples():
+    cycle = make_cycle(1, duration=1)
+    cycle.output_audit = {}
+    assert cycle.ok is False
+
+    cycle.output_audit = {"ok": True}
+    cycle.failed_samples = [{"path": "document", "status": "failed"}]
+    assert cycle.ok is False
 
 
 def test_throughput_and_resource_gates_enforce_twenty_and_ten_percent_limits():

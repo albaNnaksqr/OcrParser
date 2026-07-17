@@ -101,14 +101,15 @@ class CycleResult:
 
     @property
     def ok(self) -> bool:
-        integrity_ok = not self.manifest_integrity or bool(self.manifest_integrity.get("ok"))
-        audit_ok = not self.output_audit or bool(self.output_audit.get("ok"))
+        integrity_ok = bool(self.manifest_integrity.get("ok"))
+        audit_ok = bool(self.output_audit.get("ok"))
         return (
             self.status == "pass"
             and self.job_summary.get("status") in SUCCESS_JOB_STATUSES
             and integrity_ok
             and audit_ok
             and not self.unknown_labels
+            and not self.failed_samples
             and all(item.status == "pass" for item in self.fault_results)
         )
 
@@ -491,7 +492,7 @@ def execute_cycle(
                 ).to_dict()
             except (OSError, ValueError) as exc:
                 audit = {"ok": False, "error": str(exc)}
-        elif mode == "directory":
+        elif mode in {"directory", "distributed_remote_folder_snapshot"}:
             audit = audit_directory_outputs(
                 input_dir=cycle_root / "input",
                 output_dir=cycle_root / "output",
