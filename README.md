@@ -1,8 +1,11 @@
 # OcrParser
 
-> v0.2 makes this public repository the single source-code mainline and introduces
-> secure-by-default Control settings. See [architecture](docs/architecture.md) and
-> the [v0.2 security migration](docs/security-migration-v0.2.md).
+> v0.3 keeps this public repository as the single source-code mainline and adds
+> installation profiles, domain-based Control/Agent internals, unified database
+> migrations, modular UI assets, and immutable build provenance. See
+> [architecture](docs/architecture.md), the
+> [v0.3 migration guide](docs/migration-v0.3.md), and the
+> [release checklist](docs/release-v0.3.md).
 
 English | [中文](README.zh-CN.md)
 

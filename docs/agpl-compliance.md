@@ -23,7 +23,7 @@ license notices. These routes must remain reachable by every network user,
 including when `OCR_PLATFORM_API_TOKEN` is enabled.
 
 For a tagged wheel, `/source` defaults to the repository tag matching the
-package version, for example `v0.2.1`. An untagged, patched, or internally built
+package version, for example `v0.3.0`. An untagged, patched, or internally built
 deployment must identify its exact source with one of:
 
 ```bash

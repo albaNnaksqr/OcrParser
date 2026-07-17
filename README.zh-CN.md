@@ -1,8 +1,10 @@
 # OcrParser
 
-> v0.2 明确本公开仓库为唯一源码主线，并启用 Control 安全默认值。参见
-> [架构说明](docs/architecture.zh-CN.md)和
-> [v0.2 安全迁移](docs/security-migration-v0.2.zh-CN.md)。
+> v0.3 继续以本公开仓库作为唯一源码主线，并加入安装 profile、Control/Agent
+> 域拆分、统一数据库 migration、模块化 UI 和不可变 build provenance。参见
+> [架构说明](docs/architecture.zh-CN.md)、
+> [v0.3 迁移指南](docs/migration-v0.3.zh-CN.md)和
+> [发布检查单](docs/release-v0.3.zh-CN.md)。
 
 [English](README.md) | 中文
 

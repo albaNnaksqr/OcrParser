@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0rc1 - 2026-07-17
 
 - Split the default Parser installation from `platform`, `s3`, `layout`,
   `full`, and `dev` extras; retained all console-script names with actionable
