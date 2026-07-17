@@ -5,6 +5,10 @@ English | [中文](model-serving.zh-CN.md)
 OcrParser calls OCR/model services through HTTP APIs. It does not ship model
 weights and does not start model servers automatically.
 
+Before enabling a real engine in production, review the dated
+[engine certification matrix](engine-certification.md) and the independent
+[third-party license audit](third-party-licenses.md).
+
 The examples below show the shape of the services the parser expects. Replace
 paths, ports, model names, and runtime flags with values appropriate for your
 environment.
@@ -79,7 +83,7 @@ python -m ocr_parser \
   --engine mineru \
   --ip YOUR_MINERU_ENDPOINT \
   --port 30090 \
-  --model_name MinerU2.5 \
+  --model_name mineru \
   --file_concurrency 2 \
   --page_concurrency 2 \
   --api_concurrency_start 4 \
@@ -89,19 +93,22 @@ python -m ocr_parser \
   --mineru_recognition_api_concurrency 3
 ```
 
-Example service shape with SGLang:
+The certified smoke path for
+[MinerU2.5-Pro-2604-1.2B](https://huggingface.co/opendatalab/MinerU2.5-Pro-2604-1.2B)
+uses vLLM with `mineru-vl-utils` and `MinerULogitsProcessor`:
 
 ```bash
-python -m sglang.launch_server \
-  --model-path /models/MinerU2.5 \
-  --host 0.0.0.0 \
-  --port 30090 \
-  --trust-remote-code \
-  --chat-template qwen2-vl
+MINERU_MODEL_PATH=/models/MinerU2.5-Pro-2604-1.2B \
+MINERU_PORT=30090 \
+bash start_mineru_server.sh
 ```
 
-Treat the service command as a starting point. Real deployments need explicit
-GPU memory, context length, dtype, and process supervision choices.
+The script defaults to loopback, the exact NVIDIA vLLM image used for the
+2026-07-17 smoke test, a 0.40 GPU-memory fraction, and the required logits
+processor. Build a pinned image instead of installing packages at startup for
+production. A generic SGLang service returned healthy HTTP responses but
+semantically invalid repeated-token output in this certification run, so it is
+not an approved backend for this model revision.
 
 ## PaddleOCR-VL-Style Endpoint
 

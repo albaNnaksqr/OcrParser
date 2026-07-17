@@ -53,12 +53,25 @@ jobs:
           /tmp/ocrparser-wheel/bin/python tools/check_installed_console_scripts.py --bin-dir /tmp/ocrparser-wheel/bin
           /tmp/ocrparser-wheel/bin/python - <<'PY'
           from importlib.resources import files
-          from importlib.metadata import entry_points, version
-          assert version("ocrparser-platform") == "0.2.0"
+          from importlib.metadata import distribution, entry_points, version
+          from pathlib import Path
+          assert version("ocrparser-platform") == "0.2.1"
           names = {item.name for item in entry_points(group="console_scripts")}
           assert {"ocr-parser", "ocr-platform-control", "ocr-platform-agent"} <= names
           assert files("ocr_platform.control").joinpath("ui/index.html").is_file()
           assert any(files("ocr_platform.control").joinpath("migrations").iterdir())
+          license_names = {
+              Path(str(item)).name
+              for item in distribution("ocrparser-platform").files or []
+              if "/licenses/" in str(item)
+          }
+          assert {
+              "LICENSE",
+              "NOTICE",
+              "AGPL_3.0.txt",
+              "APACHE_2.0.txt",
+              "DOTS_OCR_LICENSE.txt",
+          } <= license_names
           PY
 
   postgres:

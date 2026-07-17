@@ -351,5 +351,10 @@ make verify
 
 ## License And Notices
 
-This project is released under the MIT License. See [LICENSE](LICENSE).
-Third-party attribution is listed in [NOTICE](NOTICE).
+Original OcrParser code is released under the MIT License. Deployments using
+the AGPL build of the required PyMuPDF dependency are made available under GNU
+AGPLv3 and expose the exact running source through the public `/source`
+endpoint. See [AGPL Compliance](docs/agpl-compliance.md), [LICENSE](LICENSE),
+[NOTICE](NOTICE), and the
+[Third-Party License Audit](docs/third-party-licenses.md). A deployment covered
+by an Artifex commercial license follows that agreement instead.

@@ -1,4 +1,7 @@
 # Copyright (c) Opendatalab. All rights reserved.
+# Licensed under the Apache License, Version 2.0; see
+# third_party/licenses/APACHE_2.0.txt.
+# Modified and redistributed by OCR Parser contributors in 2026.
 import math
 
 import numpy as np

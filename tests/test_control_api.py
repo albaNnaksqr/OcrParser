@@ -166,6 +166,47 @@ def test_healthz_and_readyz_are_public_when_api_token_is_enabled(tmp_path, monke
     assert "api_auth" in payload
 
 
+def test_agpl_source_offer_and_license_are_public(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
+    monkeypatch.setenv("OCR_PLATFORM_SOURCE_REVISION", "abc123def456")
+    client = make_client(tmp_path)
+
+    source = client.get("/source", follow_redirects=False)
+    metadata = client.get("/source.json")
+    license_response = client.get("/legal/agpl-3.0")
+
+    assert source.status_code == 307
+    assert source.headers["location"] == (
+        "https://github.com/albaNnaksqr/OcrParser/tree/abc123def456"
+    )
+    assert metadata.status_code == 200
+    assert metadata.json()["source_revision"] == "abc123def456"
+    assert metadata.json()["source_revision_explicit"] is True
+    assert metadata.json()["license_url"] == "/legal/agpl-3.0"
+    assert license_response.status_code == 200
+    assert "GNU AFFERO GENERAL PUBLIC LICENSE" in license_response.text
+    assert "Remote Network Interaction" in license_response.text
+
+    source_head = client.head("/source", follow_redirects=False)
+    assert source_head.status_code == 307
+    assert source_head.headers["location"].endswith("/tree/abc123def456")
+
+
+def test_agpl_source_offer_can_use_an_explicit_archive_url(tmp_path, monkeypatch):
+    monkeypatch.setenv(
+        "OCR_PLATFORM_SOURCE_URL",
+        "https://downloads.example.test/ocrparser/source-abc123.tar.gz",
+    )
+    client = make_client(tmp_path)
+
+    source = client.get("/source", follow_redirects=False)
+
+    assert source.status_code == 307
+    assert source.headers["location"] == (
+        "https://downloads.example.test/ocrparser/source-abc123.tar.gz"
+    )
+
+
 def test_system_diagnostics_summarizes_deployment_readiness_for_ui(tmp_path, monkeypatch):
     monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
     client = make_client(tmp_path)

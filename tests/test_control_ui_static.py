@@ -216,6 +216,16 @@ def test_ui_can_attach_control_api_token_to_requests():
     assert "refreshOperationsData({ quiet: !ui.controlApiToken.value.trim() })" in html
 
 
+def test_ui_displays_agpl_legal_and_corresponding_source_notices():
+    html = UI_FILE.read_text(encoding="utf-8")
+
+    assert 'aria-label="Open-source legal notice"' in html
+    assert 'href="/source"' in html
+    assert 'href="/legal/agpl-3.0"' in html
+    assert "without warranty" in html
+    assert "You may convey" in html
+
+
 def test_ui_surfaces_database_migration_status_for_operations():
     html = UI_FILE.read_text(encoding="utf-8")
 

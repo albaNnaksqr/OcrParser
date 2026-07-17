@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.2.1
+
+- Added an engineering third-party license inventory, complete bundled license
+  texts, source attribution, and wheel license-file verification.
+- Added a public GNU AGPLv3 corresponding-source offer, complete license route,
+  Control UI legal notice, and exact-version deployment guidance for PyMuPDF.
+- Added dated MinerU and PaddleOCR-VL engine certification evidence from real
+  Spark deployments, including immutable model revisions and known limitations.
+- Replaced the generic MinerU SGLang launcher with the validated vLLM and
+  `MinerULogitsProcessor` deployment path.
+- Clarified that real-model certification is a deployment gate rather than a
+  requirement for building or publishing a GitHub release.
+
 ## 0.2.0
 
 - Declared the public repository as the single source-code mainline.

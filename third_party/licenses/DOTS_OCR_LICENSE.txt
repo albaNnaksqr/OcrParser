@@ -1,13 +1,6 @@
-The MIT License below applies to original OCR Parser code. Third-party and
-derived components remain subject to the licenses identified in NOTICE and
-third_party/licenses/. When OCR Parser is combined with the AGPL build of
-PyMuPDF, that combined deployment is provided under GNU AGPLv3 as described in
-NOTICE and docs/agpl-compliance.md; the original MIT grant remains intact for
-OCR Parser code considered separately.
-
 MIT License
 
-Copyright (c) 2026 OCR Parser contributors
+Copyright (c) 2025 rednote-hilab
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

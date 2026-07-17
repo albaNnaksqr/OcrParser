@@ -332,5 +332,8 @@ make verify
 
 ## License And Notices
 
-本项目使用 MIT License 发布。见 [LICENSE](LICENSE)。
-第三方 attribution 见 [NOTICE](NOTICE)。
+OcrParser 原创代码使用 MIT License。安装必需依赖 PyMuPDF 的 AGPL build 时，
+组合部署按 GNU AGPLv3 提供，并通过无需认证的 `/source` 入口公开准确运行版本源码。
+参见 [AGPL 合规](docs/agpl-compliance.zh-CN.md)、[LICENSE](LICENSE)、
+[NOTICE](NOTICE)和[第三方许可证审计](docs/third-party-licenses.zh-CN.md)。已经取得
+Artifex 商业许可的部署改为遵守对应商业协议。

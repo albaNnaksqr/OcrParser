@@ -5,6 +5,9 @@
 OcrParser 通过 HTTP API 调用 OCR/model services。它不附带模型权重，
 也不会自动启动模型服务器。
 
+生产启用真实引擎前，应核对带日期的[引擎认证矩阵](engine-certification.zh-CN.md)
+和独立的[第三方许可证审计](third-party-licenses.zh-CN.md)。
+
 下面的示例展示 parser 期望的服务形态。请根据你的环境替换 paths、ports、
 model names 和 runtime flags。
 
@@ -77,7 +80,7 @@ python -m ocr_parser \
   --engine mineru \
   --ip YOUR_MINERU_ENDPOINT \
   --port 30090 \
-  --model_name MinerU2.5 \
+  --model_name mineru \
   --file_concurrency 2 \
   --page_concurrency 2 \
   --api_concurrency_start 4 \
@@ -87,19 +90,20 @@ python -m ocr_parser \
   --mineru_recognition_api_concurrency 3
 ```
 
-SGLang service 形态示例：
+已完成 smoke 验证的
+[MinerU2.5-Pro-2604-1.2B](https://huggingface.co/opendatalab/MinerU2.5-Pro-2604-1.2B)
+路径使用 vLLM、`mineru-vl-utils` 和 `MinerULogitsProcessor`：
 
 ```bash
-python -m sglang.launch_server \
-  --model-path /models/MinerU2.5 \
-  --host 0.0.0.0 \
-  --port 30090 \
-  --trust-remote-code \
-  --chat-template qwen2-vl
+MINERU_MODEL_PATH=/models/MinerU2.5-Pro-2604-1.2B \
+MINERU_PORT=30090 \
+bash start_mineru_server.sh
 ```
 
-请把 service command 当作起点。真实部署还需要明确 GPU memory、context length、
-dtype 和进程托管方式。
+脚本默认只监听 loopback，固定为 2026-07-17 smoke 使用的 NVIDIA vLLM image，
+GPU memory fraction 为 0.40，并加载必需的 logits processor。生产环境应构建固定依赖
+的 image，避免每次启动临时安装包。本次认证中，通用 SGLang 服务虽然 HTTP 健康，
+但返回了语义无效的重复 token，因此不认证该模型 revision 的 SGLang backend。
 
 ## PaddleOCR-VL-Style Endpoint
 

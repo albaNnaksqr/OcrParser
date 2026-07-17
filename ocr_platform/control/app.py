@@ -8,10 +8,12 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
+
+from ocr_platform.legal import agpl_license_text, source_offer
 
 from . import database
 from .models import Job, ModelProfile, ScanUnit, Server, WorkShard
@@ -508,6 +510,20 @@ def create_app(
                     content={"detail": "Missing or invalid API token"},
                 )
         return await call_next(request)
+
+    @app.api_route("/source", methods=["GET", "HEAD"], include_in_schema=False)
+    def corresponding_source() -> RedirectResponse:
+        """Public AGPLv3 corresponding-source offer; intentionally unauthenticated."""
+
+        return RedirectResponse(url=str(source_offer()["source_url"]))
+
+    @app.get("/source.json", include_in_schema=False)
+    def corresponding_source_metadata() -> dict[str, object]:
+        return source_offer()
+
+    @app.get("/legal/agpl-3.0", include_in_schema=False)
+    def agpl_license() -> PlainTextResponse:
+        return PlainTextResponse(agpl_license_text(), media_type="text/plain; charset=utf-8")
 
     ui_path = Path(__file__).resolve().parent / "ui"
     if ui_path.exists():

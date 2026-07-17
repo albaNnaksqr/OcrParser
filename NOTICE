@@ -1,13 +1,65 @@
 OCR Parser / OCR Platform
 Copyright (c) 2026 OCR Parser contributors
 
-This project includes code and implementation ideas derived from:
+This distribution contains third-party or derived source code. The project MIT
+license does not replace the licenses listed below.
 
-  dots.ocr
-  https://github.com/rednote-hilab/dots.ocr
-  Copyright (c) 2025 rednote-hilab
-  Licensed under the MIT License.
+-------------------------------------------------------------------------------
+dots.ocr
+https://github.com/rednote-hilab/dots.ocr
+Copyright (c) 2025 rednote-hilab
+License: MIT
 
-The upstream dots.ocr repository also publishes third-party notices for its own
-distribution. This project does not vendor dots.ocr model weights, datasets, or
-demo assets.
+The dots_ocr package contains code derived from dots.ocr. The complete upstream
+MIT notice is in third_party/licenses/DOTS_OCR_LICENSE.txt.
+
+This project does not vendor dots.ocr model weights, datasets, or demo assets.
+
+-------------------------------------------------------------------------------
+PaddleX
+https://github.com/PaddlePaddle/PaddleX
+Copyright (c) 2025 PaddlePaddle Authors
+License: Apache License 2.0
+
+The cross-page table and title-level helpers in
+ocr_parser/engines/paddleocr_vl.py are modified from PaddleX v3.5.1,
+paddlex/inference/pipelines/layout_parsing/merge_table.py and title_level.py.
+The complete license is in third_party/licenses/APACHE_2.0.txt.
+
+-------------------------------------------------------------------------------
+MinerU
+https://github.com/opendatalab/MinerU
+Copyright (c) Opendatalab
+License for the imported source snapshot: Apache License 2.0
+
+services/layout_detection/bbox_utils.py and
+services/layout_detection/pp_doclayoutv2.py contain source copied or modified
+from MinerU commit e52d40b51ef76db5d057d84412a9d79d7aff744f. That
+snapshot was published under Apache License 2.0. The complete license is in
+third_party/licenses/APACHE_2.0.txt. The current MinerU license and model terms
+must be reviewed separately when newer code or model weights are deployed.
+
+-------------------------------------------------------------------------------
+Runtime dependencies and model weights
+
+Python dependencies are installed as separate distributions and retain their
+own licenses.
+
+PyMuPDF 1.26.3 / MuPDF
+https://pymupdf.readthedocs.io/
+License: GNU Affero General Public License v3 or an Artifex commercial license
+
+OCR Parser imports PyMuPDF directly for PDF opening, rendering, conversion, and
+output generation. When the AGPL build is installed, the combined deployment is
+made available under GNU AGPLv3. The complete license is in
+third_party/licenses/AGPL_3.0.txt. Network users can retrieve the corresponding
+source for the running version from the public /source endpoint. Original OCR
+Parser files retain their MIT notices, and other third-party files retain the
+licenses identified above.
+
+An operator using a valid Artifex commercial license may instead deploy under
+that agreement and must configure its own applicable notices.
+
+No OCR model weights are included in this distribution. Model licenses must be
+reviewed separately from parser code licenses before an engine is approved for
+deployment. See docs/third-party-licenses.md and docs/engine-certification.md.

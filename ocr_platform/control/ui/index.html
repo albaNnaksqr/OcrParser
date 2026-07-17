@@ -76,6 +76,21 @@
         align-items: start;
       }
 
+      .legal-notice {
+        margin: 8px 28px 22px;
+        padding: 12px 14px;
+        border: 1px solid #dfe6ef;
+        border-radius: 8px;
+        background: #fff;
+        color: #5d6b82;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      .legal-notice a {
+        font-weight: 600;
+      }
+
       .ops-sidebar {
         grid-area: sidebar;
         display: grid;
@@ -557,6 +572,10 @@
         }
 
         .admin-operations-panel {
+          margin: 0 18px 18px;
+        }
+
+        .legal-notice {
           margin: 0 18px 18px;
         }
 
@@ -1307,6 +1326,14 @@
         </section>
       </div>
     </details>
+
+    <footer class="legal-notice" aria-label="Open-source legal notice">
+      Copyright © 2026 OCR Parser contributors. Deployments using the AGPL build
+      of PyMuPDF are provided under GNU AGPLv3, without warranty. You may convey
+      and modify the covered work under that license.
+      <a href="/source" target="_blank" rel="noopener">Corresponding Source</a>
+      · <a href="/legal/agpl-3.0" target="_blank" rel="noopener">GNU AGPLv3</a>
+    </footer>
 
     <script>
       const REFRESH_MS = 3000;

@@ -1,3 +1,9 @@
+# Portions of the cross-page table merge and title-level logic are:
+# Copyright (c) 2025 PaddlePaddle Authors.
+# Licensed under the Apache License, Version 2.0; see
+# third_party/licenses/APACHE_2.0.txt.
+# Modified and integrated by OCR Parser contributors in 2026.
+
 """Two-stage PaddleOCR-VL engine.
 
 Stage 1  POST http://<layout_url>/detect  (PP-DocLayoutV2)
