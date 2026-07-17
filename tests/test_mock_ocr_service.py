@@ -27,3 +27,9 @@ def test_mock_ocr_service_returns_openai_compatible_chat_completion_shape():
     assert payload["choices"][0]["message"]["role"] == "assistant"
     assert json.loads(payload["choices"][0]["message"]["content"])[0]["text"] == "done"
     assert payload["usage"]["total_tokens"] >= 1
+
+
+def test_mock_ocr_service_accepts_response_delay():
+    parser = mock_ocr_service.build_parser()
+
+    assert parser.parse_args(["--response-delay", "0.25"]).response_delay == 0.25

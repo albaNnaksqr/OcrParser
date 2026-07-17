@@ -92,6 +92,9 @@ class MockOCRHandler(BaseHTTPRequestHandler):
         if self.path != "/v1/chat/completions":
             self._write_json(404, {"error": {"message": f"unknown path: {self.path}"}})
             return
+        response_delay = float(getattr(self.server, "response_delay", 0.0))
+        if response_delay > 0:
+            time.sleep(response_delay)
         model = str(payload.get("model") or getattr(self.server, "model_name", "mock-ocr"))
         content = build_layout_response(getattr(self.server, "layout_text", DEFAULT_LAYOUT_TEXT))
         self._write_json(200, build_chat_completion_response(model=model, content=content))
@@ -105,6 +108,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--port", type=int, default=18000)
     parser.add_argument("--model-name", default="mock-ocr")
     parser.add_argument("--text", default=DEFAULT_LAYOUT_TEXT)
+    parser.add_argument(
+        "--response-delay",
+        type=float,
+        default=0.0,
+        help="Optional per-request delay in seconds for stability and recovery tests.",
+    )
     parser.add_argument("--quiet", action="store_true")
     return parser
 
@@ -114,6 +123,7 @@ def main(argv: list[str] | None = None) -> int:
     server = ThreadingHTTPServer((args.host, args.port), MockOCRHandler)
     server.model_name = args.model_name
     server.layout_text = args.text
+    server.response_delay = max(args.response_delay, 0.0)
     server.quiet = args.quiet
     print(f"Mock OCR service listening on http://{args.host}:{args.port}/v1", flush=True)
     try:
