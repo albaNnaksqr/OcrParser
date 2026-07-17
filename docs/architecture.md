@@ -63,6 +63,14 @@ The historical `ocr_platform.control.service` import path is a compatibility
 façade for v0.3. New integrations must import the owning domain instead; the
 5,000-line monolithic service module no longer exists.
 
+## Agent runtime
+
+The single-process agent is composed by `AgentRuntime`. `AgentSupervisor` owns
+six named lanes: heartbeat, job polling, scan, shard execution, manifest
+integrity, and spool/replay. It provides a shared signal, cancellation, retry,
+and shutdown boundary; a lane cannot start after shutdown begins, and late
+failure/replay results are not reported after that boundary.
+
 ## Compatibility boundary
 
 v0.3 preserves CLI flags and exit codes, HTTP paths and schemas, migration history,

@@ -18,6 +18,9 @@
 - Split the Control monolith into jobs, workers, manifests, model profiles,
   remote administration, and diagnostics domains while preserving HTTP and
   OpenAPI behavior and a one-release Python import compatibility façade.
+- Added a composed `AgentRuntime` and supervisor for heartbeat, job polling,
+  scan, shard execution, manifest integrity, and spool/replay lanes with one
+  cancellation and signal boundary.
 
 ## 0.2.1
 

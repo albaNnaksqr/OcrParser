@@ -53,6 +53,13 @@ v0.3 暂时继续集中维护 ORM models。
 历史 `ocr_platform.control.service` 导入路径在 v0.3 作为兼容 façade 保留。新集成
 应直接导入对应业务域；原有 5,000 行单体 service module 已删除。
 
+## Agent runtime
+
+单进程 agent 由 `AgentRuntime` 组合，`AgentSupervisor` 统一管理 heartbeat、job
+polling、scan、shard execution、manifest integrity、spool/replay 六条命名 lane，
+并提供共同的 signal、cancel、retry 和 shutdown 边界。shutdown 开始后不能启动
+新 lane，也不会继续上报迟到的失败或 replay 结果。
+
 ## 兼容边界
 
 v0.3 保持 CLI 参数和退出码、HTTP 路径和 schema、migration 历史、manifest
