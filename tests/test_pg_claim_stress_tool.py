@@ -111,6 +111,10 @@ def test_pg_claim_stress_parser_exposes_production_knobs():
     assert args.scan_units == 7
     assert args.scan_unit_shards == 2
 
+    env_args = parser.parse_args(["--database-url-env-var", "OCR_SOAK_DATABASE_URL"])
+    assert env_args.database_url is None
+    assert env_args.database_url_env_var == "OCR_SOAK_DATABASE_URL"
+
 
 def test_pg_claim_stress_describes_planned_concurrency_checks():
     tool = load_tool()

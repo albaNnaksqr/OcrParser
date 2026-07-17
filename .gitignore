@@ -10,6 +10,8 @@ configs/ocr-agent-worker.env
 .claude/
 .venv/
 logs/
+stability-artifacts/
+deploy/engines/paddleocr-vl/sglang-source.tar.gz
 *.log
 *.pid
 *.sqlite

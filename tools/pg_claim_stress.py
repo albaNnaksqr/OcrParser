@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import json
+import os
 import sys
 import uuid
 from collections import Counter
@@ -141,7 +142,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Stress-check PostgreSQL shard claiming with the real OCR control service layer."
     )
-    parser.add_argument("--database-url", required=True, help="PostgreSQL SQLAlchemy URL for a disposable test DB")
+    database = parser.add_mutually_exclusive_group(required=True)
+    database.add_argument("--database-url", help="PostgreSQL SQLAlchemy URL for a disposable test DB")
+    database.add_argument(
+        "--database-url-env-var",
+        help="Read the disposable PostgreSQL URL from this environment variable.",
+    )
     parser.add_argument("--shards", type=int, default=200, help="Number of pending shards to seed")
     parser.add_argument("--scan-units", type=int, default=0, help="Number of pending distributed scan units to seed")
     parser.add_argument(
@@ -482,9 +488,16 @@ def run_stress(
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    database_url = args.database_url
+    if args.database_url_env_var:
+        database_url = os.getenv(args.database_url_env_var, "")
+        if not database_url:
+            parser.error(
+                f"environment variable {args.database_url_env_var} is required and must be non-empty"
+            )
     try:
         result = run_stress(
-            database_url=args.database_url,
+            database_url=database_url,
             shard_count=args.shards,
             scan_unit_count=args.scan_units,
             scan_unit_shards=args.scan_unit_shards,

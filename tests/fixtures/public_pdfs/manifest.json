@@ -1,0 +1,30 @@
+[
+  {
+    "filename": "simple_text_1p.pdf",
+    "pages": 1,
+    "category": "text",
+    "purpose": "Plain-text latency baseline",
+    "expected_stress": "Fixed overhead and paragraph ordering"
+  },
+  {
+    "filename": "receipt_narrow_1p.pdf",
+    "pages": 1,
+    "category": "narrow",
+    "purpose": "Receipt-like narrow page",
+    "expected_stress": "Small fonts and non-A4 page geometry"
+  },
+  {
+    "filename": "invoice_table_2p.pdf",
+    "pages": 2,
+    "category": "table",
+    "purpose": "Invoice-style tables with numeric cells",
+    "expected_stress": "Table structure, numeric alignment, repeated headers"
+  },
+  {
+    "filename": "mixed_layout_2p.pdf",
+    "pages": 2,
+    "category": "mixed",
+    "purpose": "Two-page mixed certification fixture",
+    "expected_stress": "Reading order, table cells, and figure caption"
+  }
+]

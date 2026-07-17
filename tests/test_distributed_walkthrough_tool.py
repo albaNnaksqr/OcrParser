@@ -1,4 +1,5 @@
 from argparse import Namespace
+import json
 
 from tools import run_distributed_walkthrough
 
@@ -75,3 +76,50 @@ def test_walkthrough_tool_can_reference_runtime_api_key_env_var(tmp_path):
     payload = run_distributed_walkthrough.build_job_payload(args)
 
     assert payload["extra_args"]["api_key_env_var"] == "OCR_JOB_DOTSOCR_API_KEY"
+
+
+def test_walkthrough_tool_builds_existing_manifest_payload_for_one_worker(tmp_path):
+    args = Namespace(
+        shared_root=str(tmp_path / "shared"),
+        worker_id="worker-a",
+        allowed_worker_id=["worker-a", "worker-b"],
+        input_mode="existing_manifest",
+        target_files_per_shard=10,
+        max_shard_attempts=3,
+        engine="dotsocr",
+        ocr_host="127.0.0.1",
+        ocr_port=18000,
+        model_name="mock-ocr",
+    )
+
+    payload = run_distributed_walkthrough.build_job_payload(args)
+
+    assert payload["input_mode"] == "existing_manifest"
+    assert payload["assigned_server_id"] == "worker-a"
+    assert "allowed_server_ids" not in payload
+    assert payload["manifest_path"] == str(tmp_path / "shared" / "source-manifest.jsonl")
+    assert payload["target_files_per_shard"] == 10
+    assert payload["max_shard_attempts"] == 3
+
+
+def test_walkthrough_tool_generates_public_batch_and_manifest(tmp_path):
+    input_dir = tmp_path / "input"
+    paths = run_distributed_walkthrough.create_sample_set(
+        input_dir,
+        pdf_name="sample.pdf",
+        document_count=3,
+    )
+    manifest = tmp_path / "manifest.jsonl"
+    run_distributed_walkthrough.write_existing_manifest(
+        manifest,
+        input_dir=input_dir,
+        pdf_paths=paths,
+    )
+
+    rows = [json.loads(line) for line in manifest.read_text(encoding="utf-8").splitlines()]
+    assert [row["relative_path"] for row in rows] == [
+        "sample.pdf",
+        "sample-00002.pdf",
+        "sample-00003.pdf",
+    ]
+    assert all(row["size_bytes"] > 0 for row in rows)

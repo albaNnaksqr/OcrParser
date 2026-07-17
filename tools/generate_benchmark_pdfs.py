@@ -223,6 +223,48 @@ def create_mixed_forms(path: Path) -> Fixture:
     return Fixture(path.name, pages, "mixed", "Mixed form, table, checkbox, and figure regions", "Layout detector calls and heterogeneous blocks")
 
 
+def create_mixed_layout_two_page(path: Path) -> Fixture:
+    doc = fitz.open()
+    rows = [
+        ["Item", "Status", "Reviewer"],
+        ["Identity check", "Complete", "A. Liu"],
+        ["Document quality", "Pending", "B. Chen"],
+        ["Table review", "Complete", "C. Smith"],
+    ]
+    for page_no in range(1, 3):
+        page = doc.new_page(width=A4.width, height=A4.height)
+        draw_header(page, "Mixed Layout Certification Fixture", page_no)
+        insert_textbox(
+            page,
+            fitz.Rect(58, 82, 540, 116),
+            f"Case ID: MIX-{page_no:03d}    Submitted: 2026-05-{19 + page_no:02d}",
+            fontsize=9,
+        )
+        insert_textbox(
+            page,
+            fitz.Rect(58, 126, 540, 188),
+            f"Applicant: Benchmark User {page_no}\nDepartment: Document AI Evaluation",
+            fontsize=9,
+        )
+        y = draw_table(page, 58, 215, [170, 150, 150], 29, rows, fontsize=8)
+        page.draw_rect(fitz.Rect(58, y + 34, 250, y + 170), color=(0.2, 0.2, 0.2), width=0.7)
+        insert_textbox(
+            page,
+            fitz.Rect(78, y + 84, 230, y + 120),
+            "FIGURE AREA\nsynthetic chart placeholder",
+            fontsize=9,
+            align=fitz.TEXT_ALIGN_CENTER,
+        )
+        insert_textbox(
+            page,
+            fitz.Rect(285, y + 45, 540, y + 145),
+            "Verified against synthetic source\n\nNotes: preserve the form fields before the table and figure caption.",
+            fontsize=8.5,
+        )
+    pages = save(doc, path)
+    return Fixture(path.name, pages, "mixed", "Two-page mixed certification fixture", "Reading order, table cells, and figure caption")
+
+
 def create_scanned_like(path: Path) -> Fixture:
     source = fitz.open()
     for page_no in range(1, 3):
@@ -327,6 +369,81 @@ def build_fixtures(output_dir: Path) -> list[Fixture]:
     return fixtures
 
 
+def certification_expectations() -> dict:
+    return {
+        "schema_version": 1,
+        "fixtures": [
+            {
+                "filename": "simple_text_1p.pdf",
+                "pages": 1,
+                "required_fields": ["Executive Summary", "OCR-BENCH-001", "2026-05-19", "Synthetic Benchmark Team"],
+                "reading_order": ["Executive Summary", "Scope", "Checklist", "Notes"],
+                "table_cells": [],
+            },
+            {
+                "filename": "receipt_narrow_1p.pdf",
+                "pages": 1,
+                "required_fields": ["OCR Bench Mart", "2026-05-19", "RECEIPT-BENCH-001", "37.24"],
+                "reading_order": ["SYNTHETIC RECEIPT", "Store", "Item", "Payment", "Reference"],
+                "table_cells": ["Notebook", "2", "8.40", "Archive Box", "12.99", "Total", "37.24"],
+            },
+            {
+                "filename": "invoice_table_2p.pdf",
+                "pages": 2,
+                "required_fields": ["INV-1000", "INV-1001", "OCR-101", "375.00", "1,972.90"],
+                "reading_order": ["Bill To", "Invoice", "SKU", "Payment memo"],
+                "table_cells": ["OCR-204", "Table extraction review", "8", "42.50", "340.00"],
+            },
+            {
+                "filename": "mixed_layout_2p.pdf",
+                "pages": 2,
+                "required_fields": ["MIX-001", "MIX-002", "Benchmark User 1", "Document AI Evaluation", "FIGURE AREA"],
+                "reading_order": ["Case ID", "Applicant", "Item", "FIGURE AREA", "Verified against synthetic source"],
+                "table_cells": ["Identity check", "Complete", "A. Liu", "Table review", "C. Smith"],
+            },
+        ],
+    }
+
+
+def build_certification_fixtures(output_dir: Path) -> list[Fixture]:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    builders = [
+        ("simple_text_1p.pdf", create_simple_text),
+        ("receipt_narrow_1p.pdf", create_receipt),
+        ("invoice_table_2p.pdf", create_invoice_table),
+        ("mixed_layout_2p.pdf", create_mixed_layout_two_page),
+    ]
+    existing_metadata = {
+        "simple_text_1p.pdf": ("text", "Plain-text latency baseline", "Fixed overhead and paragraph ordering"),
+        "receipt_narrow_1p.pdf": ("narrow", "Receipt-like narrow page", "Small fonts and non-A4 page geometry"),
+        "invoice_table_2p.pdf": ("table", "Invoice-style tables with numeric cells", "Table structure, numeric alignment, repeated headers"),
+        "mixed_layout_2p.pdf": ("mixed", "Two-page mixed certification fixture", "Reading order, table cells, and figure caption"),
+    }
+    fixtures: list[Fixture] = []
+    for filename, builder in builders:
+        path = output_dir / filename
+        if path.exists():
+            with fitz.open(path) as existing:
+                pages = existing.page_count
+            category, purpose, expected_stress = existing_metadata[filename]
+            fixtures.append(
+                Fixture(
+                    filename=filename,
+                    pages=pages,
+                    category=category,
+                    purpose=purpose,
+                    expected_stress=expected_stress,
+                )
+            )
+        else:
+            fixtures.append(builder(path))
+    (output_dir / "expected.json").write_text(
+        json.dumps(certification_expectations(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return fixtures
+
+
 def write_manifest(output_dir: Path, fixtures: Iterable[Fixture]) -> None:
     fixture_dicts = [asdict(fixture) for fixture in fixtures]
     (output_dir / "manifest.json").write_text(json.dumps(fixture_dicts, indent=2) + "\n", encoding="utf-8")
@@ -352,6 +469,20 @@ def write_manifest(output_dir: Path, fixtures: Iterable[Fixture]) -> None:
             "- Keep MinerU and PaddleOCR-VL at 1 or 2 concurrent pages unless the single-instance queue stays healthy.",
         ]
     )
+    if (output_dir / "expected.json").is_file():
+        lines.extend(
+            [
+                "",
+                "Certification fields and reading-order expectations are stored in `expected.json`.",
+                "Validate real-engine outputs with:",
+                "",
+                "```bash",
+                "python3 tools/check_engine_fixture_outputs.py --engine ENGINE --output-dir OUTPUT",
+                "```",
+                "",
+                "Fixtures contain generated public text only. Do not replace them with customer documents.",
+            ]
+        )
     (output_dir / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -363,12 +494,17 @@ def parse_args() -> argparse.Namespace:
         default=Path("data/benchmark_pdfs"),
         help="Directory where benchmark PDFs and manifest files are written.",
     )
+    parser.add_argument(
+        "--certification-set",
+        action="store_true",
+        help="Generate the small public engine-certification fixture set and expected fields.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    fixtures = build_fixtures(args.output_dir)
+    fixtures = build_certification_fixtures(args.output_dir) if args.certification_set else build_fixtures(args.output_dir)
     write_manifest(args.output_dir, fixtures)
     total_pages = sum(fixture.pages for fixture in fixtures)
     print(f"Wrote {len(fixtures)} PDFs ({total_pages} pages) to {args.output_dir}")

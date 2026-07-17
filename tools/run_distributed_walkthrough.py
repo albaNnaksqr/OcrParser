@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import shutil
+import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ocr_parser.contracts import ManifestItem
 
 
 TERMINAL_STATUSES = {"succeeded", "failed", "stopped"}
@@ -28,19 +37,52 @@ def create_sample_pdf(path: Path) -> None:
     doc.close()
 
 
+def create_sample_set(input_dir: Path, *, pdf_name: str, document_count: int) -> list[Path]:
+    if document_count < 1:
+        raise ValueError("document_count must be at least 1")
+    source = input_dir / pdf_name
+    create_sample_pdf(source)
+    paths = [source]
+    stem = source.stem
+    for index in range(2, document_count + 1):
+        target = source.with_name(f"{stem}-{index:05d}{source.suffix}")
+        shutil.copy2(source, target)
+        paths.append(target)
+    return paths
+
+
+def write_existing_manifest(path: Path, *, input_dir: Path, pdf_paths: list[Path]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows = []
+    for pdf_path in pdf_paths:
+        stat = pdf_path.stat()
+        rows.append(
+            ManifestItem(
+                input_path=str(pdf_path),
+                relative_path=pdf_path.relative_to(input_dir).as_posix(),
+                size_bytes=stat.st_size,
+                mtime_ns=stat.st_mtime_ns,
+            ).to_json_line()
+        )
+    path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+
 def build_job_payload(args: argparse.Namespace) -> dict[str, Any]:
     input_dir = Path(args.shared_root) / "input"
     output_dir = Path(args.shared_root) / "output"
     manifest_root = Path(args.shared_root) / "manifests"
-    payload = {
+    input_mode = getattr(args, "input_mode", "distributed_remote_folder_snapshot")
+    allowed_worker_ids = list(getattr(args, "allowed_worker_id", []) or [])
+    if not allowed_worker_ids:
+        allowed_worker_ids = [args.worker_id]
+    payload: dict[str, Any] = {
         "input_dir": str(input_dir),
         "output_dir": str(output_dir),
         "engine": args.engine,
-        "input_mode": "distributed_remote_folder_snapshot",
+        "input_mode": input_mode,
         "manifest_root": str(manifest_root),
-        "allowed_server_ids": [args.worker_id],
-        "target_files_per_shard": 1,
-        "max_shard_attempts": 1,
+        "target_files_per_shard": getattr(args, "target_files_per_shard", 1),
+        "max_shard_attempts": getattr(args, "max_shard_attempts", 3),
         "ip": args.ocr_host,
         "port": args.ocr_port,
         "model_name": args.model_name,
@@ -61,6 +103,12 @@ def build_job_payload(args: argparse.Namespace) -> dict[str, Any]:
             "disable_badcase_collection": True,
         },
     }
+    if input_mode == "distributed_remote_folder_snapshot":
+        payload["allowed_server_ids"] = allowed_worker_ids
+    else:
+        payload["assigned_server_id"] = args.worker_id
+    if input_mode == "existing_manifest":
+        payload["manifest_path"] = str(Path(args.shared_root) / "source-manifest.jsonl")
     if getattr(args, "disable_process_pool", False):
         payload["extra_args"]["disable_process_pool"] = True
     api_key_env_var = getattr(args, "api_key_env_var", None)
@@ -132,7 +180,17 @@ def run_walkthrough(args: argparse.Namespace) -> int:
     manifest_root = shared_root / "manifests"
     for path in (input_dir, output_dir, manifest_root):
         path.mkdir(parents=True, exist_ok=True)
-    create_sample_pdf(input_dir / args.pdf_name)
+    pdf_paths = create_sample_set(
+        input_dir,
+        pdf_name=args.pdf_name,
+        document_count=args.document_count,
+    )
+    if args.input_mode == "existing_manifest":
+        write_existing_manifest(
+            shared_root / "source-manifest.jsonl",
+            input_dir=input_dir,
+            pdf_paths=pdf_paths,
+        )
 
     payload = build_job_payload(args)
     job = request_json(
@@ -184,8 +242,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--control-url", default="http://127.0.0.1:38080")
     parser.add_argument("--api-token", default="local-dev-token")
+    parser.add_argument(
+        "--api-token-env-var",
+        help="Read the Control bearer token from this environment variable instead of argv.",
+    )
     parser.add_argument("--shared-root", required=True)
     parser.add_argument("--worker-id", default="local-worker-01")
+    parser.add_argument(
+        "--allowed-worker-id",
+        action="append",
+        default=[],
+        help="Worker eligible for distributed snapshot jobs; repeat for multiple workers.",
+    )
+    parser.add_argument(
+        "--input-mode",
+        choices=["directory", "folder_snapshot", "existing_manifest", "distributed_remote_folder_snapshot"],
+        default="distributed_remote_folder_snapshot",
+    )
+    parser.add_argument("--document-count", type=int, default=1)
+    parser.add_argument("--target-files-per-shard", type=int, default=1)
+    parser.add_argument("--max-shard-attempts", type=int, default=3)
     parser.add_argument("--engine", default="dotsocr")
     parser.add_argument("--ocr-host", default="127.0.0.1")
     parser.add_argument("--ocr-port", type=int, default=18000)
@@ -203,6 +279,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.api_token_env_var:
+        args.api_token = os.getenv(args.api_token_env_var, "")
+        if not args.api_token:
+            print(
+                f"environment variable {args.api_token_env_var} is required and must be non-empty",
+            )
+            return 2
+    if args.document_count < 1:
+        print("--document-count must be at least 1")
+        return 2
     try:
         return run_walkthrough(args)
     except urllib.error.HTTPError as exc:

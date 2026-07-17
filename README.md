@@ -5,7 +5,8 @@
 > migrations, modular UI assets, and immutable build provenance. See
 > [architecture](docs/architecture.md), the
 > [v0.3 migration guide](docs/migration-v0.3.md), and the
-> [release checklist](docs/release-v0.3.md).
+> [release checklist](docs/release-v0.3.md). Operators validating a deployment
+> should also use the [v0.3 stability soak runbook](docs/stability-soak.md).
 
 English | [中文](README.zh-CN.md)
 

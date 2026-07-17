@@ -39,6 +39,7 @@ class LocalProdConfig:
     mock_ocr_port: int = 18000
     mock_ocr_model: str = "mock-ocr"
     worker_id: str = "local-worker-01"
+    worker_count: int = 1
     shared_roots: list[str] = field(default_factory=list)
 
     @property
@@ -65,7 +66,7 @@ class LocalProdConfig:
 
     @property
     def worker_pid_file(self) -> Path:
-        return self.state_dir / "worker.pid"
+        return self.worker_pid_file_for(0)
 
     @property
     def mock_ocr_pid_file(self) -> Path:
@@ -73,11 +74,11 @@ class LocalProdConfig:
 
     @property
     def worker_work_dir(self) -> Path:
-        return self.state_dir / "worker" / self.worker_id
+        return self.worker_work_dir_for(0)
 
     @property
     def worker_spool_dir(self) -> Path:
-        return self.worker_work_dir / "event-spool"
+        return self.worker_spool_dir_for(0)
 
     @property
     def postgres_data_dir(self) -> Path:
@@ -89,7 +90,7 @@ class LocalProdConfig:
 
     @property
     def worker_env_file(self) -> Path:
-        return self.state_dir / "worker.env"
+        return self.worker_env_file_for(0)
 
     @property
     def control_stdout_log(self) -> Path:
@@ -101,11 +102,42 @@ class LocalProdConfig:
 
     @property
     def worker_stdout_log(self) -> Path:
-        return self.state_dir / "logs" / "worker.out.log"
+        return self.worker_stdout_log_for(0)
 
     @property
     def worker_stderr_log(self) -> Path:
-        return self.state_dir / "logs" / "worker.err.log"
+        return self.worker_stderr_log_for(0)
+
+    def worker_id_for(self, index: int) -> str:
+        if not 0 <= index < self.worker_count:
+            raise IndexError(f"worker index {index} is outside worker_count={self.worker_count}")
+        if index == 0:
+            return self.worker_id
+        if self.worker_id.endswith("-01"):
+            return f"{self.worker_id[:-2]}{index + 1:02d}"
+        return f"{self.worker_id}-{index + 1:02d}"
+
+    def worker_pid_file_for(self, index: int) -> Path:
+        suffix = "" if index == 0 else f"-{index + 1:02d}"
+        return self.state_dir / f"worker{suffix}.pid"
+
+    def worker_work_dir_for(self, index: int) -> Path:
+        return self.state_dir / "worker" / self.worker_id_for(index)
+
+    def worker_spool_dir_for(self, index: int) -> Path:
+        return self.worker_work_dir_for(index) / "event-spool"
+
+    def worker_env_file_for(self, index: int) -> Path:
+        suffix = "" if index == 0 else f"-{index + 1:02d}"
+        return self.state_dir / f"worker{suffix}.env"
+
+    def worker_stdout_log_for(self, index: int) -> Path:
+        suffix = "" if index == 0 else f"-{index + 1:02d}"
+        return self.state_dir / "logs" / f"worker{suffix}.out.log"
+
+    def worker_stderr_log_for(self, index: int) -> Path:
+        suffix = "" if index == 0 else f"-{index + 1:02d}"
+        return self.state_dir / "logs" / f"worker{suffix}.err.log"
 
     @property
     def mock_ocr_stdout_log(self) -> Path:
@@ -148,13 +180,13 @@ def build_control_env(config: LocalProdConfig) -> dict[str, str]:
     }
 
 
-def build_worker_env(config: LocalProdConfig) -> dict[str, str]:
+def build_worker_env(config: LocalProdConfig, *, worker_index: int = 0) -> dict[str, str]:
     return {
         "OCR_CONTROL_URL": config.control_url,
         "OCR_CONTROL_API_TOKEN": config.api_token,
-        "OCR_AGENT_SERVER_ID": config.worker_id,
-        "OCR_AGENT_WORK_DIR": str(config.worker_work_dir),
-        "OCR_AGENT_EVENT_SPOOL_DIR": str(config.worker_spool_dir),
+        "OCR_AGENT_SERVER_ID": config.worker_id_for(worker_index),
+        "OCR_AGENT_WORK_DIR": str(config.worker_work_dir_for(worker_index)),
+        "OCR_AGENT_EVENT_SPOOL_DIR": str(config.worker_spool_dir_for(worker_index)),
         "OCR_AGENT_SHARED_ROOTS": os.pathsep.join(config.shared_roots),
         "OCR_REPO_DIR": str(config.root),
     }
@@ -202,12 +234,15 @@ def build_runtime_summary(config: LocalProdConfig) -> list[str]:
         f"Control logs: {config.control_stdout_log}, {config.control_stderr_log}",
     ]
     if config.with_worker:
-        lines.extend(
-            [
-                f"Worker env: {config.worker_env_file}",
-                f"Worker logs: {config.worker_stdout_log}, {config.worker_stderr_log}",
-            ]
-        )
+        for index in range(config.worker_count):
+            label = "Worker" if index == 0 else f"Worker {config.worker_id_for(index)}"
+            lines.extend(
+                [
+                    f"{label} env: {config.worker_env_file_for(index)}",
+                    f"{label} logs: "
+                    f"{config.worker_stdout_log_for(index)}, {config.worker_stderr_log_for(index)}",
+                ]
+            )
     if config.with_mock_ocr:
         lines.extend(
             [
@@ -289,33 +324,37 @@ def build_up_plan(
             )
         )
     if config.with_worker:
-        worker_argv = [
-            python_executable,
-            "-u",
-            "-m",
-            "ocr_platform.agent",
-            "--server_id",
-            config.worker_id,
-            "--control_url",
-            config.control_url,
-            "--control_api_token",
-            config.api_token,
-            "--work_dir",
-            str(config.worker_work_dir),
-            "--event_spool_dir",
-            str(config.worker_spool_dir),
-            "--repo_dir",
-            str(config.root),
-        ]
-        for shared_root in config.shared_roots:
-            worker_argv.extend(["--shared_root", shared_root])
-        steps.append(
-            PlanStep(
-                "start local worker",
-                worker_argv,
-                env=merge_env(repo_python_env(config), build_worker_env(config)),
+        for index in range(config.worker_count):
+            worker_argv = [
+                python_executable,
+                "-u",
+                "-m",
+                "ocr_platform.agent",
+                "--server_id",
+                config.worker_id_for(index),
+                "--control_url",
+                config.control_url,
+                "--control_api_token",
+                config.api_token,
+                "--work_dir",
+                str(config.worker_work_dir_for(index)),
+                "--event_spool_dir",
+                str(config.worker_spool_dir_for(index)),
+                "--repo_dir",
+                str(config.root),
+            ]
+            for shared_root in config.shared_roots:
+                worker_argv.extend(["--shared_root", shared_root])
+            steps.append(
+                PlanStep(
+                    f"start local worker {config.worker_id_for(index)}",
+                    worker_argv,
+                    env=merge_env(
+                        repo_python_env(config),
+                        build_worker_env(config, worker_index=index),
+                    ),
+                )
             )
-        )
     return steps
 
 
@@ -351,7 +390,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     up = subparsers.add_parser("up", help="Start PostgreSQL, apply migrations, and start control.")
     _add_runtime_args(up)
-    up.add_argument("--with-worker", action="store_true", help="Also start one local agent worker.")
+    up.add_argument("--with-worker", action="store_true", help="Also start local agent workers.")
+    up.add_argument(
+        "--worker-count",
+        type=int,
+        default=1,
+        help="Number of isolated agents to start when --with-worker is set (default: 1).",
+    )
     up.add_argument(
         "--with-mock-ocr",
         action="store_true",
@@ -393,6 +438,7 @@ def config_from_args(args: argparse.Namespace, *, root: Path = ROOT) -> LocalPro
         with_mock_ocr=getattr(args, "with_mock_ocr", False),
         mock_ocr_port=getattr(args, "mock_ocr_port", 18000),
         mock_ocr_model=getattr(args, "mock_ocr_model", "mock-ocr"),
+        worker_count=getattr(args, "worker_count", 1),
         shared_roots=list(getattr(args, "shared_root", []) or []),
     )
 
@@ -537,6 +583,8 @@ def print_plan(plan: Sequence[PlanStep]) -> None:
 
 def command_up(args: argparse.Namespace) -> int:
     config = config_from_args(args)
+    if config.worker_count < 1:
+        raise RuntimeError("--worker-count must be at least 1")
     plan = build_up_plan(config, compose_command=("docker", "compose"))
     if args.dry_run:
         print_plan(plan)
@@ -597,19 +645,26 @@ def command_up(args: argparse.Namespace) -> int:
             stderr_path=config.mock_ocr_stderr_log,
         )
     if config.with_worker:
-        config.worker_work_dir.mkdir(parents=True, exist_ok=True)
-        config.worker_spool_dir.mkdir(parents=True, exist_ok=True)
-        write_env_file(config.worker_env_file, build_worker_env(config))
-        worker_step = build_up_plan(config)[-1]
-        start_background_process(
-            "worker",
-            worker_step.argv,
-            cwd=config.root,
-            env=merge_env(repo_python_env(config), build_worker_env(config)),
-            pid_file=config.worker_pid_file,
-            stdout_path=config.worker_stdout_log,
-            stderr_path=config.worker_stderr_log,
-        )
+        worker_steps = [step for step in build_up_plan(config) if step.label.startswith("start local worker")]
+        for index, worker_step in enumerate(worker_steps):
+            config.worker_work_dir_for(index).mkdir(parents=True, exist_ok=True)
+            config.worker_spool_dir_for(index).mkdir(parents=True, exist_ok=True)
+            write_env_file(
+                config.worker_env_file_for(index),
+                build_worker_env(config, worker_index=index),
+            )
+            start_background_process(
+                config.worker_id_for(index),
+                worker_step.argv,
+                cwd=config.root,
+                env=merge_env(
+                    repo_python_env(config),
+                    build_worker_env(config, worker_index=index),
+                ),
+                pid_file=config.worker_pid_file_for(index),
+                stdout_path=config.worker_stdout_log_for(index),
+                stderr_path=config.worker_stderr_log_for(index),
+            )
     print(f"Control UI: {config.control_url}/ui/")
     print(f"API token: {config.api_token}")
     for line in build_runtime_summary(config):
@@ -623,7 +678,8 @@ def command_down(args: argparse.Namespace) -> int:
     if args.dry_run:
         print_plan(plan)
         return 0
-    stop_pid_file(config.worker_pid_file)
+    for pid_file in sorted(config.state_dir.glob("worker*.pid")):
+        stop_pid_file(pid_file)
     stop_pid_file(config.mock_ocr_pid_file)
     stop_pid_file(config.control_pid_file)
     if config.compose_file.exists():
@@ -640,11 +696,15 @@ def command_status(args: argparse.Namespace) -> int:
     for line in build_runtime_summary(config):
         print(line)
     print(f"PostgreSQL port: {'open' if _port_open(config.postgres_host, config.postgres_port) else 'closed'}")
-    for path, label in (
+    process_paths = [
         (config.control_pid_file, "control"),
         (config.mock_ocr_pid_file, "mock-ocr"),
-        (config.worker_pid_file, "worker"),
-    ):
+    ]
+    worker_pid_files = sorted(config.state_dir.glob("worker*.pid"))
+    process_paths.extend((path, path.stem) for path in worker_pid_files)
+    if not worker_pid_files:
+        process_paths.append((config.worker_pid_file, "worker"))
+    for path, label in process_paths:
         pid = path.read_text(encoding="utf-8").strip() if path.exists() else ""
         running = _pid_is_running(int(pid)) if pid.isdigit() else False
         print(f"{label}: {'running' if running else 'stopped'}{f' pid={pid}' if pid else ''}")

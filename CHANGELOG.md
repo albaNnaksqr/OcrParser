@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Added an auditable stability-soak runner with release/source/migration/claim
+  gates, rotating input modes, fault hooks, resource sampling, output audits,
+  and machine-readable reports that never persist runtime secrets.
+- Expanded the generated public engine-certification set with invoice-table and
+  mixed-layout PDFs plus required-field, reading-order, and table-cell checks.
+- Added a digest-pinned ARM64 PaddleOCR-VL SGLang runtime recipe and documented
+  the v0.4 operational-maturity decisions without changing v0.3 runtime APIs.
+
 ## 0.3.0 - 2026-07-17
 
 - Split the default Parser installation from `platform`, `s3`, `layout`,

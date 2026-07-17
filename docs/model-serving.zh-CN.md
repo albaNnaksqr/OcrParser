@@ -133,16 +133,24 @@ python -m ocr_parser \
   --paddle_block_backpressure_low_watermark 2
 ```
 
-vLLM VLM service 形态示例：
+v0.3.1 ARM64 认证使用
+[`deploy/engines/paddleocr-vl`](../deploy/engines/paddleocr-vl/README.md)中的固定
+SGLang 配方。该配方记录 base image digest、SGLang/kernel/runtime 版本、模型
+revision 与权重 checksum，但不打包模型权重。认证前必须构建并记录最终 image digest。
+
+通用 VLM service 形态：
 
 ```bash
-python -m vllm.entrypoints.openai.api_server \
-  --model /models/PaddleOCR-VL \
+python -m sglang.launch_server \
+  --model-path /models/PaddleOCR-VL \
   --served-model-name paddleocr-vl \
   --host 0.0.0.0 \
   --port 30001 \
   --trust-remote-code \
-  --max-model-len 32768
+  --context-length 32768 \
+  --mem-fraction-static 0.40 \
+  --attention-backend triton \
+  --sampling-backend pytorch
 ```
 
 Layout detection service 与具体模型相关。请单独暴露该服务，并通过

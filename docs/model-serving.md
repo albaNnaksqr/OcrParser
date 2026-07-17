@@ -138,16 +138,25 @@ python -m ocr_parser \
   --paddle_block_backpressure_low_watermark 2
 ```
 
-Example VLM service shape with vLLM:
+The v0.3.1 ARM64 certification path uses the pinned SGLang recipe under
+[`deploy/engines/paddleocr-vl`](../deploy/engines/paddleocr-vl/README.md).
+The recipe records the base-image digest, SGLang/kernel/runtime versions, model
+revision, and weight checksum without bundling model weights. Build and record
+the resulting image digest before certification.
+
+Generic VLM service shape:
 
 ```bash
-python -m vllm.entrypoints.openai.api_server \
-  --model /models/PaddleOCR-VL \
+python -m sglang.launch_server \
+  --model-path /models/PaddleOCR-VL \
   --served-model-name paddleocr-vl \
   --host 0.0.0.0 \
   --port 30001 \
   --trust-remote-code \
-  --max-model-len 32768
+  --context-length 32768 \
+  --mem-fraction-static 0.40 \
+  --attention-backend triton \
+  --sampling-backend pytorch
 ```
 
 The layout detection service is model-specific. Expose it separately and pass

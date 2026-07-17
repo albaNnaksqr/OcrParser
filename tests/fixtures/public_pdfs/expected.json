@@ -1,0 +1,97 @@
+{
+  "fixtures": [
+    {
+      "filename": "simple_text_1p.pdf",
+      "pages": 1,
+      "reading_order": [
+        "Executive Summary",
+        "Scope",
+        "Checklist",
+        "Notes"
+      ],
+      "required_fields": [
+        "Executive Summary",
+        "OCR-BENCH-001",
+        "2026-05-19",
+        "Synthetic Benchmark Team"
+      ],
+      "table_cells": []
+    },
+    {
+      "filename": "receipt_narrow_1p.pdf",
+      "pages": 1,
+      "reading_order": [
+        "SYNTHETIC RECEIPT",
+        "Store",
+        "Item",
+        "Payment",
+        "Reference"
+      ],
+      "required_fields": [
+        "OCR Bench Mart",
+        "2026-05-19",
+        "RECEIPT-BENCH-001",
+        "37.24"
+      ],
+      "table_cells": [
+        "Notebook",
+        "2",
+        "8.40",
+        "Archive Box",
+        "12.99",
+        "Total",
+        "37.24"
+      ]
+    },
+    {
+      "filename": "invoice_table_2p.pdf",
+      "pages": 2,
+      "reading_order": [
+        "Bill To",
+        "Invoice",
+        "SKU",
+        "Payment memo"
+      ],
+      "required_fields": [
+        "INV-1000",
+        "INV-1001",
+        "OCR-101",
+        "375.00",
+        "1,972.90"
+      ],
+      "table_cells": [
+        "OCR-204",
+        "Table extraction review",
+        "8",
+        "42.50",
+        "340.00"
+      ]
+    },
+    {
+      "filename": "mixed_layout_2p.pdf",
+      "pages": 2,
+      "reading_order": [
+        "Case ID",
+        "Applicant",
+        "Item",
+        "FIGURE AREA",
+        "Verified against synthetic source"
+      ],
+      "required_fields": [
+        "MIX-001",
+        "MIX-002",
+        "Benchmark User 1",
+        "Document AI Evaluation",
+        "FIGURE AREA"
+      ],
+      "table_cells": [
+        "Identity check",
+        "Complete",
+        "A. Liu",
+        "Table review",
+        "C. Smith"
+      ]
+    }
+  ],
+  "schema_version": 1
+}

@@ -73,6 +73,30 @@ def test_up_plan_applies_migrations_then_starts_control_and_optional_worker(tmp_
     assert rendered.index("ocr_platform.control.migrate_cli") < rendered.index("ocr_platform.control\n")
 
 
+def test_up_plan_can_start_two_isolated_workers(tmp_path):
+    config = make_config(tmp_path, with_worker=True, worker_count=2)
+
+    plan = local_prod_env.build_up_plan(config, python_executable="/venv/bin/python")
+    workers = [step for step in plan if step.label.startswith("start local worker")]
+
+    assert len(workers) == 2
+    assert config.worker_id_for(0) == "local-worker-01"
+    assert config.worker_id_for(1) == "local-worker-02"
+    assert workers[0].env["OCR_AGENT_WORK_DIR"] != workers[1].env["OCR_AGENT_WORK_DIR"]
+    assert workers[0].env["OCR_AGENT_EVENT_SPOOL_DIR"] != workers[1].env["OCR_AGENT_EVENT_SPOOL_DIR"]
+    assert workers[0].argv[workers[0].argv.index("--server_id") + 1] == "local-worker-01"
+    assert workers[1].argv[workers[1].argv.index("--server_id") + 1] == "local-worker-02"
+
+
+def test_worker_runtime_files_preserve_first_worker_compatibility(tmp_path):
+    config = make_config(tmp_path, with_worker=True, worker_count=2)
+
+    assert config.worker_pid_file_for(0) == config.state_dir / "worker.pid"
+    assert config.worker_env_file_for(0) == config.state_dir / "worker.env"
+    assert config.worker_pid_file_for(1) == config.state_dir / "worker-02.pid"
+    assert config.worker_env_file_for(1) == config.state_dir / "worker-02.env"
+
+
 def test_runtime_summary_names_db_ports_env_logs_and_stop_command(tmp_path):
     config = make_config(
         tmp_path,
@@ -141,6 +165,8 @@ def test_parser_builds_local_prod_config_with_optional_worker(tmp_path):
             str(tmp_path / "state"),
             "up",
             "--with-worker",
+            "--worker-count",
+            "2",
             "--with-mock-ocr",
             "--shared-root",
             str(tmp_path / "shared"),
@@ -161,6 +187,7 @@ def test_parser_builds_local_prod_config_with_optional_worker(tmp_path):
 
     assert args.command == "up"
     assert config.with_worker is True
+    assert config.worker_count == 2
     assert config.with_mock_ocr is True
     assert config.mock_ocr_port == 19000
     assert config.mock_ocr_model == "local-mock"

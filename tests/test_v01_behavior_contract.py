@@ -92,7 +92,12 @@ def test_markdown_output_snapshot_is_stable(tmp_path) -> None:
 
 def test_public_pdf_golden_fixtures_are_small_and_readable() -> None:
     fixtures = ROOT / "tests/fixtures/public_pdfs"
-    expected = {"simple_text_1p.pdf": 1, "receipt_narrow_1p.pdf": 1}
+    expected = {
+        "simple_text_1p.pdf": 1,
+        "receipt_narrow_1p.pdf": 1,
+        "invoice_table_2p.pdf": 2,
+        "mixed_layout_2p.pdf": 2,
+    }
     for filename, pages in expected.items():
         path = fixtures / filename
         assert path.stat().st_size < 32 * 1024
