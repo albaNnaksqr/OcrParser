@@ -419,15 +419,28 @@ class JobPreflightResponse(BaseModel):
 class SchemaMigrationResponse(BaseModel):
     version: str
     applied_at: Optional[str] = None
+    checksum: Optional[str] = None
+    expected_checksum: Optional[str] = None
+    checksum_valid: Optional[bool] = None
+
+
+class SchemaMigrationChecksumMismatchResponse(BaseModel):
+    version: str
+    expected_checksum: str
+    applied_checksum: str
 
 
 class DatabaseStatusResponse(BaseModel):
     dialect: str
     schema_migrations_table_exists: bool
+    migration_checksum_column_exists: bool = False
     known_migrations: list[str] = Field(default_factory=list)
     applied_migrations: list[SchemaMigrationResponse] = Field(default_factory=list)
     latest_applied_migration: Optional[str] = None
     missing_migrations: list[str] = Field(default_factory=list)
+    unexpected_migrations: list[str] = Field(default_factory=list)
+    missing_checksums: list[str] = Field(default_factory=list)
+    checksum_mismatches: list[SchemaMigrationChecksumMismatchResponse] = Field(default_factory=list)
     is_current: bool = False
 
 

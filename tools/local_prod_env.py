@@ -255,7 +255,9 @@ def build_up_plan(
             "apply control migrations",
             [
                 python_executable,
-                str(config.root / "tools" / "apply_control_migrations.py"),
+                "-m",
+                "ocr_platform.control.migrate_cli",
+                "apply",
                 "--database-url",
                 config.database_url,
             ],
@@ -550,7 +552,9 @@ def command_up(args: argparse.Namespace) -> int:
             "apply control migrations",
             [
                 sys.executable,
-                str(config.root / "tools" / "apply_control_migrations.py"),
+                "-m",
+                "ocr_platform.control.migrate_cli",
+                "apply",
                 "--database-url",
                 config.database_url,
             ],

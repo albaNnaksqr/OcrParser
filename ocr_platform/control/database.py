@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 import os
-import re
 from collections.abc import Generator
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy import BigInteger, Engine, Integer, create_engine, event, inspect, text
 from sqlalchemy.orm import Session, sessionmaker
 
+from .migration import MIGRATIONS_DIR, MigrationCatalog, MigrationRunner, split_sql_script
 from .models import Base
 
 
 DEFAULT_DATABASE_URL = "sqlite:///./ocr_platform.db"
-MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
-_DOLLAR_QUOTE_RE = re.compile(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$")
 SQLITE_BUSY_TIMEOUT_MS = 30000
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 BYTE_TOTAL_COLUMNS = {
@@ -200,6 +197,10 @@ def init_db(db_engine: Engine | None = None) -> None:
         _, db_engine = _get_configured_database()
     Base.metadata.create_all(bind=db_engine)
     _ensure_compatible_schema(db_engine)
+    if db_engine.dialect.name == "postgresql":
+        # v0.3 preserves automatic startup upgrades while routing all migration
+        # execution through the same checksum-verified runner as the CLI.
+        MigrationRunner(db_engine).apply()
 
 
 def _bigint_upgrade_statements(
@@ -380,62 +381,11 @@ def _ensure_production_indexes(db_engine: Engine) -> None:
 
 
 def list_known_schema_migrations(migrations_dir: Path | None = None) -> list[str]:
-    migration_root = migrations_dir or MIGRATIONS_DIR
-    if not migration_root.exists():
-        return []
-    return sorted(path.stem for path in migration_root.glob("*.sql") if path.is_file())
-
-
-def _migration_sql_files(migrations_dir: Path | None = None) -> list[Path]:
-    migration_root = migrations_dir or MIGRATIONS_DIR
-    if not migration_root.exists():
-        return []
-    return sorted(path for path in migration_root.glob("*.sql") if path.is_file())
+    return MigrationCatalog.from_directory(migrations_dir).versions
 
 
 def _split_sql_script(sql: str) -> list[str]:
-    statements: list[str] = []
-    current: list[str] = []
-    dollar_quote: str | None = None
-    for line in sql.splitlines():
-        stripped = line.strip()
-        if not stripped or stripped.startswith("--"):
-            continue
-        current.append(line)
-        search_from = 0
-        while True:
-            if dollar_quote:
-                close_index = line.find(dollar_quote, search_from)
-                if close_index < 0:
-                    break
-                search_from = close_index + len(dollar_quote)
-                dollar_quote = None
-                continue
-            match = _DOLLAR_QUOTE_RE.search(line, search_from)
-            if match is None:
-                break
-            dollar_quote = match.group(0)
-            search_from = match.end()
-        if dollar_quote is None and stripped.endswith(";"):
-            statement = "\n".join(current).strip()
-            if statement:
-                statements.append(statement[:-1].strip())
-            current = []
-    trailing = "\n".join(current).strip()
-    if trailing:
-        statements.append(trailing)
-    return statements
-
-
-def _schema_migrations_exist(connection) -> bool:
-    return "schema_migrations" in inspect(connection).get_table_names()
-
-
-def _applied_schema_versions(connection) -> set[str]:
-    if not _schema_migrations_exist(connection):
-        return set()
-    rows = connection.execute(text("SELECT version FROM schema_migrations")).scalars().all()
-    return {str(row) for row in rows}
+    return split_sql_script(sql)
 
 
 def apply_schema_migrations(
@@ -443,79 +393,11 @@ def apply_schema_migrations(
     *,
     migrations_dir: Path | None = None,
 ) -> list[dict[str, str]]:
-    results: list[dict[str, str]] = []
-    migration_files = _migration_sql_files(migrations_dir)
-    with db_engine.begin() as connection:
-        applied_versions = _applied_schema_versions(connection)
-        for migration_file in migration_files:
-            version = migration_file.stem
-            if version in applied_versions:
-                results.append({"version": version, "status": "skipped"})
-                continue
-            sql = migration_file.read_text(encoding="utf-8")
-            for statement in _split_sql_script(sql):
-                connection.execute(text(statement))
-            if _schema_migrations_exist(connection):
-                refreshed_versions = _applied_schema_versions(connection)
-                if version not in refreshed_versions:
-                    connection.execute(
-                        text(
-                            "INSERT INTO schema_migrations (version) "
-                            "VALUES (:version)"
-                        ),
-                        {"version": version},
-                    )
-                    refreshed_versions.add(version)
-                applied_versions = refreshed_versions
-            results.append({"version": version, "status": "applied"})
-    return results
-
-
-def _serialize_applied_at(value: Any) -> str | None:
-    if value is None:
-        return None
-    if hasattr(value, "isoformat"):
-        return value.isoformat()
-    return str(value)
+    return MigrationRunner(db_engine, migrations_dir=migrations_dir).apply()
 
 
 def describe_database_status(db_engine: Engine) -> dict[str, object]:
-    inspector = inspect(db_engine)
-    table_names = set(inspector.get_table_names())
-    migrations_table_exists = "schema_migrations" in table_names
-    applied_migrations: list[dict[str, str | None]] = []
-    if migrations_table_exists:
-        with db_engine.connect() as connection:
-            rows = connection.execute(
-                text(
-                    "SELECT version, applied_at "
-                    "FROM schema_migrations "
-                    "ORDER BY applied_at ASC, version ASC"
-                )
-            ).mappings().all()
-        applied_migrations = [
-            {
-                "version": str(row["version"]),
-                "applied_at": _serialize_applied_at(row["applied_at"]),
-            }
-            for row in rows
-        ]
-
-    latest_applied = applied_migrations[-1]["version"] if applied_migrations else None
-    known_migrations = list_known_schema_migrations()
-    applied_versions = {migration["version"] for migration in applied_migrations}
-    missing_migrations = [
-        migration for migration in known_migrations if migration not in applied_versions
-    ]
-    return {
-        "dialect": db_engine.dialect.name,
-        "schema_migrations_table_exists": migrations_table_exists,
-        "known_migrations": known_migrations,
-        "applied_migrations": applied_migrations,
-        "latest_applied_migration": latest_applied,
-        "missing_migrations": missing_migrations,
-        "is_current": migrations_table_exists and not missing_migrations,
-    }
+    return MigrationRunner(db_engine).status()
 
 
 def get_session() -> Generator[Session, None, None]:

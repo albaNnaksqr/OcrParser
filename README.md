@@ -142,7 +142,7 @@ python -m pip install -e ".[dev]"
 ```
 
 `full` intentionally excludes the hardware-specific local layout runtime. A
-base installation still provides all three console-script names; invoking a
+base installation still provides all four console-script names; invoking a
 Platform command without `[platform]` exits with the exact install command
 instead of exposing an import traceback.
 
@@ -228,6 +228,16 @@ asyncio.run(main())
 ## Optional Control UI
 
 Install `[platform]`, then for local development run:
+
+```bash
+export OCR_PLATFORM_DATABASE_URL='postgresql+psycopg://user:password@db/ocr_platform'
+ocr-platform-migrate plan
+ocr-platform-migrate apply
+ocr-platform-migrate verify
+```
+
+See [database migration operations](docs/database-migrations.md). For SQLite-only
+local development these PostgreSQL migration commands are not required. Then run:
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

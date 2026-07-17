@@ -497,8 +497,8 @@ def build_install_plan(
                     "apply control database migrations",
                     "database",
                     command=[
-                        str(config.venv_dir / "bin" / "python"),
-                        "tools/apply_control_migrations.py",
+                        str(config.venv_dir / "bin" / "ocr-platform-migrate"),
+                        "apply",
                         "--database-url",
                         config.database_url,
                     ],

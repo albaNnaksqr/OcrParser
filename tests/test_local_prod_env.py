@@ -59,7 +59,7 @@ def test_up_plan_applies_migrations_then_starts_control_and_optional_worker(tmp_
 
     assert "docker compose -f" in rendered
     assert "up -d postgres" in rendered
-    assert "tools/apply_control_migrations.py --database-url" in rendered
+    assert "-m ocr_platform.control.migrate_cli apply --database-url" in rendered
     assert config.database_url in rendered
     assert f"PYTHONPATH={tmp_path}" in rendered
     assert "OCR_PLATFORM_REQUIRE_POSTGRES=1" in rendered
@@ -70,7 +70,7 @@ def test_up_plan_applies_migrations_then_starts_control_and_optional_worker(tmp_
     assert "--model-name local-mock" in rendered
     assert "--server_id local-worker-01" in rendered
     assert f"--shared_root {tmp_path / 'shared'}" in rendered
-    assert rendered.index("apply_control_migrations.py") < rendered.index("ocr_platform.control")
+    assert rendered.index("ocr_platform.control.migrate_cli") < rendered.index("ocr_platform.control\n")
 
 
 def test_runtime_summary_names_db_ports_env_logs_and_stop_command(tmp_path):

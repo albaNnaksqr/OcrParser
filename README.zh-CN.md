@@ -128,7 +128,7 @@ python3 -m venv .venv
 python -m pip install -e ".[dev]"
 ```
 
-`full` 明确不包含硬件相关的本地 layout runtime。基础安装仍会提供三个 console
+`full` 明确不包含硬件相关的本地 layout runtime。基础安装仍会提供四个 console
 script 名称；如果没有安装 `[platform]` 就运行 Platform 命令，程序会输出准确安装命令
 并退出，不会暴露 import traceback。
 
@@ -211,7 +211,17 @@ asyncio.run(main())
 
 ## 可选 Control UI
 
-先安装 `[platform]`，然后在本地开发环境启动：
+先安装 `[platform]`。生产 PostgreSQL 部署推荐先显式执行：
+
+```bash
+export OCR_PLATFORM_DATABASE_URL='postgresql+psycopg://user:password@db/ocr_platform'
+ocr-platform-migrate plan
+ocr-platform-migrate apply
+ocr-platform-migrate verify
+```
+
+详细说明见[数据库迁移操作](docs/database-migrations.zh-CN.md)。仅使用 SQLite 的本地
+开发无需执行上述 PostgreSQL migration 命令。然后启动：
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

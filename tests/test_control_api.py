@@ -124,7 +124,7 @@ def test_database_status_exposes_applied_schema_migrations(tmp_path):
     payload = response.json()
     assert payload["dialect"] == "sqlite"
     assert payload["schema_migrations_table_exists"] is True
-    assert payload["known_migrations"][-1] == "0018_widen_input_mode_columns"
+    assert payload["known_migrations"][-1] == "0019_schema_migration_checksums"
     assert payload["missing_migrations"] == [
         "0002_enforce_work_shard_job_index",
         "0003_job_counter_failed_file_samples",
@@ -141,13 +141,40 @@ def test_database_status_exposes_applied_schema_migrations(tmp_path):
         "0014_job_event_failure_category",
         "0015_job_counter_recent_error_samples",
         "0016_job_file_upsert_path_index",
-        "0017_worker_manifest_integrity",
-        "0018_widen_input_mode_columns",
-    ]
+            "0017_worker_manifest_integrity",
+            "0018_widen_input_mode_columns",
+            "0019_schema_migration_checksums",
+        ]
     assert payload["is_current"] is False
     assert payload["latest_applied_migration"] == "0001_control_schema"
     assert payload["applied_migrations"][0]["version"] == "0001_control_schema"
     assert payload["applied_migrations"][0]["applied_at"]
+
+
+def test_deployment_doctor_reports_migration_checksum_mismatch(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    with session_factory() as session:
+        session.execute(
+            text(
+                "CREATE TABLE schema_migrations ("
+                "version VARCHAR(128) PRIMARY KEY, "
+                "applied_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, "
+                "checksum VARCHAR(64))"
+            )
+        )
+        session.execute(
+            text(
+                "INSERT INTO schema_migrations (version, checksum) "
+                "VALUES ('0001_control_schema', 'incorrect')"
+            )
+        )
+        session.commit()
+
+    payload = client.get("/api/system/diagnostics").json()
+
+    issue_codes = {issue["code"] for issue in payload["issues"]}
+    assert "database_migration_checksum_mismatch" in issue_codes
+    assert payload["database"]["checksum_mismatches"][0]["version"] == "0001_control_schema"
 
 
 def test_healthz_and_readyz_are_public_when_api_token_is_enabled(tmp_path, monkeypatch):

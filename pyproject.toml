@@ -93,6 +93,7 @@ dev = [
 ocr-parser = "ocr_parser.cli:main"
 ocr-platform-control = "ocr_platform.control.__main__:main"
 ocr-platform-agent = "ocr_platform.agent.__main__:main"
+ocr-platform-migrate = "ocr_platform.control.migrate_cli:main"
 
 [project.urls]
 Homepage = "https://github.com/albaNnaksqr/OcrParser"

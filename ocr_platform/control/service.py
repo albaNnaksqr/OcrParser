@@ -956,6 +956,20 @@ def _database_migration_preflight_issue(database_status: dict[str, Any]) -> JobP
             latest_applied_migration=database_status.get("latest_applied_migration"),
         )
 
+    checksum_mismatches = database_status.get("checksum_mismatches") or []
+    missing_checksums = database_status.get("missing_checksums") or []
+    unexpected_migrations = database_status.get("unexpected_migrations") or []
+    if checksum_mismatches or missing_checksums or unexpected_migrations:
+        return _preflight_issue(
+            "error",
+            "database_migration_verification_failed",
+            "PostgreSQL control database migration history failed checksum verification.",
+            dialect=dialect,
+            checksum_mismatches=checksum_mismatches,
+            missing_checksums=missing_checksums,
+            unexpected_migrations=unexpected_migrations,
+        )
+
     return None
 
 

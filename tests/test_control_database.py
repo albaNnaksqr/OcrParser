@@ -2,6 +2,7 @@ from pathlib import Path
 import importlib
 import importlib.util
 import sys
+from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import BigInteger, Integer, delete, inspect, text
@@ -40,6 +41,32 @@ def test_init_db_creates_core_tables(tmp_path):
         session.commit()
 
     assert Path(db_path).exists()
+
+
+def test_postgres_init_db_routes_startup_upgrade_through_migration_runner(monkeypatch):
+    engine = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    calls = []
+
+    monkeypatch.setattr(database.Base.metadata, "create_all", lambda bind: calls.append(("create", bind)))
+    monkeypatch.setattr(database, "_ensure_compatible_schema", lambda bind: calls.append(("compat", bind)))
+
+    class RunnerStub:
+        def __init__(self, bind):
+            calls.append(("runner", bind))
+
+        def apply(self):
+            calls.append(("apply", engine))
+
+    monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
+
+    init_db(engine)
+
+    assert calls == [
+        ("create", engine),
+        ("compat", engine),
+        ("runner", engine),
+        ("apply", engine),
+    ]
 
 
 def test_sqlite_uses_busy_timeout_and_wal_for_control_plane_writes(tmp_path):
@@ -667,6 +694,21 @@ def test_input_mode_migration_widens_distributed_mode_columns():
     assert "ALTER TABLE manifests" in migration
     assert "ALTER COLUMN input_mode TYPE VARCHAR(64)" in migration
     assert "0018_widen_input_mode_columns" in migration
+
+
+def test_checksum_migration_extends_history_without_replacing_prior_sql():
+    root = Path(__file__).resolve().parents[1]
+    migration = (
+        root
+        / "ocr_platform"
+        / "control"
+        / "migrations"
+        / "0019_schema_migration_checksums.sql"
+    ).read_text(encoding="utf-8")
+
+    assert "ADD COLUMN IF NOT EXISTS checksum VARCHAR(64)" in migration
+    assert "0019_schema_migration_checksums" in migration
+    assert len(list((root / "ocr_platform" / "control" / "migrations").glob("*.sql"))) == 19
 
 
 def test_manifest_and_work_shard_models_persist(tmp_path):

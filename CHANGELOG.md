@@ -12,6 +12,9 @@
   statuses for compatibility.
 - Distinguished normal MinerU/Paddle two-stage completion from real degraded
   paths and added bounded-cardinality stage/fallback metrics.
+- Added one checksum-aware `MigrationRunner`, PostgreSQL advisory locking,
+  migration `0019`, and the `ocr-platform-migrate status|plan|apply|verify`
+  command shared by startup, diagnostics, deployment tooling, and CI.
 
 ## 0.2.1
 

@@ -97,7 +97,7 @@ def _verify_base_parser(bin_dir: Path, repo_root: Path) -> None:
 
 
 def _verify_platform_hint(bin_dir: Path) -> None:
-    for name in ("ocr-platform-control", "ocr-platform-agent"):
+    for name in ("ocr-platform-control", "ocr-platform-agent", "ocr-platform-migrate"):
         result = subprocess.run(
             [str(bin_dir / name), "--help"],
             text=True,
@@ -140,7 +140,16 @@ def main() -> int:
     if args.profile in {"base", "s3", "layout"}:
         _verify_platform_hint(args.bin_dir)
     if args.profile in {"platform", "full"}:
-        _import_modules("ocr_platform.control.app", "ocr_platform.agent.__main__")
+        _import_modules(
+            "ocr_platform.control.app",
+            "ocr_platform.control.migrate_cli",
+            "ocr_platform.agent.__main__",
+        )
+        subprocess.run(
+            [str(args.bin_dir / "ocr-platform-migrate"), "--help"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
     if args.profile in {"s3", "full"}:
         _import_modules("dots_ocr.utils.s3_downloader", "dots_ocr.utils.s3_upload")
     if args.profile == "layout":

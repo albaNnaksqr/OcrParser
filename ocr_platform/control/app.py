@@ -173,11 +173,18 @@ def _validate_current_migrations_for_engine(db_engine) -> None:
     if status.get("is_current"):
         return
     missing = ", ".join(str(item) for item in status.get("missing_migrations") or [])
+    checksum_mismatches = ", ".join(
+        str(item.get("version"))
+        for item in status.get("checksum_mismatches") or []
+        if isinstance(item, dict)
+    )
     latest = status.get("latest_applied_migration") or "none"
     if not status.get("schema_migrations_table_exists"):
         detail = "schema_migrations table is missing"
     elif missing:
         detail = f"missing migrations: {missing}"
+    elif checksum_mismatches:
+        detail = f"migration checksum mismatches: {checksum_mismatches}"
     else:
         detail = f"latest applied migration: {latest}"
     raise RuntimeError(
@@ -272,6 +279,26 @@ def _system_diagnostics(session: Session, *, strict_production: bool = False) ->
                 "severity": "warning",
                 "code": "database_migrations_missing",
                 "message": "schema_migrations table is missing.",
+            }
+        )
+    elif database_status.get("checksum_mismatches"):
+        issues.append(
+            {
+                "severity": "error",
+                "code": "database_migration_checksum_mismatch",
+                "message": "Control database migration checksums do not match packaged SQL.",
+                "details": {
+                    "checksum_mismatches": database_status.get("checksum_mismatches") or []
+                },
+            }
+        )
+    elif database_status.get("missing_checksums"):
+        issues.append(
+            {
+                "severity": "warning",
+                "code": "database_migration_checksums_missing",
+                "message": "Control database has migration records without checksums.",
+                "details": {"missing_checksums": database_status.get("missing_checksums") or []},
             }
         )
     elif not database_status.get("is_current"):

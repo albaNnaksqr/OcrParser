@@ -24,7 +24,7 @@ def main() -> int:
     parser.add_argument("--bin-dir", type=Path, required=True)
     args = parser.parse_args()
 
-    for name in ("ocr-parser", "ocr-platform-agent"):
+    for name in ("ocr-parser", "ocr-platform-agent", "ocr-platform-migrate"):
         subprocess.run([str(args.bin_dir / name), "--help"], check=True, stdout=subprocess.DEVNULL)
 
     port = _free_port()
@@ -65,7 +65,7 @@ def main() -> int:
                 control.kill()
                 control.wait(timeout=5)
 
-    print("Installed ocr-parser, ocr-platform-agent, and ocr-platform-control are healthy.")
+    print("Installed parser, agent, control, and migration console scripts are healthy.")
     return 0
 
 

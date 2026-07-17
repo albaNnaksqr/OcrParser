@@ -61,9 +61,16 @@ jobs:
           from pathlib import Path
           assert version("ocrparser-platform") == "0.2.1"
           names = {item.name for item in entry_points(group="console_scripts")}
-          assert {"ocr-parser", "ocr-platform-control", "ocr-platform-agent"} <= names
+          assert {
+              "ocr-parser",
+              "ocr-platform-control",
+              "ocr-platform-agent",
+              "ocr-platform-migrate",
+          } <= names
           assert files("ocr_platform.control").joinpath("ui/index.html").is_file()
-          assert any(files("ocr_platform.control").joinpath("migrations").iterdir())
+          assert files("ocr_platform.control").joinpath(
+              "migrations/0019_schema_migration_checksums.sql"
+          ).is_file()
           license_names = {
               Path(str(item)).name
               for item in distribution("ocrparser-platform").files or []
@@ -135,8 +142,18 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --upgrade pip
       - run: python -m pip install -e ".[dev]"
-      - name: Apply real PostgreSQL migrations
-        run: python tools/apply_control_migrations.py --database-url "$DATABASE_URL"
+      - name: Apply real PostgreSQL migrations under concurrent startup
+        run: |
+          ocr-platform-migrate apply --database-url "$DATABASE_URL" > /tmp/migrate-1.json &
+          first_pid=$!
+          ocr-platform-migrate apply --database-url "$DATABASE_URL" > /tmp/migrate-2.json &
+          second_pid=$!
+          wait "$first_pid"
+          wait "$second_pid"
+        env:
+          DATABASE_URL: postgresql+psycopg://ocr_platform:ocr_platform@127.0.0.1:5432/ocr_platform
+      - name: Verify migration history and checksums
+        run: ocr-platform-migrate verify --database-url "$DATABASE_URL"
         env:
           DATABASE_URL: postgresql+psycopg://ocr_platform:ocr_platform@127.0.0.1:5432/ocr_platform
       - name: Verify concurrent shard and scan-unit claims
