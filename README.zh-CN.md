@@ -4,7 +4,7 @@
 > 域拆分、统一数据库 migration、模块化 UI 和不可变 build provenance。参见
 > [架构说明](docs/architecture.zh-CN.md)、
 > [v0.3 迁移指南](docs/migration-v0.3.zh-CN.md)和
-> [发布检查单](docs/release-v0.3.zh-CN.md)。部署方还应使用
+> [v0.3.1 发布说明](docs/release-v0.3.1.zh-CN.md)。部署方还应使用
 > [v0.3 稳定性试运行手册](docs/stability-soak.zh-CN.md)完成隔离验证。
 
 [English](README.md) | 中文

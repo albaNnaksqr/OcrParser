@@ -19,18 +19,20 @@ GPU 预算或模型 revision 不同的结果，不能直接判定为性能回退
 
 ## 当前矩阵
 
-证据 commit：`7ab65c8c029d4c32110baa6ca11b63a58a8c854a`
-（`v0.3.0rc1`）；矩阵刷新日期：2026-07-17。
+DotsOCR/MinerU 证据 commit：`a7518fe379404418e5a452519b5cc0230b8e8da2`；
+PaddleOCR-VL 依赖修复复验证据 commit：
+`55d23996997508b61828d254e95aed8bf65d9752`；矩阵刷新日期：2026-07-22。
 机器可读的来源记录维护在
 [`engine-certification-records.json`](engine-certification-records.json)。MinerU 已记录
-不可变 runtime digest；DotsOCR 与 PaddleOCR-VL 因外部托管或源码环境没有不可变镜像，
-仍保持条件通过。
+不可变 base-runtime digest；DotsOCR 没有模型/runtime 来源，PaddleOCR-VL 只有任务镜像
+ID、没有不可变 registry RepoDigest。来源缺口和质量问题使三个引擎都保持
+**Verified（已验证）**。
 
 | 引擎 | 服务拓扑 | 契约 | 真实服务与输出 | 许可证审查 | 状态 |
 | --- | --- | --- | --- | --- | --- |
-| DotsOCR（`dotsocr`） | 一个 OpenAI-compatible VLM endpoint | 通过 | RC1 完成公开纯文本 fixture；阶段成功且 `fallback.used=false` | Parser 代码 MIT；AGPL 源码入口已实现；模型批准仍取决于部署 | **Verified，runtime 来源条件通过** |
-| MinerU（`mineru`） | 同一个 OpenAI-compatible VLM endpoint 执行 layout 和 recognition | 通过 | RC1 完成两个公开 fixture；全部阶段成功且 `fallback.used=false` | 模型和已验证 runtime 为 Apache-2.0；AGPL 源码入口已实现 | **Verified，vLLM runtime 已锁定，质量批准未关闭** |
-| PaddleOCR-VL（`paddleocr-vl`） | PP-DocLayoutV2 `/detect` 加 OpenAI-compatible VLM | 通过 | RC1 完成两个公开 fixture；全部阶段成功且 `fallback.used=false`，窄票据表格质量仍较弱 | Paddle 模型与导入 layout 源码均为 Apache-2.0；AGPL 源码入口已实现 | **Verified，runtime 来源与质量条件通过** |
+| DotsOCR（`dotsocr`） | 一个 OpenAI-compatible VLM endpoint | 通过 | 公开数据 50/50 页；质量 fixture 3/4；无 fallback | Parser 代码 MIT；AGPL 源码入口已实现；模型批准仍取决于部署 | **Verified**，缺模型/runtime 来源，且一份 reading-order fixture 未通过 |
+| MinerU（`mineru`） | 同一个 OpenAI-compatible VLM endpoint 执行 layout 和 recognition | 通过 | 任务服务 outage 场景 50/50 页；质量 fixture 3/4；无 fallback | 模型和相关开源组件为 Apache-2.0；NVIDIA container terms 需要部署方单独审查；AGPL 源码入口已实现 | **Verified**，reading-order 质量和派生镜像来源未关闭 |
+| PaddleOCR-VL（`paddleocr-vl`） | PP-DocLayoutV2 `/detect` 加 OpenAI-compatible VLM | 通过 | 任务服务 outage 场景 50/50 页；集成 fixture 4/4，质量 fixture 1/4 | Paddle 模型与导入 layout 源码均为 Apache-2.0；AGPL 源码入口已实现 | **Verified / limited**，无 RepoDigest、使用 FlashInfer bypass，表格/reading-order 质量未关闭 |
 
 必需依赖 PyMuPDF 采用 AGPL/商业许可双许可证。本仓库已经实现 AGPL 源码提供路径；
 每次部署仍必须确认 `/source` 指向准确运行源码，详见
@@ -41,7 +43,41 @@ GPU 预算或模型 revision 不同的结果，不能直接判定为性能回退
 - `simple_text_1p.pdf` SHA256
   `eb542ecf8b1b4052d32b3f69449d3e875f8a9f8074851ec6b964f32ca3c259ff`；
 - `receipt_narrow_1p.pdf` SHA256
-  `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`。
+  `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`；
+- `invoice_table_2p.pdf` SHA256
+  `fe646b448dd53b2b02f5e5f236888c166f31796bd7ec7c9aa3f29e0c1156508b`；
+- `mixed_layout_2p.pdf` SHA256
+  `c537b903abf368a3e93bc346c8cde338c5205117e3a28966dede2f377049e7a5`。
+
+## v0.3.1 发布前复验
+
+- DotsOCR 使用 parser commit `a7518fe379404418e5a452519b5cc0230b8e8da2`，
+  公开数据 50/50 页完成、`fallback.used=false`，质量 fixture 通过 3/4。invoice
+  reading order 缺少 `Bill To`。托管 endpoint 没有暴露模型 revision 或不可变
+  runtime digest，因此只能保持功能性 **Verified**。
+- MinerU 使用同一 parser commit，在任务专属服务中断 60 秒的场景完成 50/50 页，
+  150 个 stage success、无失败页、`fallback.used=false`；质量 fixture 通过 3/4。
+  Parser 输出、直接 recognition crop 和 single-stage 都缺少相同 invoice reading-order
+  字段，证据支持将其归因为模型质量，而不是 Parser 丢失输出。固定 base image digest
+  仍为 `sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7`，
+  但启动时安装的 `mineru-vl-utils==1.0.5` 没有固化在独立的 digest-pinned 派生镜像中。
+- PaddleOCR-VL 在任务专属服务中断 60 秒的场景完成 50/50 页，150 个 stage success、
+  无 fallback。该运行定位出多页输出缺少基础依赖 `beautifulsoup4`。修复候选
+  `55d23996997508b61828d254e95aed8bf65d9752` 不进行手工依赖注入即可完成四份 fixture
+  集成，但 required fields、reading order 和表格单元格质量只通过 1/4。layout box
+  正常；crop/single-stage 对照把剩余表格问题定位到 recognition/runtime 路径，而不是
+  Parser 输出丢失。
+- Paddle 任务镜像从 SGLang revision
+  `0fe2dbd42caeb627bd8aca162dab7763d292fda9` 源码构建并加载
+  `sglang-kernel==0.4.4`。`sgl_kernel/sm100/common_ops` extension 包含 SM121 gencode，
+  在 compute capability 12.1 完成 import smoke。其 image ID 为
+  `sha256:98f20cc57fc8546bc7b9da0bc25103f87b6888bda7bf4439f7e35c979b6c4a61`，
+  但没有 RepoDigest；固定 base 组合还需要 `FLASHINFER_DISABLE_VERSION_CHECK=1`，
+  所以状态只能是 **Verified / limited**，不能标为 Certified。
+
+Paddle 候选修复脱敏报告 SHA256 为
+`a5d1cc198ab0afa3a28dbf15ee7ef348a8ea88b205ab7165bcf8a1f8e00d5410`。
+公开证据不包含 endpoint 地址、凭据、客户文档或私有路径。
 
 ## v0.3.0rc1 复验
 

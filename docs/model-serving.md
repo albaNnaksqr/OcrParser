@@ -142,7 +142,10 @@ The v0.3.1 ARM64 certification path uses the pinned SGLang recipe under
 [`deploy/engines/paddleocr-vl`](../deploy/engines/paddleocr-vl/README.md).
 The recipe records the base-image digest, SGLang/kernel/runtime versions, model
 revision, and weight checksum without bundling model weights. Build and record
-the resulting image digest before certification.
+the resulting registry RepoDigest before certification. The currently validated
+base combination uses the explicitly limited
+`FLASHINFER_DISABLE_VERSION_CHECK=1` strategy; a local image ID without a
+RepoDigest remains **Verified / limited**.
 
 Generic VLM service shape:
 

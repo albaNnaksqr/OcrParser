@@ -2,13 +2,34 @@
 
 ## Unreleased
 
+## 0.3.1 - 2026-07-22
+
+- Fixed three recovery classes without changing public APIs or data formats:
+  assigned jobs now resume remaining static shards, shard update spool/replay is
+  durable and terminal-state monotonic across Control outages, and lease
+  renewal is limited to actively running jobs so stale work can be reclaimed.
+- Declared Beautiful Soup as a base Parser dependency after real PaddleOCR-VL
+  multi-page validation exposed the missing table-merge dependency.
 - Added an auditable stability-soak runner with release/source/migration/claim
   gates, rotating input modes, fault hooks, resource sampling, output audits,
   and machine-readable reports that never persist runtime secrets.
 - Expanded the generated public engine-certification set with invoice-table and
   mixed-layout PDFs plus required-field, reading-order, and table-cell checks.
-- Added a digest-pinned ARM64 PaddleOCR-VL SGLang runtime recipe and documented
-  the v0.4 operational-maturity decisions without changing v0.3 runtime APIs.
+- Completed a sanitized three-cycle Spark preflight: 300/300 documents and
+  30/30 shards completed with lease reclaim, a 60-second Control outage and
+  spool replay, and same-server restart recovery. The restart-based two-lease
+  assertion exceeded its threshold by 1.524 seconds; the lease-eligibility
+  basis passed and the discrepancy remains explicitly recorded.
+- Revalidated 50 public pages per engine. DotsOCR and MinerU passed 3/4 quality
+  fixtures; PaddleOCR-VL passed integration after the dependency fix but only
+  1/4 quality fixtures. All three remain **Verified**, not **Certified**, with
+  their provenance and quality limitations recorded.
+- Updated the ARM64 PaddleOCR-VL recipe to build `sglang-kernel==0.4.4` from the
+  pinned SGLang source and document its compute-capability and FlashInfer
+  compatibility checks. No immutable repository digest was produced, so the
+  deployment remains limited and Verified.
+- Documented the v0.4 operational-maturity decisions without changing v0.3
+  runtime APIs.
 
 ## 0.3.0 - 2026-07-17
 

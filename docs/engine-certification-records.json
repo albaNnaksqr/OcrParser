@@ -1,35 +1,83 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-07-17",
+  "updated_at": "2026-07-22",
   "records": [
     {
       "engine": "dotsocr",
-      "status": "verified-rc1-conditional",
-      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
+      "status": "verified-v0.3.1-limited",
+      "parser_commit": "a7518fe379404418e5a452519b5cc0230b8e8da2",
       "model_revision": null,
       "runtime_image": null,
       "runtime_digest": null,
-      "notes": "v0.3.0rc1 parsed the public simple-text fixture successfully with explicit stage success and fallback.used=false. The externally managed service did not expose immutable model or runtime revisions, so this remains a functional verification rather than a reproducible certification."
+      "license_review": "Parser code is MIT and the AGPL source offer is implemented; managed model/runtime approval remains deployment-specific.",
+      "fixture_result": {
+        "passed": 3,
+        "total": 4
+      },
+      "fifty_page_result": {
+        "completed_pages": 50,
+        "failed_pages": 0,
+        "fallback_used": false
+      },
+      "limitations": [
+        "The managed endpoint did not expose immutable model or runtime provenance.",
+        "The invoice fixture missed the Bill To reading-order expectation."
+      ],
+      "notes": "The real service completed 50/50 public pages and passed 3/4 quality fixtures with fallback.used=false. This is functional verification, not reproducible certification."
     },
     {
       "engine": "mineru",
-      "status": "verified-rc1-conditional",
-      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
+      "status": "verified-v0.3.1-limited",
+      "parser_commit": "a7518fe379404418e5a452519b5cc0230b8e8da2",
       "model_revision": "d3f5e08d073c21466bbabe21c71bb1e9c2e595da",
       "runtime_image": "nvcr.io/nvidia/vllm:26.03-py3",
       "runtime_digest": "sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7",
-      "notes": "v0.3.0rc1 passed both public fixtures with layout, recognition, and output stages successful and fallback.used=false. Evidence is valid only for the pinned NVIDIA vLLM image with MinerULogitsProcessor; broader quality approval remains open."
+      "license_review": "The model and relevant open-source components are Apache-2.0; NVIDIA container terms require separate deployment review.",
+      "fixture_result": {
+        "passed": 3,
+        "total": 4
+      },
+      "fifty_page_result": {
+        "completed_pages": 50,
+        "failed_pages": 0,
+        "fallback_used": false,
+        "task_service_outage_seconds": 60
+      },
+      "limitations": [
+        "The invoice fixture missed the Bill To reading-order expectation in Parser, direct-crop, and single-stage outputs.",
+        "mineru-vl-utils was installed at service start rather than embodied in a digest-pinned derived image."
+      ],
+      "notes": "The pinned base vLLM runtime completed 50/50 public pages through a task-owned outage and passed 3/4 quality fixtures. The remaining failure is attributed to model reading-order quality."
     },
     {
       "engine": "paddleocr-vl",
-      "status": "verified-rc1-conditional",
-      "parser_commit": "7ab65c8c029d4c32110baa6ca11b63a58a8c854a",
+      "status": "verified-v0.3.1-limited",
+      "parser_commit": "55d23996997508b61828d254e95aed8bf65d9752",
       "model_revision": "d911116c363676c602c4786ad0b9667b1aee055f",
       "layout_model_revision": "a0a882d03564ff3a9c9b37e48e2e636e7c236fd6",
       "runtime_image": null,
       "runtime_digest": null,
+      "runtime_image_id": "sha256:98f20cc57fc8546bc7b9da0bc25103f87b6888bda7bf4439f7e35c979b6c4a61",
       "runtime_source_revision": "0fe2dbd42caeb627bd8aca162dab7763d292fda9",
-      "notes": "v0.3.0rc1 passed both public fixtures with layout, recognition, and output stages successful and fallback.used=false. The isolated test overlay used sglang-kernel 0.4.4 on the pinned SGLang source revision, but no immutable runtime image exists and narrow-receipt table quality remains weak."
+      "license_review": "Recognition and layout model cards declare Apache-2.0; the AGPL source offer is implemented; deployment approval remains operator-specific.",
+      "fixture_result": {
+        "integration_completed": 4,
+        "quality_passed": 1,
+        "total": 4
+      },
+      "fifty_page_result": {
+        "completed_pages": 50,
+        "failed_pages": 0,
+        "fallback_used": false,
+        "task_service_outage_seconds": 60
+      },
+      "limitations": [
+        "No immutable RepoDigest was produced; an image ID is not a registry digest.",
+        "The fixed base composition requires FLASHINFER_DISABLE_VERSION_CHECK=1.",
+        "Only 1/4 public quality fixtures passed; table recognition and reading order remain limited."
+      ],
+      "evidence_sha256": "a5d1cc198ab0afa3a28dbf15ee7ef348a8ea88b205ab7165bcf8a1f8e00d5410",
+      "notes": "The 55d2399 candidate completed all four integration fixtures after declaring Beautiful Soup, but only one met quality expectations. The source-built sglang-kernel 0.4.4 runtime loaded sgl_kernel/sm100/common_ops with SM121 gencode; this remains Verified and limited."
     }
   ]
 }

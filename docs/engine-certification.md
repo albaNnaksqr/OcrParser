@@ -25,19 +25,21 @@ model revisions must not be compared directly as a performance regression.
 
 ## Current Matrix
 
-Evidence commit: `7ab65c8c029d4c32110baa6ca11b63a58a8c854a`
-(`v0.3.0rc1`). Matrix refresh: 2026-07-17.
+Evidence commits: `a7518fe379404418e5a452519b5cc0230b8e8da2` for
+DotsOCR/MinerU and `55d23996997508b61828d254e95aed8bf65d9752` for the
+PaddleOCR-VL dependency-fix verification. Matrix refresh: 2026-07-22.
 The machine-readable provenance is maintained in
 [`engine-certification-records.json`](engine-certification-records.json).
-MinerU now has an immutable runtime digest. DotsOCR and PaddleOCR-VL remain
-conditional because their externally managed or source-based runtimes were not
-available as immutable images.
+MinerU has an immutable base-runtime digest. DotsOCR has no model/runtime
+provenance, while PaddleOCR-VL has a task image ID but no immutable registry
+RepoDigest. These gaps and the open quality findings keep every row at
+**Verified**.
 
 | Engine | Service topology | Contract | Real service and output | License review | Status |
 | --- | --- | --- | --- | --- | --- |
-| DotsOCR (`dotsocr`) | One OpenAI-compatible VLM endpoint | Pass | RC1 parsed the public simple-text fixture; stages succeeded and `fallback.used=false` | Parser code is MIT; AGPL source offer is implemented; model approval remains deployment-specific | **Verified**, conditional runtime provenance |
-| MinerU (`mineru`) | One OpenAI-compatible VLM endpoint for layout and recognition | Pass | RC1 completed both public fixtures with all stages successful and `fallback.used=false` | Model and validated runtime are Apache-2.0; AGPL source offer is implemented | **Verified**, pinned vLLM runtime; quality approval open |
-| PaddleOCR-VL (`paddleocr-vl`) | PP-DocLayoutV2 `/detect` plus OpenAI-compatible VLM | Pass | RC1 completed both public fixtures with all stages successful and `fallback.used=false`; narrow-receipt table quality remained weak | Paddle models and imported layout source are Apache-2.0; AGPL source offer is implemented | **Verified**, conditional runtime provenance and quality |
+| DotsOCR (`dotsocr`) | One OpenAI-compatible VLM endpoint | Pass | 50/50 public pages; 3/4 quality fixtures; no fallback | Parser code is MIT; AGPL source offer is implemented; model approval remains deployment-specific | **Verified**, missing model/runtime provenance and one reading-order fixture |
+| MinerU (`mineru`) | One OpenAI-compatible VLM endpoint for layout and recognition | Pass | 50/50 pages through a task-service outage; 3/4 quality fixtures; no fallback | Model and relevant open-source components are Apache-2.0; NVIDIA container terms require separate deployment review; AGPL source offer is implemented | **Verified**, reading-order quality and derived-image provenance open |
+| PaddleOCR-VL (`paddleocr-vl`) | PP-DocLayoutV2 `/detect` plus OpenAI-compatible VLM | Pass | 50/50 pages through a task-service outage; 4/4 integration fixtures but 1/4 quality fixtures | Paddle models and imported layout source are Apache-2.0; AGPL source offer is implemented | **Verified / limited**, no RepoDigest, FlashInfer bypass, and table/reading-order quality open |
 
 The required PyMuPDF dependency is AGPL/commercial dual-licensed. This
 repository implements the AGPL source-offer path; each deployment must still
@@ -49,7 +51,49 @@ Public fixtures used in this refresh:
 - `simple_text_1p.pdf` SHA256
   `eb542ecf8b1b4052d32b3f69449d3e875f8a9f8074851ec6b964f32ca3c259ff`;
 - `receipt_narrow_1p.pdf` SHA256
-  `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`.
+  `a2ef9fd25513654491136d69b6018ce6032a699f0ebfceaf06769389a63e6bb5`;
+- `invoice_table_2p.pdf` SHA256
+  `fe646b448dd53b2b02f5e5f236888c166f31796bd7ec7c9aa3f29e0c1156508b`;
+- `mixed_layout_2p.pdf` SHA256
+  `c537b903abf368a3e93bc346c8cde338c5205117e3a28966dede2f377049e7a5`.
+
+## v0.3.1 Pre-release Refresh
+
+- DotsOCR at parser commit `a7518fe379404418e5a452519b5cc0230b8e8da2`
+  completed 50/50 public pages with `fallback.used=false` and passed 3/4
+  quality fixtures. The invoice reading-order expectation missed `Bill To`.
+  The managed endpoint exposed neither a model revision nor an immutable
+  runtime digest, so the row remains functional **Verified** evidence.
+- MinerU at the same parser commit completed 50/50 pages through a 60-second
+  task-owned service outage with 150 stage successes, no failed page, and
+  `fallback.used=false`. It passed 3/4 quality fixtures. Parser output, direct
+  recognition crops, and single-stage output all missed the same invoice
+  reading-order field, which supports a model-quality rather than Parser-loss
+  attribution. The pinned base image digest remains
+  `sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7`,
+  but the startup-installed `mineru-vl-utils==1.0.5` is not embodied in a
+  separate digest-pinned derived image.
+- PaddleOCR-VL completed 50/50 pages through a 60-second task-owned outage with
+  150 stage successes and no fallback. That run diagnosed a missing base
+  `beautifulsoup4` dependency for multi-page output. The fixed candidate
+  `55d23996997508b61828d254e95aed8bf65d9752` then completed all four fixture
+  integrations without manual dependency injection, but only 1/4 met required
+  fields, reading order, and table-cell quality. Layout boxes were present;
+  crop/single-stage comparisons attribute the remaining table failures to the
+  recognition/runtime path rather than Parser output loss.
+- The Paddle task image loaded source-built `sglang-kernel==0.4.4` from SGLang
+  revision `0fe2dbd42caeb627bd8aca162dab7763d292fda9`. Its
+  `sgl_kernel/sm100/common_ops` extension contained SM121 gencode and passed a
+  compute-capability 12.1 import smoke. It has image ID
+  `sha256:98f20cc57fc8546bc7b9da0bc25103f87b6888bda7bf4439f7e35c979b6c4a61`
+  but no RepoDigest, and the fixed base combination requires
+  `FLASHINFER_DISABLE_VERSION_CHECK=1`; it therefore remains
+  **Verified / limited**, never Certified.
+
+The sanitized Paddle candidate-fix report has SHA256
+`a5d1cc198ab0afa3a28dbf15ee7ef348a8ea88b205ab7165bcf8a1f8e00d5410`.
+No endpoint address, credential, customer document, or private path is part of
+the published evidence.
 
 ## v0.3.0rc1 Refresh
 

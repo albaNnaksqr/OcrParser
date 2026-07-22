@@ -136,7 +136,10 @@ python -m ocr_parser \
 v0.3.1 ARM64 认证使用
 [`deploy/engines/paddleocr-vl`](../deploy/engines/paddleocr-vl/README.md)中的固定
 SGLang 配方。该配方记录 base image digest、SGLang/kernel/runtime 版本、模型
-revision 与权重 checksum，但不打包模型权重。认证前必须构建并记录最终 image digest。
+revision 与权重 checksum，但不打包模型权重。认证前必须构建并记录 registry
+RepoDigest。当前固定 base 组合采用显式受限的
+`FLASHINFER_DISABLE_VERSION_CHECK=1` 策略；只有本地 image ID、没有 RepoDigest 时仍为
+**Verified / limited**。
 
 通用 VLM service 形态：
 

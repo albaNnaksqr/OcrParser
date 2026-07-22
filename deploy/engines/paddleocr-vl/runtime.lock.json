@@ -3,6 +3,11 @@
   "base_image": "nvcr.io/nvidia/vllm:26.03-py3",
   "base_image_digest": "sha256:13e327dad79e6e417f6687fec2ba76b0386d597082ec0ee003c1e964ec6ad0e7",
   "flashinfer_python": "0.6.7.post3",
+  "flashinfer_version_check_policy": {
+    "environment": "FLASHINFER_DISABLE_VERSION_CHECK=1",
+    "reason": "The pinned NVIDIA base provides a FlashInfer cubin build-version string that differs from flashinfer-python 0.6.7.post3.",
+    "status": "explicit-limited-compatibility-strategy"
+  },
   "layout_model": "PP-DocLayoutV2",
   "layout_model_revision": "a0a882d03564ff3a9c9b37e48e2e636e7c236fd6",
   "llguidance": "0.7.30",
@@ -11,9 +16,21 @@
   "model_safetensors_sha256": "85a479d506a11e724e7285d395c551be69f41dbc16b6342d3cacfb189aed71db",
   "python": "3.12.3",
   "sglang_kernel": "0.4.4",
+  "sglang_kernel_build": {
+    "backend": "scikit-build-core==0.11.6",
+    "extension_glob": "sgl_kernel/sm100/common_ops*",
+    "source": "pinned-sglang-source/sgl-kernel",
+    "source_built": true
+  },
   "sglang_revision": "0fe2dbd42caeb627bd8aca162dab7763d292fda9",
-  "sglang_source_only": true,
+  "sglang_python_from_source": true,
+  "sglang_source_only": false,
   "sglang_source_sha256": "c2bcbd305cfd9f0260a8ede833b1120bb804562369b77f4798855616857aeb16",
   "torch": "2.11.0a0+a6c236b9fd.nv26.03.46836102",
-  "transformers": "5.5.4"
+  "transformers": "5.5.4",
+  "validation_requirements": {
+    "compute_capability": "12.1",
+    "gpu_extension_import": "sgl_kernel.sm100.common_ops",
+    "immutable_repo_digest_required_for_certified": true
+  }
 }
