@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from importlib.metadata import distribution
 from pathlib import Path
 
 
@@ -114,6 +115,62 @@ def _import_modules(*names: str) -> None:
         importlib.import_module(name)
 
 
+def _verify_imports_use_installed_wheel(repo_root: Path) -> None:
+    spec = importlib.util.find_spec("ocr_parser")
+    assert spec is not None and spec.origin
+    module_path = Path(spec.origin).resolve()
+    source_root = repo_root.resolve()
+    if module_path == source_root or source_root in module_path.parents:
+        raise RuntimeError(
+            f"install-profile verification imported source checkout: {module_path}"
+        )
+    installed_package = Path(
+        distribution("ocrparser-platform").locate_file("ocr_parser")
+    ).resolve()
+    if module_path.parent != installed_package:
+        raise RuntimeError(
+            "install-profile verification did not import the installed wheel: "
+            f"module={module_path}, distribution={installed_package}"
+        )
+
+
+def _verify_paddle_cross_page_table_merge() -> None:
+    _import_modules("bs4")
+    from ocr_parser.engines.paddleocr_vl import _merge_tables_across_pages
+
+    pages = [
+        [
+            {
+                "label": "table",
+                "bbox": [0, 0, 100, 100],
+                "content": (
+                    "<table><tr><th>Item</th><th>Value</th></tr>"
+                    "<tr><td>alpha</td><td>1</td></tr></table>"
+                ),
+            }
+        ],
+        [
+            {
+                "label": "table",
+                "bbox": [0, 0, 100, 100],
+                "content": (
+                    "<table><tr><th>Item</th><th>Value</th></tr>"
+                    "<tr><td>beta</td><td>2</td></tr></table>"
+                ),
+            }
+        ],
+    ]
+
+    merged = _merge_tables_across_pages(pages)
+
+    assert merged is pages
+    assert merged[1][0]["content"] == ""
+    assert merged[1][0]["_ggid"] == merged[0][0]["_gid"]
+    merged_html = merged[0][0]["content"]
+    assert "alpha" in merged_html and "beta" in merged_html
+    assert merged_html.count("Item") == 1
+
+
 def _verify_data_index_package_data() -> None:
     spec = importlib.util.find_spec("dots_ocr.data_index")
     assert spec is not None and spec.submodule_search_locations
@@ -135,6 +192,8 @@ def main() -> int:
     args = parser.parse_args()
 
     _import_modules("ocr_parser", "ocr_parser.cli", "ocr_parser.parser")
+    _verify_imports_use_installed_wheel(args.repo_root)
+    _verify_paddle_cross_page_table_merge()
     _verify_base_parser(args.bin_dir, args.repo_root)
 
     if args.profile in {"base", "s3", "layout"}:
