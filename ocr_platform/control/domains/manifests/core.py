@@ -314,11 +314,12 @@ def _claimable_scan_unit_id_select(
     *,
     limit: int = SCAN_UNIT_CLAIM_BATCH_SIZE,
     after_id: int | None = None,
+    statuses: set[str] | None = None,
 ):
     statement = (
         select(ScanUnit)
         .join(Job, ScanUnit.job_id == Job.id)
-        .where(ScanUnit.status.in_(RECLAIMABLE_SCAN_UNIT_STATUSES))
+        .where(ScanUnit.status.in_(statuses or RECLAIMABLE_SCAN_UNIT_STATUSES))
         .where(Job.assigned_server_id == POOL_SERVER_ID)
         .where(Job.status.in_({"queued", "running"}))
     )
@@ -337,49 +338,52 @@ def claim_next_scan_unit(session: Session, server_id: str) -> ScanUnit | None:
         return None
     now = utcnow()
     reconcile_expired_scan_unit_leases(session, now=now)
-    after_id: int | None = None
-    while True:
-        candidate_ids = session.execute(
-            _claimable_scan_unit_id_select(
-                limit=SCAN_UNIT_CLAIM_BATCH_SIZE,
-                after_id=after_id,
-            )
-        ).scalars().all()
-        if not candidate_ids:
-            return None
-        after_id = max(candidate_ids)
-        for unit_id in candidate_ids:
-            unit = session.get(ScanUnit, unit_id)
-            if unit is None:
-                continue
-            job = unit.job
-            if not server_is_allowed_for_job(job, server_id):
-                continue
-            if not server_can_access_input_dir(session, server_id, unit.path):
-                continue
-            result = session.execute(
-                update(ScanUnit)
-                .where(ScanUnit.id == unit.id)
-                .where(ScanUnit.status.in_(RECLAIMABLE_SCAN_UNIT_STATUSES))
-                .values(
-                    status="running",
-                    assigned_server_id=server_id,
-                    attempt_count=ScanUnit.attempt_count + 1,
-                    started_at=now,
-                    lease_expires_at=scan_unit_lease_deadline(now),
-                    failure_category=None,
-                    error_message=None,
+    for claim_statuses in ({"stale"}, {"pending"}):
+        after_id: int | None = None
+        while True:
+            candidate_ids = session.execute(
+                _claimable_scan_unit_id_select(
+                    limit=SCAN_UNIT_CLAIM_BATCH_SIZE,
+                    after_id=after_id,
+                    statuses=claim_statuses,
                 )
-            )
-            if result.rowcount != 1:
-                session.rollback()
-                return claim_next_scan_unit(session, server_id)
-            if job.status == "queued":
-                job.status = "running"
-                job.started_at = now
-            session.commit()
-            return session.get(ScanUnit, unit.id)
+            ).scalars().all()
+            if not candidate_ids:
+                break
+            after_id = max(candidate_ids)
+            for unit_id in candidate_ids:
+                unit = session.get(ScanUnit, unit_id)
+                if unit is None:
+                    continue
+                job = unit.job
+                if not server_is_allowed_for_job(job, server_id):
+                    continue
+                if not server_can_access_input_dir(session, server_id, unit.path):
+                    continue
+                result = session.execute(
+                    update(ScanUnit)
+                    .where(ScanUnit.id == unit.id)
+                    .where(ScanUnit.status.in_(claim_statuses))
+                    .values(
+                        status="running",
+                        assigned_server_id=server_id,
+                        attempt_count=ScanUnit.attempt_count + 1,
+                        started_at=now,
+                        lease_expires_at=scan_unit_lease_deadline(now),
+                        failure_category=None,
+                        error_message=None,
+                    )
+                )
+                if result.rowcount != 1:
+                    session.rollback()
+                    return claim_next_scan_unit(session, server_id)
+                if job.status == "queued":
+                    job.status = "running"
+                    job.started_at = now
+                session.commit()
+                return session.get(ScanUnit, unit.id)
         session.rollback()
+    return None
 
 def _next_manifest_shard_index(
     session: Session,
@@ -1812,11 +1816,15 @@ def finalize_stopped_job_if_idle(session: Session, job: Job) -> bool:
     return True
 
 def _claimable_shard_id_select(job_id: str):
+    recovery_priority = case(
+        (WorkShard.status.in_({"retrying", "stale"}), 0),
+        else_=1,
+    )
     return (
         select(WorkShard.id)
         .where(WorkShard.job_id == job_id)
         .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
-        .order_by(WorkShard.shard_index.asc())
+        .order_by(recovery_priority, WorkShard.shard_index.asc())
         .limit(1)
         .with_for_update(skip_locked=True)
     )

@@ -1,10 +1,11 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 from fastapi.testclient import TestClient
 
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.models import ShardAttempt, WorkShard, utcnow
+from ocr_platform.control.models import ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import service
 from sqlalchemy.dialects import postgresql
 
@@ -16,11 +17,12 @@ def make_client_with_session(tmp_path):
     return TestClient(app), session_factory
 
 
-def heartbeat_worker(client, server_id):
+def heartbeat_worker(client, server_id, *, status="idle", current_job_id=None):
     return client.post(
         f"/api/servers/{server_id}/heartbeat",
         json={
-            "status": "idle",
+            "status": status,
+            "current_job_id": current_job_id,
             "capabilities": {
                 "shared_paths": [
                     {
@@ -65,6 +67,17 @@ def create_remote_shard_job(client, *, max_shard_attempts=3):
         },
     )
     return job
+
+
+def reregister_worker(client, server_id):
+    return client.post(
+        "/api/servers/register",
+        json={
+            "id": server_id,
+            "name": server_id,
+            "host": "localhost",
+        },
+    )
 
 
 def test_expired_running_shard_becomes_stale_and_can_be_reclaimed(tmp_path):
@@ -130,6 +143,205 @@ def test_late_shard_update_from_reclaimed_attempt_is_rejected(tmp_path):
         assert shard.attempt_count == 2
         assert shard.processed_files == 0
         assert shard.completed_pages == 0
+
+
+def test_same_server_restart_reclaims_orphan_before_pending_shard(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    old_claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        orphan = session.get(WorkShard, old_claim["id"])
+        orphan.shard_index = 2
+        orphan.shard_path = "/shared/manifests/job/shards/shard-000002.jsonl"
+        session.flush()
+        session.add(
+            WorkShard(
+                job_id=orphan.job_id,
+                manifest_id=orphan.manifest_id,
+                shard_index=1,
+                shard_path="/shared/manifests/job/shards/shard-000001.jsonl",
+                status="pending",
+                file_count=1,
+            )
+        )
+        session.commit()
+
+    response = reregister_worker(client, "worker-a")
+
+    assert response.status_code == 200
+    heartbeat_worker(
+        client,
+        "worker-a",
+        status="busy",
+        current_job_id=job_id,
+    )
+    with session_factory() as session:
+        orphan = session.get(WorkShard, old_claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=orphan.id).one()
+        assert orphan.status == "stale"
+        assert orphan.assigned_server_id is None
+        assert orphan.lease_expires_at is None
+        assert attempt.status == "stale"
+        assert attempt.finished_at is not None
+
+    reclaimed = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+
+    assert reclaimed["id"] == old_claim["id"]
+    assert reclaimed["attempt_count"] == 2
+    assert reclaimed["assigned_server_id"] == "worker-a"
+
+    late = client.post(
+        f"/api/shards/{old_claim['id']}",
+        json={
+            "status": "succeeded",
+            "assigned_server_id": "worker-a",
+            "attempt_count": 1,
+            "processed_files": 1,
+        },
+    )
+    assert late.status_code == 409
+
+    current_payload = {
+        "status": "succeeded",
+        "assigned_server_id": "worker-a",
+        "attempt_count": 2,
+        "processed_files": 1,
+    }
+    assert client.post(f"/api/shards/{reclaimed['id']}", json=current_payload).status_code == 200
+    repeated = client.post(f"/api/shards/{reclaimed['id']}", json=current_payload)
+    regressive = client.post(
+        f"/api/shards/{reclaimed['id']}",
+        json=current_payload | {"status": "running", "processed_files": 0},
+    )
+    assert repeated.json()["status"] == "succeeded"
+    assert regressive.json()["status"] == "succeeded"
+    assert regressive.json()["processed_files"] == 1
+
+
+def test_same_server_restart_reclaims_only_orphan_without_pending_work(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    old_claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+
+    assert reregister_worker(client, "worker-a").status_code == 200
+    assert reregister_worker(client, "worker-a").status_code == 200
+    with session_factory() as session:
+        fenced = session.get(WorkShard, old_claim["id"])
+        assert fenced.status == "stale"
+        assert fenced.attempt_count == 1
+        assert session.query(ShardAttempt).filter_by(shard_id=fenced.id).count() == 1
+    heartbeat_worker(client, "worker-a")
+    reclaimed = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+
+    assert reclaimed["id"] == old_claim["id"]
+    assert reclaimed["attempt_count"] == 2
+    with session_factory() as session:
+        attempts = (
+            session.query(ShardAttempt)
+            .filter_by(shard_id=old_claim["id"])
+            .order_by(ShardAttempt.attempt_number)
+            .all()
+        )
+        assert [attempt.status for attempt in attempts] == ["stale", "running"]
+        assert [attempt.attempt_number for attempt in attempts] == [1, 2]
+
+
+def test_same_server_restart_prioritizes_orphaned_scan_unit(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = client.post(
+        "/api/jobs",
+        json={
+            "input_dir": "/shared/input",
+            "output_dir": "/shared/output",
+            "engine": "dotsocr",
+            "input_mode": "distributed_remote_folder_snapshot",
+            "manifest_root": "/shared/manifests",
+        },
+    ).json()
+    with session_factory() as session:
+        pending = session.query(ScanUnit).filter_by(job_id=job["id"]).one()
+        session.add(
+            ScanUnit(
+                job_id=job["id"],
+                path="/shared/input/orphan",
+                status="running",
+                assigned_server_id="worker-a",
+                attempt_count=1,
+                started_at=utcnow(),
+                lease_expires_at=utcnow() + timedelta(seconds=120),
+            )
+        )
+        session.commit()
+        pending_id = pending.id
+        orphan_id = session.query(ScanUnit).filter_by(path="/shared/input/orphan").one().id
+
+    assert reregister_worker(client, "worker-a").status_code == 200
+    heartbeat_worker(client, "worker-a")
+    reclaimed = client.post("/api/scan-units/claim?server_id=worker-a").json()
+
+    assert reclaimed["id"] == orphan_id
+    assert reclaimed["id"] != pending_id
+    assert reclaimed["attempt_count"] == 2
+    late = client.post(
+        f"/api/scan-units/{orphan_id}/complete",
+        json={
+            "assigned_server_id": "worker-a",
+            "attempt_count": 1,
+            "manifest_path": "/shared/manifests/late.jsonl",
+            "file_count": 0,
+            "total_bytes": 0,
+            "child_paths": [],
+            "shards": [],
+        },
+    )
+    assert late.status_code == 409
+
+
+def test_concurrent_shard_claims_do_not_duplicate_recovery_attempt(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(client)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    old_claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    assert reregister_worker(client, "worker-a").status_code == 200
+    heartbeat_worker(client, "worker-a")
+
+    def claim(server_id):
+        response = client.post(
+            f"/api/jobs/{job_id}/shards/claim?server_id={server_id}"
+        )
+        assert response.status_code == 200
+        return response.json()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(claim, ("worker-a", "worker-b")))
+
+    claimed = [result for result in results if result is not None]
+    assert len(claimed) == 1
+    assert claimed[0]["id"] == old_claim["id"]
+    assert claimed[0]["attempt_count"] == 2
+    with session_factory() as session:
+        attempts = session.query(ShardAttempt).filter_by(shard_id=old_claim["id"]).all()
+        assert sorted(attempt.attempt_number for attempt in attempts) == [1, 2]
 
 
 def test_running_shard_execution_control_update_preserves_progress_counters(tmp_path):

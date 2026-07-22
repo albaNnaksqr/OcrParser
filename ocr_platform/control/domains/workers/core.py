@@ -59,10 +59,20 @@ def server_is_allowed_for_job(job: Job, server_id: str) -> bool:
     return not allowed_server_ids or server_id in allowed_server_ids
 
 def register_server(session: Session, request: ServerRegisterRequest) -> Server:
-    server = session.get(Server, request.id)
+    server = session.execute(
+        select(Server)
+        .where(Server.id == request.id)
+        .with_for_update()
+    ).scalar_one_or_none()
     if server is None:
         server = Server(id=request.id, name=request.name, host=request.host)
         session.add(server)
+    else:
+        _fence_running_work_for_restarted_server(
+            session,
+            request.id,
+            now=utcnow(),
+        )
 
     server.name = request.name
     server.host = request.host
@@ -74,6 +84,70 @@ def register_server(session: Session, request: ServerRegisterRequest) -> Server:
     session.commit()
     session.refresh(server)
     return server
+
+
+def _fence_running_work_for_restarted_server(
+    session: Session,
+    server_id: str,
+    *,
+    now: datetime,
+) -> None:
+    """Make work owned by an earlier process generation reclaimable.
+
+    Agent registration happens once, before its work lanes start. Registering an
+    existing server id therefore establishes a new process generation. Clearing
+    ownership also fences late updates from the old process until the stale work
+    is claimed with a new attempt number.
+    """
+
+    current_shard_attempt_number = (
+        select(WorkShard.attempt_count)
+        .where(WorkShard.id == ShardAttempt.shard_id)
+        .scalar_subquery()
+    )
+    orphaned_shard_ids = (
+        select(WorkShard.id)
+        .where(WorkShard.assigned_server_id == server_id)
+        .where(WorkShard.status == "running")
+    )
+    session.execute(
+        update(ShardAttempt)
+        .where(ShardAttempt.shard_id.in_(orphaned_shard_ids))
+        .where(ShardAttempt.attempt_number == current_shard_attempt_number)
+        .where(ShardAttempt.status == "running")
+        .values(
+            status="stale",
+            failure_category="process_killed",
+            error_message="worker process re-registered before shard completion",
+            finished_at=now,
+        )
+    )
+    session.execute(
+        update(WorkShard)
+        .where(WorkShard.assigned_server_id == server_id)
+        .where(WorkShard.status == "running")
+        .values(
+            status="stale",
+            assigned_server_id=None,
+            failure_category="process_killed",
+            error_message="worker process re-registered before shard completion",
+            lease_expires_at=None,
+            finished_at=None,
+        )
+    )
+    session.execute(
+        update(ScanUnit)
+        .where(ScanUnit.assigned_server_id == server_id)
+        .where(ScanUnit.status == "running")
+        .values(
+            status="stale",
+            assigned_server_id=None,
+            failure_category="process_killed",
+            error_message="worker process re-registered before scan completion",
+            lease_expires_at=None,
+            finished_at=None,
+        )
+    )
 
 def ensure_pool_server(session: Session) -> Server:
     server = session.get(Server, POOL_SERVER_ID)
