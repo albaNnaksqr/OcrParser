@@ -16,7 +16,7 @@ from ocr_platform.agent.config import AgentConfig
 from ocr_platform.agent.runner import build_ocr_command
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.models import Job, WorkShard
+from ocr_platform.control.models import Job, ScanUnit, WorkShard
 from ocr_platform.control import service
 from ocr_platform.control.service import POOL_SERVER_ID
 from ocr_platform.manifest.models import ManifestItem
@@ -2855,6 +2855,244 @@ def test_server_heartbeat_renews_running_shard_lease(tmp_path):
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
         assert shard.lease_expires_at > old_deadline
+
+
+def test_idle_or_jobless_heartbeat_does_not_renew_work_leases(tmp_path):
+    api, session_factory, _, job = make_static_job_client(tmp_path, file_count=1)
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    old_deadline = service.utcnow() + timedelta(seconds=30)
+    with session_factory() as session:
+        shard = session.get(WorkShard, claimed["id"])
+        shard.lease_expires_at = old_deadline
+        scan_unit = ScanUnit(
+            job_id=job["id"],
+            path="/shared/input/scan-a",
+            status="running",
+            assigned_server_id="server-a",
+            attempt_count=1,
+            lease_expires_at=old_deadline,
+        )
+        session.add(scan_unit)
+        session.commit()
+        scan_unit_id = scan_unit.id
+
+    idle = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "idle", "current_job_id": job["id"]},
+    )
+    jobless = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "busy", "current_job_id": None},
+    )
+
+    assert idle.status_code == 200
+    assert jobless.status_code == 200
+    with session_factory() as session:
+        shard = session.get(WorkShard, claimed["id"])
+        scan_unit = session.get(ScanUnit, scan_unit_id)
+        assert shard.lease_expires_at == old_deadline
+        assert scan_unit.lease_expires_at == old_deadline
+
+
+def test_busy_heartbeat_renews_only_matching_live_job_leases(tmp_path):
+    api, session_factory, _, job_a = make_static_job_client(tmp_path, file_count=2)
+    input_b = tmp_path / "input-b"
+    input_b.mkdir()
+    (input_b / "0.pdf").write_bytes(b"%PDF-1.4\n")
+    job_b = api.post(
+        "/api/jobs",
+        json={
+            "input_dir": str(input_b),
+            "output_dir": str(tmp_path / "output-b"),
+            "engine": "dotsocr",
+            "assigned_server_id": "server-a",
+            "input_mode": "folder_snapshot",
+            "manifest_root": str(tmp_path / "manifests-b"),
+            "target_files_per_shard": 1,
+        },
+    ).json()
+    live_a = api.post(
+        f"/api/jobs/{job_a['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    expired_a = api.post(
+        f"/api/jobs/{job_a['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    live_b = api.post(
+        f"/api/jobs/{job_b['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    live_deadline = service.utcnow() + timedelta(seconds=30)
+    expired_deadline = service.utcnow() - timedelta(seconds=1)
+    with session_factory() as session:
+        session.get(WorkShard, live_a["id"]).lease_expires_at = live_deadline
+        session.get(WorkShard, expired_a["id"]).lease_expires_at = expired_deadline
+        session.get(WorkShard, live_b["id"]).lease_expires_at = live_deadline
+        live_scan_a = ScanUnit(
+            job_id=job_a["id"],
+            path="/shared/input/live-a",
+            status="running",
+            assigned_server_id="server-a",
+            attempt_count=1,
+            lease_expires_at=live_deadline,
+        )
+        expired_scan_a = ScanUnit(
+            job_id=job_a["id"],
+            path="/shared/input/expired-a",
+            status="running",
+            assigned_server_id="server-a",
+            attempt_count=1,
+            lease_expires_at=expired_deadline,
+        )
+        live_scan_b = ScanUnit(
+            job_id=job_b["id"],
+            path="/shared/input/live-b",
+            status="running",
+            assigned_server_id="server-a",
+            attempt_count=1,
+            lease_expires_at=live_deadline,
+        )
+        session.add_all([live_scan_a, expired_scan_a, live_scan_b])
+        session.commit()
+        scan_ids = (live_scan_a.id, expired_scan_a.id, live_scan_b.id)
+
+    heartbeat = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "busy", "current_job_id": job_a["id"]},
+    )
+
+    assert heartbeat.status_code == 200
+    with session_factory() as session:
+        renewed_shard = session.get(WorkShard, live_a["id"])
+        expired_shard = session.get(WorkShard, expired_a["id"])
+        other_job_shard = session.get(WorkShard, live_b["id"])
+        renewed_scan = session.get(ScanUnit, scan_ids[0])
+        expired_scan = session.get(ScanUnit, scan_ids[1])
+        other_job_scan = session.get(ScanUnit, scan_ids[2])
+        assert renewed_shard.lease_expires_at > live_deadline
+        assert renewed_scan.lease_expires_at == renewed_shard.lease_expires_at
+        assert expired_shard.lease_expires_at == expired_deadline
+        assert expired_scan.lease_expires_at == expired_deadline
+        assert other_job_shard.lease_expires_at == live_deadline
+        assert other_job_scan.lease_expires_at == live_deadline
+
+
+def test_same_server_restart_reclaims_expired_attempt_and_completes_all_shards(tmp_path):
+    api, session_factory, _, job = make_static_job_client(tmp_path, file_count=10)
+    claimed_job = api.post("/api/agents/server-a/next-job").json()
+    assert claimed_job["id"] == job["id"]
+
+    for _ in range(9):
+        shard = api.post(
+            f"/api/jobs/{job['id']}/shards/claim",
+            params={"server_id": "server-a"},
+        ).json()
+        completed = api.post(
+            f"/api/shards/{shard['id']}",
+            json={
+                "status": "succeeded",
+                "processed_files": 1,
+                "assigned_server_id": "server-a",
+                "attempt_count": shard["attempt_count"],
+            },
+        )
+        assert completed.status_code == 200
+
+    interrupted = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, interrupted["id"])
+        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    restarted_idle = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "idle", "current_job_id": None},
+    )
+    resumed_job = api.post("/api/agents/server-a/next-job").json()
+    pre_claim_busy = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "busy", "current_job_id": job["id"]},
+    )
+    reclaimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+
+    assert restarted_idle.status_code == 200
+    assert resumed_job["id"] == job["id"]
+    assert pre_claim_busy.status_code == 200
+    assert reclaimed["id"] == interrupted["id"]
+    assert reclaimed["attempt_count"] == 2
+
+    completed = api.post(
+        f"/api/shards/{reclaimed['id']}",
+        json={
+            "status": "succeeded",
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": reclaimed["attempt_count"],
+        },
+    )
+    finalized = api.post(
+        f"/api/jobs/{job['id']}/events",
+        json={"type": "job_done", "payload": {"static_shards_final": True}},
+    )
+    summary = api.get(f"/api/jobs/{job['id']}/summary").json()
+
+    assert completed.status_code == 200
+    assert finalized.status_code == 200
+    assert finalized.json()["status"] == "succeeded"
+    assert summary["succeeded_shards"] == 10
+    assert summary["running_shards"] == 0
+
+
+def test_healthy_same_server_attempt_is_not_reclaimed_by_idle_restart(tmp_path):
+    api, session_factory, _, job = make_static_job_client(tmp_path, file_count=1)
+    api.post("/api/agents/server-a/next-job")
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    old_deadline = service.utcnow() + timedelta(seconds=30)
+    with session_factory() as session:
+        session.get(WorkShard, claimed["id"]).lease_expires_at = old_deadline
+        session.commit()
+
+    active_heartbeat = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "busy", "current_job_id": job["id"]},
+    )
+    with session_factory() as session:
+        renewed_deadline = session.get(WorkShard, claimed["id"]).lease_expires_at
+    restarted_idle = api.post(
+        "/api/servers/server-a/heartbeat",
+        json={"status": "idle", "current_job_id": None},
+    )
+    next_job = api.post("/api/agents/server-a/next-job")
+    duplicate_claim = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    )
+
+    assert active_heartbeat.status_code == 200
+    assert renewed_deadline > old_deadline
+    assert restarted_idle.status_code == 200
+    assert next_job.status_code == 200
+    assert next_job.json() is None
+    assert duplicate_claim.status_code == 200
+    assert duplicate_claim.json() is None
+    with session_factory() as session:
+        shard = session.get(WorkShard, claimed["id"])
+        assert shard.status == "running"
+        assert shard.attempt_count == 1
+        assert shard.lease_expires_at == renewed_deadline
 
 
 def test_child_terminal_events_do_not_finalize_static_parent_until_final_event(tmp_path):

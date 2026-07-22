@@ -102,14 +102,26 @@ def heartbeat_server(session: Session, server_id: str, request: ServerHeartbeatR
         server = Server(id=server_id, name=server_id, host=server_id)
         session.add(server)
 
+    now = utcnow()
     existing_capabilities = json_loads_object(server.capabilities_json)
     merged_capabilities = {**existing_capabilities, **request.capabilities}
     server.status = request.status
     server.capabilities_json = json_dumps(merged_capabilities)
-    server.last_heartbeat_at = utcnow()
+    server.last_heartbeat_at = now
     server.archived_at = None
-    renew_running_shard_leases(session, server_id)
-    renew_running_scan_unit_leases(session, server_id)
+    if request.status == "busy" and request.current_job_id:
+        renew_running_shard_leases(
+            session,
+            server_id,
+            job_id=request.current_job_id,
+            now=now,
+        )
+        renew_running_scan_unit_leases(
+            session,
+            server_id,
+            job_id=request.current_job_id,
+            now=now,
+        )
     session.commit()
     session.refresh(server)
     return server
@@ -234,20 +246,38 @@ def reconcile_expired_scan_unit_leases(session: Session, *, now: datetime | None
 def _remaining_retry_status(job: Job, shard: WorkShard) -> str:
     return "retrying" if shard.attempt_count < job.max_shard_attempts else "failed"
 
-def renew_running_shard_leases(session: Session, server_id: str) -> None:
+def renew_running_shard_leases(
+    session: Session,
+    server_id: str,
+    *,
+    job_id: str,
+    now: datetime,
+) -> None:
     session.execute(
         update(WorkShard)
         .where(WorkShard.assigned_server_id == server_id)
+        .where(WorkShard.job_id == job_id)
         .where(WorkShard.status == "running")
-        .values(lease_expires_at=shard_lease_deadline())
+        .where(WorkShard.lease_expires_at.is_not(None))
+        .where(WorkShard.lease_expires_at > now)
+        .values(lease_expires_at=shard_lease_deadline(now))
     )
 
-def renew_running_scan_unit_leases(session: Session, server_id: str) -> None:
+def renew_running_scan_unit_leases(
+    session: Session,
+    server_id: str,
+    *,
+    job_id: str,
+    now: datetime,
+) -> None:
     session.execute(
         update(ScanUnit)
         .where(ScanUnit.assigned_server_id == server_id)
+        .where(ScanUnit.job_id == job_id)
         .where(ScanUnit.status == "running")
-        .values(lease_expires_at=scan_unit_lease_deadline())
+        .where(ScanUnit.lease_expires_at.is_not(None))
+        .where(ScanUnit.lease_expires_at > now)
+        .values(lease_expires_at=scan_unit_lease_deadline(now))
     )
 
 def is_server_stale(server: Server, now: datetime | None = None) -> bool:

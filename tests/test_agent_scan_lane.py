@@ -38,6 +38,8 @@ def test_scan_lane_can_process_scan_unit_independently_of_job_loop(tmp_path, mon
 
     assert did_work is True
     assert processed == [({"id": 1, "job_id": "job-1"}, "server-a")]
+    assert client.heartbeats[0]["status"] == "busy"
+    assert client.heartbeats[0]["current_job_id"] == "job-1"
     assert client.heartbeats[-1]["status"] == "idle"
 
 
