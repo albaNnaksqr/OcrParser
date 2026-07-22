@@ -19,6 +19,7 @@ from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.models import Job, WorkShard
 from ocr_platform.control import service
 from ocr_platform.control.service import POOL_SERVER_ID
+from ocr_platform.manifest.models import ManifestItem
 
 
 def test_build_ocr_command_uses_input_manifest_for_shard(tmp_path):
@@ -1792,7 +1793,7 @@ def test_run_static_sharded_job_marks_child_job_failed_exit_zero_as_failed(
     ]
 
 
-def make_static_job_client(tmp_path, *, file_count=2):
+def make_static_job_client(tmp_path, *, file_count=2, max_shard_attempts=3):
     input_root = tmp_path / "input"
     input_root.mkdir()
     for index in range(file_count):
@@ -1816,6 +1817,7 @@ def make_static_job_client(tmp_path, *, file_count=2):
             "input_mode": "folder_snapshot",
             "manifest_root": str(tmp_path / "manifests"),
             "target_files_per_shard": 1,
+            "max_shard_attempts": max_shard_attempts,
         },
     ).json()
     return api, session_factory, engine, job
@@ -1849,6 +1851,159 @@ def test_static_shard_claim_and_update_routes(tmp_path):
     assert next_claim["shard_index"] == 2
 
 
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "stopped"])
+def test_late_updates_do_not_regress_terminal_shard(tmp_path, terminal_status):
+    api, _, _, job = make_static_job_client(
+        tmp_path,
+        file_count=1,
+        max_shard_attempts=1,
+    )
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    terminal = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": terminal_status,
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    duplicate_terminal = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": terminal_status,
+            "processed_files": 0,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+
+    late_progress = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "running",
+            "processed_files": 0,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    wrong_server = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "running",
+            "assigned_server_id": "server-b",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    stale_attempt = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "running",
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"] - 1,
+        },
+    )
+
+    assert terminal.status_code == 200
+    assert terminal.json()["status"] == terminal_status
+    assert duplicate_terminal.status_code == 200
+    assert duplicate_terminal.json()["status"] == terminal_status
+    assert duplicate_terminal.json()["processed_files"] == 1
+    assert late_progress.status_code == 200
+    assert late_progress.json()["status"] == terminal_status
+    assert late_progress.json()["processed_files"] == 1
+    assert wrong_server.status_code == 409
+    assert "different server" in wrong_server.json()["detail"]
+    assert stale_attempt.status_code == 409
+    assert "stale attempt" in stale_attempt.json()["detail"]
+
+
+def test_spooled_running_replay_after_terminal_success_stays_terminal(tmp_path):
+    api, _, _, job = make_static_job_client(tmp_path, file_count=1)
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path / "work"),
+        python_executable=sys.executable,
+    )
+    event_file = tmp_path / "events.jsonl"
+    event_file.write_text(
+        json.dumps(
+            {
+                "type": "file_done",
+                "payload": {"file_path": "0.pdf", "status": "succeeded"},
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    class Finished:
+        returncode = 0
+
+    class UnavailableShardUpdateClient:
+        async def post_event(self, job_id, event):
+            return None
+
+        async def update_shard(self, shard_id, payload):
+            request = httpx.Request("POST", f"http://control/api/shards/{shard_id}")
+            raise httpx.ConnectError("control unavailable", request=request)
+
+    asyncio.run(
+        runner._forward_events_until_done(
+            event_file,
+            job["id"],
+            UnavailableShardUpdateClient(),
+            Finished(),
+            shard_id=claimed["id"],
+            shard_update_context=claimed,
+            config=config,
+        )
+    )
+    pending_path = (
+        tmp_path
+        / "work"
+        / "jobs"
+        / job["id"]
+        / "pending-shard-updates"
+        / f"shard-{claimed['id']}.json"
+    )
+    pending_record = json.loads(pending_path.read_text(encoding="utf-8"))
+    assert pending_record["payload"]["status"] == "running"
+
+    succeeded = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "succeeded",
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    assert succeeded.status_code == 200
+
+    class ApiShardClient:
+        async def update_shard(self, shard_id, payload):
+            response = api.post(f"/api/shards/{shard_id}", json=payload)
+            response.raise_for_status()
+            return response.json()
+
+    replayed = asyncio.run(runner.replay_pending_shard_updates(config, ApiShardClient()))
+    current = api.get(f"/api/jobs/{job['id']}/shards").json()["items"][0]
+
+    assert replayed == 1
+    assert not pending_path.exists()
+    assert current["status"] == "succeeded"
+    assert current["processed_files"] == 1
+
+
 def test_next_job_returns_running_assigned_job_with_more_static_shards(tmp_path):
     api, _, _, job = make_static_job_client(tmp_path)
 
@@ -1873,6 +2028,118 @@ def test_next_job_returns_running_assigned_job_with_more_static_shards(tmp_path)
     assert resumed_job.status_code == 200
     assert resumed_job.json()["id"] == job["id"]
     assert second_shard["shard_index"] == 2
+
+
+def test_existing_manifest_resumes_until_ten_shards_finish_once(tmp_path, monkeypatch):
+    input_root = tmp_path / "input"
+    input_root.mkdir()
+    manifest_path = tmp_path / "input.jsonl"
+    manifest_lines = []
+    for index in range(10):
+        pdf = input_root / f"{index}.pdf"
+        pdf.write_bytes(b"%PDF-1.4\n")
+        manifest_lines.append(
+            ManifestItem(
+                input_path=str(pdf),
+                relative_path=pdf.name,
+                size_bytes=pdf.stat().st_size,
+                mtime_ns=pdf.stat().st_mtime_ns,
+            ).to_json_line()
+        )
+    manifest_path.write_text("\n".join(manifest_lines) + "\n", encoding="utf-8")
+
+    session_factory, engine = create_session_factory(f"sqlite:///{tmp_path / 'control.db'}")
+    init_db(engine)
+    api = TestClient(create_app(session_factory=session_factory))
+    api.post(
+        "/api/servers/register",
+        json={"id": "server-a", "name": "Server A", "host": "localhost"},
+    )
+    job = api.post(
+        "/api/jobs",
+        json={
+            "input_dir": str(input_root),
+            "output_dir": str(tmp_path / "output"),
+            "engine": "dotsocr",
+            "assigned_server_id": "server-a",
+            "input_mode": "existing_manifest",
+            "manifest_path": str(manifest_path),
+            "manifest_root": str(tmp_path / "manifests"),
+            "target_files_per_shard": 1,
+        },
+    ).json()
+    artifacts = []
+
+    async def fake_run_job(shard_job, config, client):
+        artifact = tmp_path / "output" / f"shard-{shard_job['shard']['id']}.md"
+        artifact.parent.mkdir(parents=True, exist_ok=True)
+        artifact.write_text(str(shard_job["shard"]["id"]), encoding="utf-8")
+        artifacts.append(artifact)
+        shard_job["_shard_progress"] = {"processed_files": 1}
+        return 0
+
+    monkeypatch.setattr(runner, "run_job", fake_run_job)
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path / "work"),
+        python_executable=sys.executable,
+    )
+    final_events = []
+
+    class SingleClaimApiClient:
+        def __init__(self):
+            self.claimed = False
+
+        async def get_job(self, job_id):
+            return api.get(f"/api/jobs/{job_id}").json()
+
+        async def claim_shard(self, job_id, server_id):
+            if self.claimed:
+                return None
+            self.claimed = True
+            return api.post(
+                f"/api/jobs/{job_id}/shards/claim",
+                params={"server_id": server_id},
+            ).json()
+
+        async def update_shard(self, shard_id, payload):
+            response = api.post(f"/api/shards/{shard_id}", json=payload)
+            response.raise_for_status()
+            return response.json()
+
+        async def get_job_summary(self, job_id):
+            return api.get(f"/api/jobs/{job_id}/summary").json()
+
+        async def post_event(self, job_id, event):
+            if event["payload"].get("static_shards_final"):
+                final_events.append(event)
+            response = api.post(f"/api/jobs/{job_id}/events", json=event)
+            response.raise_for_status()
+            return response.json()
+
+    for _ in range(10):
+        resumed = api.post("/api/agents/server-a/next-job")
+        assert resumed.status_code == 200
+        assert resumed.json()["id"] == job["id"]
+        assert asyncio.run(
+            runner.run_static_sharded_job(resumed.json(), config, SingleClaimApiClient())
+        ) == 0
+
+    with session_factory() as session:
+        shards = session.query(WorkShard).filter_by(job_id=job["id"]).all()
+        parent = session.get(Job, job["id"])
+        assert len(shards) == 10
+        assert all(shard.status == "succeeded" for shard in shards)
+        assert all(shard.attempt_count == 1 for shard in shards)
+        assert parent.status == "succeeded"
+
+    assert len(artifacts) == 10
+    assert len(set(artifacts)) == 10
+    assert len(list((tmp_path / "output").glob("shard-*.md"))) == 10
+    assert final_events == [
+        {"type": "job_done", "payload": {"static_shards_final": True}}
+    ]
 
 
 def test_eligible_agent_claims_unassigned_pool_static_job(tmp_path):

@@ -1928,6 +1928,10 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
         raise ShardAttemptConflictError(
             "shard update belongs to a stale attempt"
         )
+    if shard.status in TERMINAL_SHARD_STATUSES:
+        session.commit()
+        session.refresh(shard)
+        return shard
     job = get_job_or_raise(session, shard.job_id)
     fields_set = getattr(request, "model_fields_set", None)
     if fields_set is None:
