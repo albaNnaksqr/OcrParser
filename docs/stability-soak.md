@@ -84,30 +84,55 @@ python3 tools/run_stability_soak.py \
   --documents-per-cycle 100
 ```
 
-## v0.3.1 Short Preflight Evidence
+## v0.3.1 Wave 5 Preflight Evidence
 
-The pre-release candidate at
-`e31e494a721a23c9103ccf3f79646575ae2d468c` completed three 100-document
-cycles: 300/300 documents and 30/30 shards reached success. Cycle 1 reclaimed
-work at attempt 2 after an Agent termination. Cycle 2 replayed 36 event/log
-records and one shard update after a 60-second Control outage. Cycle 3
-performed a same-server graceful shutdown and restart. Spool, quarantine,
-duplicate, manifest, output, migration, claim-stress, resource, and cleanup
-audits passed.
+The first short run at revision
+`12abb795aa55f986cea29aa0e24451be40bd6f77` failed correctly and exposed P1
+same-server stale-reclaim starvation. Eligibility-to-claim was 49.862 seconds
+and eligibility-to-job-terminal was 57.436 seconds. The failure was audited and
+cleaned up; the 24-hour soak did not start. Its retained summary hashes are:
 
-The original cycle-3 hook measured 31.524 seconds from restart request to job
-terminal, 1.524 seconds over the two-lease threshold. The prior lease was not
-yet reclaimable at restart; measured from the lease-eligibility point, the job
-became terminal in 25.551 seconds. The sanitized report therefore records
-`PASS_WITH_DISCLOSED_RESTART_OVERRUN`, not an unconditional pass.
+- `report.json`: `9d4387207b37f649ee2c48abe1f509c42188883560d5429be7224e3565f1fdbe`
+- `report.md`: `cb9e0a999b3f26bd404c270cc46257bcbe3844a3c19fd50ed443d08612a4fa1e`
 
-Evidence SHA256 values are `e5ba4e6300ba6befc5785926043915c7d5df0769ec17f2ca8fd1a92a403601ac`
-for `report.json`, `ec15bbf44cbcc200bb06e8c027aecf557d43c6424275401aa4d9d7a252976e0c`
-for `report.md`, and `ec4e32f094be63d7771f02c41f64ec4f2254f10fce20421800ae31c1328020fe`
-for `SHA256SUMS`.
+Revision `1d3c8f560e94c4550718fc9910e8344ef38eae89` fences the previous
+running shard/current attempt and previous running scan unit on same-server registration,
+clears their owner/lease, and prioritizes stale/retrying claims over pending
+work. It keeps public interfaces unchanged. GitHub CI run `29895536565` passed
+11/11 jobs and 846 tests. The clean wheel used for repeat validation has
+SHA256 `33482a9265f68b9be0b7b9bebc8b845bc9d5e6443b9a4c606c844f70f2c838d3`.
 
-This short preflight does not replace the exact final-candidate 24-hour run.
-See the [v0.3.1 release notes](release-v0.3.1.md).
+One post-fix run fired its fault too early. The fence and claim assertions
+passed, but seven ordinary pending shards remained, so job completion took 48
+seconds. The original result remains **FAIL**. Its summary hashes are:
+
+- JSON: `051f14d8d6352f996564e6f04129fd1507871b8cd84e54cf74d1d16fff4dfb01`
+- Markdown: `9e4e8a6c16a8442b86f984232e2c899f10641c24e80d0a8b7566bd49dde0dfa4`
+
+A fresh strict r4 run injected the restart while exactly two ordinary pending
+shards remained and passed 3/3 cycles:
+
+- cycle 1 termination/fault-injection-to-attempt-2-claim: 19.327 seconds;
+- cycle 2: 30 event/log records and one shard update replayed; migration
+  `plan`, `apply`, and `verify` passed;
+- cycle 3: registration fence 0.095 seconds, eligibility-to-claim 0.550
+  seconds, eligibility-to-target-shard-terminal 1.725 seconds, stale selected before pending, and job
+  terminal in 18.487 seconds;
+- 300/300 documents and 30/30 shards succeeded; duplicates were zero,
+  spool/quarantine were empty, manifest/output audit was 100%, resources
+  passed, and cleanup residue was zero.
+
+Successful-run SHA256 values:
+
+- `report.json`: `107a8d18edca13bd5c8458c12f5e73b631c3468ef0ae066a83dfe34619e7fcce`
+- `report.md`: `a0d4d98051aae0d0d60aadf169a182e8597204f2eea388ddff5f1949e06a3959`
+- operator timeline: `671edca29d5bc89843baae42cc3b291e393c339ed0f4d7fd50b8bbacf68f82f7`
+- audit: `422e5359cbade42e930f05885ae1db7f41aa6091f77d4a0863c25c514ed45848`
+- cleanup: `e93b0ac4a63bdf17998b60deceaf3d0b00988e21ee61ddecffc0f34bde597e53`
+
+This remains a short preflight. It does not replace the exact final-candidate
+24-hour run, which has not started. See the
+[v0.3.1 release notes](release-v0.3.1.md).
 
 The modes rotate through `directory`, `existing_manifest`, and
 `distributed_remote_folder_snapshot`. Each cycle records job state, manifest

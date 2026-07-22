@@ -16,42 +16,71 @@ compatibility facade.
   Control outage.
 - Work-lease renewal is scoped to actively running jobs. A stopped or otherwise
   inactive job cannot keep stale scan/shard work leased indefinitely.
+- Same-server registration now fences the worker's previous running shard and
+  current attempt together with previous running scan work, clearing owner/lease state so
+  it can be reclaimed. The claim path prioritizes stale/retrying work over
+  ordinary pending shards, preventing a backlog from starving recovery.
 
 The base installation also declares `beautifulsoup4>=4.12,<5`. PaddleOCR-VL
 multi-page table merging imports this dependency; the missing declaration was
 an installation blocker, not an OCR algorithm change.
 
-## Sanitized Pre-release Evidence
+## Sanitized Wave 5 Evidence
 
-A clean `0.3.0` candidate at revision
-`e31e494a721a23c9103ccf3f79646575ae2d468c` completed a three-cycle isolated
-Spark preflight with two Agents and PostgreSQL 16:
+The first short preflight at revision
+`12abb795aa55f986cea29aa0e24451be40bd6f77` exposed a real P1: after a
+same-server restart, stale work was reclaimable but normal pending shards could
+starve it. Eligibility-to-claim took 49.862 seconds and eligibility-to-job
+terminal took 57.436 seconds. The 24-hour soak was not started.
 
-- 300/300 generated public PDFs and 30/30 shards completed;
-- cycle 1 terminated one Agent and the peer reclaimed work at attempt 2;
-- cycle 2 stopped Control for 60 seconds, then replayed 36 event/log records and
-  one shard update; migration `plan`, `apply`, and `verify` passed;
-- cycle 3 performed a graceful same-server Agent shutdown and restart, with no
-  unexpected duplicates, quarantine records, or late reporting;
-- manifest and output audits passed for every cycle, and cleanup found no
-  task-owned process, port, container, or GPU-process residue.
+The retained P1 failure summary SHA256 values are
+`9d4387207b37f649ee2c48abe1f509c42188883560d5429be7224e3565f1fdbe`
+for `report.json` and
+`cb9e0a999b3f26bd404c270cc46257bcbe3844a3c19fd50ed443d08612a4fa1e`
+for `report.md`.
 
-The cycle-3 runner originally measured terminal completion from the restart
-request and reported 31.524 seconds, 1.524 seconds beyond the two-lease
-threshold. Recovery cannot be eligible until the prior lease expires; measured
-from that eligibility point, terminal completion took 25.551 seconds and
-passed. Both measurements are retained rather than converting the original
-result into an unconditional pass.
+Revision `1d3c8f560e94c4550718fc9910e8344ef38eae89` fixed that recovery path by
+adding the registration fence and stale/retrying claim priority described
+above. It did not change any public interface. GitHub CI run `29895536565`
+passed all 11 jobs, including 846 tests. Its clean `0.3.1` wheel has SHA256
+`33482a9265f68b9be0b7b9bebc8b845bc9d5e6443b9a4c606c844f70f2c838d3`.
 
-Sanitized evidence checksums:
+One post-fix run fired the restart fault too early. The core fence and reclaim
+assertions passed, but seven ordinary pending shards legitimately remained and
+the job took 48 seconds to finish. That run is retained as the original
+**FAIL**; it is not relabeled as a pass.
 
-- `report.json`: `e5ba4e6300ba6befc5785926043915c7d5df0769ec17f2ca8fd1a92a403601ac`
-- `report.md`: `ec15bbf44cbcc200bb06e8c027aecf557d43c6424275401aa4d9d7a252976e0c`
-- `SHA256SUMS`: `ec4e32f094be63d7771f02c41f64ec4f2254f10fce20421800ae31c1328020fe`
+The retained early-timing failure summary SHA256 values are
+`051f14d8d6352f996564e6f04129fd1507871b8cd84e54cf74d1d16fff4dfb01`
+for JSON and
+`9e4e8a6c16a8442b86f984232e2c899f10641c24e80d0a8b7566bd49dde0dfa4`
+for Markdown.
 
-These are short preflight results, not the final 24-hour v0.3.1 soak. The
-24-hour run must use the exact final tagged commit and wheel; any tracked-file
-change invalidates it.
+A fresh strict r4 run then injected the restart while exactly two ordinary
+pending shards remained and completed all three cycles:
+
+- cycle 1 reclaimed the terminated Agent's work in 19.327 seconds;
+- cycle 2 replayed 30 event/log records and one shard update after the Control
+  outage; migration `plan`, `apply`, and `verify` passed;
+- cycle 3 fenced the old assignment in 0.095 seconds, claimed the stale shard
+  0.550 seconds after eligibility, reached the target shard terminal 1.725 seconds after eligibility,
+  seconds, selected stale work before pending work, and completed the job in
+  18.487 seconds;
+- 300/300 documents and 30/30 shards completed; duplicate counts were zero,
+  spool and quarantine were empty, manifest/output audits were 100%, resource
+  checks passed, and cleanup found zero task-owned residue.
+
+Sanitized successful-run checksums:
+
+- `report.json`: `107a8d18edca13bd5c8458c12f5e73b631c3468ef0ae066a83dfe34619e7fcce`
+- `report.md`: `a0d4d98051aae0d0d60aadf169a182e8597204f2eea388ddff5f1949e06a3959`
+- operator timeline: `671edca29d5bc89843baae42cc3b291e393c339ed0f4d7fd50b8bbacf68f82f7`
+- audit: `422e5359cbade42e930f05885ae1db7f41aa6091f77d4a0863c25c514ed45848`
+- cleanup: `e93b0ac4a63bdf17998b60deceaf3d0b00988e21ee61ddecffc0f34bde597e53`
+
+This is still a short preflight, not the final 24-hour v0.3.1 soak. The
+24-hour run must use the exact final candidate commit and wheel; any tracked
+file change invalidates it.
 
 ## Real-engine Status
 

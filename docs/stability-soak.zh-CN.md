@@ -77,28 +77,49 @@ python3 tools/run_stability_soak.py \
   --documents-per-cycle 100
 ```
 
-## v0.3.1 短预演证据
+## v0.3.1 Wave 5 短预演证据
 
-发布前候选 `e31e494a721a23c9103ccf3f79646575ae2d468c` 完成三个 100 文档周期：
-300/300 份文档、30/30 个 shard 成功。Cycle 1 在 Agent 被终止后以 attempt 2 接管；
-Cycle 2 在 Control 中断 60 秒后 replay 36 条 event/log 和 1 条 shard update；Cycle 3
-执行同 server 优雅退出与重启。spool、quarantine、duplicate、manifest、output、
-migration、claim stress、resource 与 cleanup audit 均通过。
+revision `12abb795aa55f986cea29aa0e24451be40bd6f77` 的第一次短运行正确失败，
+暴露同 server stale reclaim starvation P1。eligible→claim 为 49.862 秒，
+eligible→Job terminal 为 57.436 秒。失败已审计并清理，24 小时 soak 没有启动。
+保留的 summary hash：
 
-Cycle 3 原始 hook 从 restart request 起算到 Job terminal 为 31.524 秒，比两倍 lease
-阈值多 1.524 秒；restart 时旧 lease 尚不可回收。从 lease eligible 时刻起算，Job 在
-25.551 秒后进入终态。因此脱敏报告的结论是
-`PASS_WITH_DISCLOSED_RESTART_OVERRUN`，不是无条件通过。
+- `report.json`：`9d4387207b37f649ee2c48abe1f509c42188883560d5429be7224e3565f1fdbe`
+- `report.md`：`cb9e0a999b3f26bd404c270cc46257bcbe3844a3c19fd50ed443d08612a4fa1e`
 
-证据 SHA256：`report.json` 为
-`e5ba4e6300ba6befc5785926043915c7d5df0769ec17f2ca8fd1a92a403601ac`，
-`report.md` 为
-`ec15bbf44cbcc200bb06e8c027aecf557d43c6424275401aa4d9d7a252976e0c`，
-`SHA256SUMS` 为
-`ec4e32f094be63d7771f02c41f64ec4f2254f10fce20421800ae31c1328020fe`。
+revision `1d3c8f560e94c4550718fc9910e8344ef38eae89` 在同 server 注册时 fence
+之前的 running shard/current attempt 与 previous running scan unit，清除 owner/lease，并让
+stale/retrying claim 优先于 pending work；公开接口保持不变。GitHub CI run
+`29895536565` 的 11/11 Job 和 846 个测试通过。复验 clean wheel SHA256 为
+`33482a9265f68b9be0b7b9bebc8b845bc9d5e6443b9a4c606c844f70f2c838d3`。
 
-该短预演不能替代准确最终候选的 24 小时运行。详见
-[v0.3.1 发布说明](release-v0.3.1.zh-CN.md)。
+一次修复后运行过早触发 fault。fence 与 claim 断言通过，但仍有 7 个普通 pending
+shard，因此 Job 用 48 秒完成。原始结果继续保持 **FAIL**。summary hash：
+
+- JSON：`051f14d8d6352f996564e6f04129fd1507871b8cd84e54cf74d1d16fff4dfb01`
+- Markdown：`9e4e8a6c16a8442b86f984232e2c899f10641c24e80d0a8b7566bd49dde0dfa4`
+
+随后全新 strict r4 在重启时仍有准确两个普通 pending shard 的条件下运行，3/3
+周期通过：
+
+- Cycle 1 termination/fault injection→attempt 2 claim 为 19.327 秒；
+- Cycle 2 replay 30 条 event/log 和 1 条 shard update，migration `plan`、`apply`、
+  `verify` 通过；
+- Cycle 3 register fence 为 0.095 秒，eligible→claim 为 0.550 秒，
+  eligible→target shard terminal 为 1.725 秒，stale 先于 pending，Job 在 18.487 秒进入终态；
+- 300/300 份文档和 30/30 个 shard 成功；duplicate 为 0，spool/quarantine 为空，
+  manifest/output audit 为 100%，resource 通过，cleanup 残留为 0。
+
+成功运行 SHA256：
+
+- `report.json`：`107a8d18edca13bd5c8458c12f5e73b631c3468ef0ae066a83dfe34619e7fcce`
+- `report.md`：`a0d4d98051aae0d0d60aadf169a182e8597204f2eea388ddff5f1949e06a3959`
+- operator timeline：`671edca29d5bc89843baae42cc3b291e393c339ed0f4d7fd50b8bbacf68f82f7`
+- audit：`422e5359cbade42e930f05885ae1db7f41aa6091f77d4a0863c25c514ed45848`
+- cleanup：`e93b0ac4a63bdf17998b60deceaf3d0b00988e21ee61ddecffc0f34bde597e53`
+
+以上仍只是短预演，不能替代准确最终候选的 24 小时运行；24 小时运行尚未启动。
+详见 [v0.3.1 发布说明](release-v0.3.1.zh-CN.md)。
 
 输入模式轮换为 `directory`、`existing_manifest` 和
 `distributed_remote_folder_snapshot`。每个周期记录 job state、manifest integrity、

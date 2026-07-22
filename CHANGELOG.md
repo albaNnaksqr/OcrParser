@@ -8,6 +8,10 @@
   assigned jobs now resume remaining static shards, shard update spool/replay is
   durable and terminal-state monotonic across Control outages, and lease
   renewal is limited to actively running jobs so stale work can be reclaimed.
+- Fixed same-server restart reclaim starvation by fencing the previous active
+  shard/current attempt and scan unit during worker registration, clearing
+  their owner/lease, and prioritizing stale/retrying claims over normal pending
+  work. Public interfaces and state vocabularies remain unchanged.
 - Declared Beautiful Soup as a base Parser dependency after real PaddleOCR-VL
   multi-page validation exposed the missing table-merge dependency.
 - Added an auditable stability-soak runner with release/source/migration/claim
@@ -15,11 +19,12 @@
   and machine-readable reports that never persist runtime secrets.
 - Expanded the generated public engine-certification set with invoice-table and
   mixed-layout PDFs plus required-field, reading-order, and table-cell checks.
-- Completed a sanitized three-cycle Spark preflight: 300/300 documents and
-  30/30 shards completed with lease reclaim, a 60-second Control outage and
-  spool replay, and same-server restart recovery. The restart-based two-lease
-  assertion exceeded its threshold by 1.524 seconds; the lease-eligibility
-  basis passed and the discrepancy remains explicitly recorded.
+- Used the Wave 5 short preflight to expose and fix real same-server stale
+  reclaim starvation. An early post-fix timing run remains recorded as FAIL;
+  the subsequent fresh strict run completed 300/300 documents and 30/30 shards
+  with lease reclaim, a 60-second Control outage and spool replay, and
+  same-server restart recovery. The 24-hour soak has not started.
+- Passed 846 tests and all 11 GitHub CI jobs for the recovery-fix commit.
 - Revalidated 50 public pages per engine. DotsOCR and MinerU passed 3/4 quality
   fixtures; PaddleOCR-VL passed integration after the dependency fix but only
   1/4 quality fixtures. All three remain **Verified**, not **Certified**, with
