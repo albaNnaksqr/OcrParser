@@ -7,6 +7,7 @@ import contextlib
 import json
 import os
 import signal
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections.abc import Iterator
@@ -25,6 +26,7 @@ from ocr_platform.manifest.sharder import write_manifest_snapshot_streaming
 
 
 TERMINATION_TIMEOUT_SECONDS = 5.0
+PENDING_TERMINAL_SHARD_STATUSES = {"succeeded", "failed", "stopped"}
 
 
 def _env_positive_int(name: str, default: int) -> int:
@@ -254,45 +256,106 @@ def _pending_shard_update_path(config: AgentConfig, job_id: str, shard_id: int) 
     )
 
 
+@dataclass(frozen=True)
+class PendingShardUpdateRef:
+    path: Path
+    raw_content: str
+    generation: str | None = None
+
+
+def _pending_shard_update_ref(
+    path: Path,
+    raw_content: str,
+    record: dict[str, Any] | None = None,
+) -> PendingShardUpdateRef:
+    generation = record.get("generation") if isinstance(record, dict) else None
+    return PendingShardUpdateRef(
+        path=path,
+        raw_content=raw_content,
+        generation=str(generation) if generation else None,
+    )
+
+
+def _pending_shard_update_matches(ref: PendingShardUpdateRef) -> bool:
+    try:
+        current_raw = ref.path.read_text(encoding="utf-8")
+    except (FileNotFoundError, OSError):
+        return False
+    if ref.generation is None:
+        return current_raw == ref.raw_content
+    try:
+        current = json.loads(current_raw)
+    except json.JSONDecodeError:
+        return False
+    return isinstance(current, dict) and current.get("generation") == ref.generation
+
+
 def _write_pending_shard_update(
     config: AgentConfig,
     *,
     job_id: str,
     shard_id: int,
     payload: dict[str, Any],
-) -> Path:
+) -> PendingShardUpdateRef:
     path = _pending_shard_update_path(config, job_id, shard_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".json.tmp")
-    tmp_path.write_text(
-        json.dumps(
-            {
-                "job_id": str(job_id),
-                "shard_id": int(shard_id),
-                "server_id": config.server_id,
-                "payload": payload,
-            },
-            ensure_ascii=False,
-            indent=2,
-            default=str,
-        ),
-        encoding="utf-8",
+    try:
+        existing_raw = path.read_text(encoding="utf-8")
+        existing_record = json.loads(existing_raw)
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        existing_raw = None
+        existing_record = None
+    existing_payload = (
+        existing_record.get("payload")
+        if isinstance(existing_record, dict)
+        else None
     )
+    existing_status = (
+        existing_payload.get("status")
+        if isinstance(existing_payload, dict)
+        else None
+    )
+    if (
+        existing_raw is not None
+        and existing_status in PENDING_TERMINAL_SHARD_STATUSES
+        and payload.get("status") not in PENDING_TERMINAL_SHARD_STATUSES
+    ):
+        return _pending_shard_update_ref(path, existing_raw, existing_record)
+
+    generation = uuid.uuid4().hex
+    record = {
+        "job_id": str(job_id),
+        "shard_id": int(shard_id),
+        "server_id": config.server_id,
+        "generation": generation,
+        "payload": payload,
+    }
+    raw_content = json.dumps(
+        record,
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    )
+    tmp_path = path.with_suffix(".json.tmp")
+    tmp_path.write_text(raw_content, encoding="utf-8")
     tmp_path.replace(path)
-    return path
+    return PendingShardUpdateRef(
+        path=path,
+        raw_content=raw_content,
+        generation=generation,
+    )
 
 
 def _remove_pending_shard_update(
-    config: AgentConfig,
-    *,
-    job_id: str,
-    shard_id: int,
-) -> None:
-    path = _pending_shard_update_path(config, job_id, shard_id)
+    ref: PendingShardUpdateRef,
+) -> bool:
+    if not _pending_shard_update_matches(ref):
+        return False
     try:
-        path.unlink()
+        ref.path.unlink()
     except FileNotFoundError:
-        return
+        return False
+    return True
 
 
 def _iter_pending_shard_update_paths(config: AgentConfig) -> Iterator[Path]:
@@ -302,8 +365,14 @@ def _iter_pending_shard_update_paths(config: AgentConfig) -> Iterator[Path]:
     return iter(sorted(root.glob("*/pending-shard-updates/shard-*.json")))
 
 
-def _quarantine_pending_shard_update(path: Path, record: dict[str, Any], exc: BaseException) -> None:
-    failed_path = path.with_suffix(path.suffix + ".failed")
+def _quarantine_pending_shard_update(
+    ref: PendingShardUpdateRef,
+    record: dict[str, Any],
+    exc: BaseException,
+) -> bool:
+    if not _pending_shard_update_matches(ref):
+        return False
+    failed_path = ref.path.with_suffix(ref.path.suffix + ".failed")
     payload = dict(record)
     payload["replay_error"] = {
         "error_type": type(exc).__name__,
@@ -314,7 +383,8 @@ def _quarantine_pending_shard_update(path: Path, record: dict[str, Any], exc: Ba
         encoding="utf-8",
     )
     with contextlib.suppress(FileNotFoundError):
-        path.unlink()
+        ref.path.unlink()
+    return True
 
 
 def _quarantine_invalid_pending_shard_update(
@@ -334,7 +404,16 @@ def _quarantine_invalid_pending_shard_update(
     }
     if raw_content is not None:
         record["raw_content"] = raw_content
-    _quarantine_pending_shard_update(path, record, exc)
+    if raw_content is None:
+        try:
+            raw_content = path.read_text(encoding="utf-8")
+        except OSError:
+            return
+    _quarantine_pending_shard_update(
+        _pending_shard_update_ref(path, raw_content),
+        record,
+        exc,
+    )
 
 
 async def replay_pending_shard_updates(
@@ -357,11 +436,16 @@ async def replay_pending_shard_updates(
         except json.JSONDecodeError as exc:
             _quarantine_invalid_pending_shard_update(path, exc, raw_content=raw_content)
             continue
+        ref = _pending_shard_update_ref(
+            path,
+            raw_content,
+            record if isinstance(record, dict) else None,
+        )
         if not isinstance(record, dict):
-            _quarantine_invalid_pending_shard_update(
-                path,
+            _quarantine_pending_shard_update(
+                ref,
+                {"job_id": path.parent.parent.name, "shard_id": path.stem},
                 ValueError("pending shard update record must be a JSON object"),
-                raw_content=raw_content,
             )
             continue
         record_server_id = record.get("server_id")
@@ -371,7 +455,7 @@ async def replay_pending_shard_updates(
         payload = record.get("payload")
         if not isinstance(payload, dict):
             _quarantine_pending_shard_update(
-                path,
+                ref,
                 record,
                 ValueError("pending shard update payload must be a JSON object"),
             )
@@ -380,7 +464,7 @@ async def replay_pending_shard_updates(
             shard_id_int = int(shard_id)
         except (TypeError, ValueError):
             _quarantine_pending_shard_update(
-                path,
+                ref,
                 record,
                 ValueError("pending shard update shard_id must be an integer"),
             )
@@ -390,10 +474,9 @@ async def replay_pending_shard_updates(
         except Exception as exc:
             if _is_transient_control_error(exc):
                 break
-            _quarantine_pending_shard_update(path, record, exc)
+            _quarantine_pending_shard_update(ref, record, exc)
             continue
-        with contextlib.suppress(FileNotFoundError):
-            path.unlink()
+        _remove_pending_shard_update(ref)
         replayed += 1
     return replayed
 
@@ -406,7 +489,7 @@ async def _update_shard_with_transient_retry(
     *,
     job_id: str | None = None,
 ) -> dict[str, Any]:
-    pending_path: Path | None = None
+    pending_ref: PendingShardUpdateRef | None = None
     pending_record: dict[str, Any] | None = None
     if job_id is not None:
         pending_record = {
@@ -415,7 +498,7 @@ async def _update_shard_with_transient_retry(
             "server_id": config.server_id,
             "payload": payload,
         }
-        pending_path = _write_pending_shard_update(
+        pending_ref = _write_pending_shard_update(
             config,
             job_id=job_id,
             shard_id=shard_id,
@@ -426,17 +509,13 @@ async def _update_shard_with_transient_retry(
     while True:
         try:
             response = await client.update_shard(shard_id, payload)
-            if job_id is not None:
-                _remove_pending_shard_update(
-                    config,
-                    job_id=job_id,
-                    shard_id=shard_id,
-                )
+            if pending_ref is not None:
+                _remove_pending_shard_update(pending_ref)
             return response
         except Exception as exc:
             if not _is_transient_control_error(exc):
-                if pending_path is not None and pending_record is not None:
-                    _quarantine_pending_shard_update(pending_path, pending_record, exc)
+                if pending_ref is not None and pending_record is not None:
+                    _quarantine_pending_shard_update(pending_ref, pending_record, exc)
                 raise
             await asyncio.sleep(delay)
             delay = min(delay * 2, max_delay)
@@ -679,6 +758,23 @@ async def read_new_jsonl_events(
 async def should_stop_job(job_id: str, client: ControlClient) -> bool:
     job = await client.get_job(job_id)
     return bool(job.get("stop_requested")) or job.get("status") == "stopping"
+
+
+async def _should_stop_job_with_transient_retry(
+    job_id: str,
+    client: ControlClient,
+    config: AgentConfig,
+) -> bool:
+    delay = max(float(config.control_retry_initial_seconds), 0.1)
+    max_delay = max(float(config.control_retry_max_seconds), delay)
+    while True:
+        try:
+            return await should_stop_job(job_id, client)
+        except Exception as exc:
+            if not _is_transient_control_error(exc):
+                raise
+            await asyncio.sleep(delay)
+            delay = min(delay * 2, max_delay)
 
 
 async def _forward_stream(
@@ -1416,7 +1512,11 @@ async def run_static_sharded_job(
             shard_job["input_mode"] = "folder_snapshot"
         return_code = await run_job(shard_job, config, client)
         shard_progress = shard_job.get("_shard_progress") or {}
-        stopped = await should_stop_job(job_id, client)
+        stopped = await _should_stop_job_with_transient_retry(
+            job_id,
+            client,
+            config,
+        )
         if stopped:
             await _update_shard_with_transient_retry(
                 client,

@@ -1228,6 +1228,71 @@ def test_run_static_sharded_job_retries_transient_terminal_shard_update(
     assert not (tmp_path / "jobs" / "job-1" / "pending-shard-updates" / "shard-11.json").exists()
 
 
+def test_run_static_sharded_job_retries_transient_post_run_stop_check(
+    tmp_path,
+    monkeypatch,
+):
+    async def fake_run_job(job, config, client):
+        return 0
+
+    sleeps = []
+
+    async def fake_sleep(seconds):
+        sleeps.append(seconds)
+
+    class FlakyPostRunStopClient(StaticShardClient):
+        def __init__(self):
+            super().__init__()
+            self.get_job_calls = 0
+
+        async def get_job(self, job_id):
+            self.get_job_calls += 1
+            if self.get_job_calls in {2, 3}:
+                request = httpx.Request("GET", f"http://control/api/jobs/{job_id}")
+                raise httpx.ConnectError("control temporarily unavailable", request=request)
+            return {"id": job_id, "stop_requested": False, "status": "running"}
+
+    monkeypatch.setattr(runner, "run_job", fake_run_job)
+    monkeypatch.setattr(runner.asyncio, "sleep", fake_sleep)
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path),
+        python_executable=sys.executable,
+        control_retry_initial_seconds=0.5,
+        control_retry_max_seconds=1.0,
+    )
+    client = FlakyPostRunStopClient()
+    client.claims = [
+        {"id": 11, "shard_path": "/manifest/shard-11.jsonl", "file_count": 1},
+        None,
+    ]
+
+    result = asyncio.run(
+        runner.run_static_sharded_job(
+            {
+                "id": "job-1",
+                "input_dir": "/shared/input",
+                "output_dir": "/shared/output",
+                "engine": "dotsocr",
+                "has_static_shards": True,
+            },
+            config,
+            client,
+        )
+    )
+
+    assert result == 0
+    assert sleeps == [0.5, 1.0]
+    assert [payload["status"] for _shard_id, payload in client.updates] == [
+        "succeeded"
+    ]
+    assert client.events == [
+        ("job-1", {"type": "job_done", "payload": {"static_shards_final": True}})
+    ]
+    assert not any(event["type"] == "job_failed" for _job_id, event in client.events)
+
+
 def test_terminal_shard_update_writes_pending_file_before_control_call(tmp_path):
     observed_pending_exists = None
 
@@ -1259,6 +1324,129 @@ def test_terminal_shard_update_writes_pending_file_before_control_call(tmp_path)
 
     assert observed_pending_exists is True
     assert not (tmp_path / "jobs" / "job-1" / "pending-shard-updates" / "shard-11.json").exists()
+
+
+def test_pending_terminal_update_rejects_later_running_overwrite(tmp_path):
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path),
+        python_executable=sys.executable,
+    )
+    runner._write_pending_shard_update(
+        config,
+        job_id="job-1",
+        shard_id=11,
+        payload={"status": "running", "processed_files": 0},
+    )
+    terminal_ref = runner._write_pending_shard_update(
+        config,
+        job_id="job-1",
+        shard_id=11,
+        payload={"status": "succeeded", "processed_files": 1},
+    )
+    ignored_ref = runner._write_pending_shard_update(
+        config,
+        job_id="job-1",
+        shard_id=11,
+        payload={"status": "running", "processed_files": 0},
+    )
+    record = json.loads(terminal_ref.path.read_text(encoding="utf-8"))
+
+    assert record["payload"] == {"status": "succeeded", "processed_files": 1}
+    assert record["generation"] == terminal_ref.generation
+    assert ignored_ref.generation == terminal_ref.generation
+
+
+def test_running_replay_does_not_delete_terminal_written_while_request_inflight(tmp_path):
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path),
+        python_executable=sys.executable,
+    )
+    runner._write_pending_shard_update(
+        config,
+        job_id="job-1",
+        shard_id=11,
+        payload={"status": "running", "processed_files": 1},
+    )
+    async def exercise():
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+
+        class DelayedSuccessClient(StaticShardClient):
+            async def update_shard(self, shard_id, payload):
+                self.updates.append((shard_id, payload))
+                request_started.set()
+                await release_request.wait()
+                return {"id": shard_id, **payload}
+
+        client = DelayedSuccessClient()
+        replay_task = asyncio.create_task(
+            runner.replay_pending_shard_updates(config, client)
+        )
+        await request_started.wait()
+        terminal_ref = runner._write_pending_shard_update(
+            config,
+            job_id="job-1",
+            shard_id=11,
+            payload={"status": "succeeded", "processed_files": 1},
+        )
+        release_request.set()
+        replayed = await replay_task
+        return replayed, terminal_ref
+
+    replayed, terminal_ref = asyncio.run(exercise())
+    record = json.loads(terminal_ref.path.read_text(encoding="utf-8"))
+
+    assert replayed == 1
+    assert record["generation"] == terminal_ref.generation
+    assert record["payload"]["status"] == "succeeded"
+
+
+def test_direct_success_does_not_delete_newer_terminal_generation(tmp_path):
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path),
+        python_executable=sys.executable,
+    )
+    async def exercise():
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+
+        class DelayedSuccessClient(StaticShardClient):
+            async def update_shard(self, shard_id, payload):
+                request_started.set()
+                await release_request.wait()
+                return {"id": shard_id, **payload}
+
+        update_task = asyncio.create_task(
+            runner._update_shard_with_transient_retry(
+                DelayedSuccessClient(),
+                11,
+                {"status": "succeeded", "processed_files": 1},
+                config,
+                job_id="job-1",
+            )
+        )
+        await request_started.wait()
+        newer_ref = runner._write_pending_shard_update(
+            config,
+            job_id="job-1",
+            shard_id=11,
+            payload={"status": "stopped", "processed_files": 1},
+        )
+        release_request.set()
+        await update_task
+        return newer_ref
+
+    newer_ref = asyncio.run(exercise())
+    record = json.loads(newer_ref.path.read_text(encoding="utf-8"))
+
+    assert record["generation"] == newer_ref.generation
+    assert record["payload"]["status"] == "stopped"
 
 
 def test_replay_pending_shard_updates_removes_file_after_success(tmp_path):
@@ -1427,6 +1615,59 @@ def test_replay_pending_shard_updates_quarantines_non_transient_failure_and_cont
     assert failed_record["replay_error"]["error_type"] == "HTTPStatusError"
     assert "stale attempt" in failed_record["replay_error"]["message"]
     assert not second_path.exists()
+
+
+def test_replay_quarantine_does_not_delete_newer_terminal_generation(tmp_path):
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path),
+        python_executable=sys.executable,
+    )
+    runner._write_pending_shard_update(
+        config,
+        job_id="job-1",
+        shard_id=11,
+        payload={"status": "running", "processed_files": 1},
+    )
+    request = httpx.Request("POST", "http://control/api/shards/11")
+    response = httpx.Response(409, request=request, json={"detail": "stale attempt"})
+
+    async def exercise():
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+
+        class DelayedConflictClient(StaticShardClient):
+            async def update_shard(self, shard_id, payload):
+                request_started.set()
+                await release_request.wait()
+                raise httpx.HTTPStatusError(
+                    "stale attempt",
+                    request=request,
+                    response=response,
+                )
+
+        replay_task = asyncio.create_task(
+            runner.replay_pending_shard_updates(config, DelayedConflictClient())
+        )
+        await request_started.wait()
+        terminal_ref = runner._write_pending_shard_update(
+            config,
+            job_id="job-1",
+            shard_id=11,
+            payload={"status": "succeeded", "processed_files": 1},
+        )
+        release_request.set()
+        replayed = await replay_task
+        return replayed, terminal_ref
+
+    replayed, terminal_ref = asyncio.run(exercise())
+    record = json.loads(terminal_ref.path.read_text(encoding="utf-8"))
+
+    assert replayed == 0
+    assert record["generation"] == terminal_ref.generation
+    assert record["payload"]["status"] == "succeeded"
+    assert not terminal_ref.path.with_suffix(".json.failed").exists()
 
 
 def test_terminal_shard_update_retry_does_not_hide_non_transient_control_errors(tmp_path):
@@ -2004,6 +2245,103 @@ def test_spooled_running_replay_after_terminal_success_stays_terminal(tmp_path):
     assert current["processed_files"] == 1
 
 
+def test_short_control_outage_after_shard_exit_reaches_terminal_state(
+    tmp_path,
+    monkeypatch,
+):
+    api, session_factory, _, created_job = make_static_job_client(
+        tmp_path,
+        file_count=1,
+    )
+    claimed_job = api.post("/api/agents/server-a/next-job").json()
+    config = AgentConfig(
+        server_id="server-a",
+        control_url="http://control:8080",
+        work_dir=str(tmp_path / "work"),
+        python_executable=sys.executable,
+        control_retry_initial_seconds=0.1,
+        control_retry_max_seconds=0.2,
+    )
+    events = []
+
+    async def fake_run_job(shard_job, config, client):
+        shard = shard_job["shard"]
+        runner._write_pending_shard_update(
+            config,
+            job_id=shard_job["id"],
+            shard_id=shard["id"],
+            payload={
+                "status": "running",
+                "processed_files": 1,
+                "assigned_server_id": shard["assigned_server_id"],
+                "attempt_count": shard["attempt_count"],
+            },
+        )
+        shard_job["_shard_progress"] = {"processed_files": 1}
+        return 0
+
+    class RecoveringApiClient:
+        def __init__(self):
+            self.get_job_calls = 0
+
+        async def get_job(self, job_id):
+            self.get_job_calls += 1
+            if self.get_job_calls == 2:
+                request = httpx.Request("GET", f"http://control/api/jobs/{job_id}")
+                raise httpx.ConnectError("control temporarily unavailable", request=request)
+            return api.get(f"/api/jobs/{job_id}").json()
+
+        async def claim_shard(self, job_id, server_id):
+            return api.post(
+                f"/api/jobs/{job_id}/shards/claim",
+                params={"server_id": server_id},
+            ).json()
+
+        async def update_shard(self, shard_id, payload):
+            response = api.post(f"/api/shards/{shard_id}", json=payload)
+            response.raise_for_status()
+            return response.json()
+
+        async def get_job_summary(self, job_id):
+            return api.get(f"/api/jobs/{job_id}/summary").json()
+
+        async def post_event(self, job_id, event):
+            events.append(event)
+            response = api.post(f"/api/jobs/{job_id}/events", json=event)
+            response.raise_for_status()
+            return response.json()
+
+    monkeypatch.setattr(runner, "run_job", fake_run_job)
+    result = asyncio.run(
+        runner.run_static_sharded_job(
+            claimed_job,
+            config,
+            RecoveringApiClient(),
+        )
+    )
+
+    pending_path = (
+        tmp_path
+        / "work"
+        / "jobs"
+        / created_job["id"]
+        / "pending-shard-updates"
+        / "shard-1.json"
+    )
+    with session_factory() as session:
+        shard = session.query(WorkShard).filter_by(job_id=created_job["id"]).one()
+        parent = session.get(Job, created_job["id"])
+        assert shard.status == "succeeded"
+        assert parent.status == "succeeded"
+
+    assert result == 0
+    assert not pending_path.exists()
+    assert not any(event["type"] == "job_failed" for event in events)
+    assert events == [
+        {"type": "job_done", "payload": {"static_shards_final": True}}
+    ]
+
+
 def test_next_job_returns_running_assigned_job_with_more_static_shards(tmp_path):
     api, _, _, job = make_static_job_client(tmp_path)
 
@@ -2366,6 +2704,98 @@ def test_expired_running_shard_can_be_reclaimed_by_another_server(tmp_path):
         shard = session.get(WorkShard, first_claim["id"])
         assert shard.assigned_server_id == "server-b"
         assert shard.attempt_count == 2
+
+
+def test_late_running_update_does_not_revive_stale_attempt(tmp_path):
+    api, session_factory, _, job = make_static_job_client(tmp_path, file_count=1)
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claimed["id"])
+        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    summary = api.get(f"/api/jobs/{job['id']}/summary")
+    attempts_before = api.get(
+        f"/api/jobs/{job['id']}/shards/{claimed['id']}/attempts"
+    ).json()
+    late_running = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "running",
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    attempts_after = api.get(
+        f"/api/jobs/{job['id']}/shards/{claimed['id']}/attempts"
+    ).json()
+
+    assert summary.status_code == 200
+    assert late_running.status_code == 200
+    assert late_running.json()["status"] == "stale"
+    assert late_running.json()["lease_expires_at"] is None
+    assert attempts_after == attempts_before
+    assert attempts_after[0]["status"] == "stale"
+    assert attempts_after[0]["finished_at"] is not None
+
+    terminal = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "succeeded",
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    assert terminal.status_code == 200
+    assert terminal.json()["status"] == "succeeded"
+
+
+def test_late_running_update_does_not_revive_retrying_attempt(tmp_path):
+    api, _, _, job = make_static_job_client(tmp_path, file_count=1)
+    claimed = api.post(
+        f"/api/jobs/{job['id']}/shards/claim",
+        params={"server_id": "server-a"},
+    ).json()
+    retrying = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "failed",
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+            "error_message": "transient parser failure",
+        },
+    )
+    late_running = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "running",
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+
+    assert retrying.status_code == 200
+    assert retrying.json()["status"] == "retrying"
+    assert late_running.status_code == 200
+    assert late_running.json()["status"] == "retrying"
+    assert late_running.json()["error_message"] == "transient parser failure"
+
+    terminal = api.post(
+        f"/api/shards/{claimed['id']}",
+        json={
+            "status": "succeeded",
+            "processed_files": 1,
+            "assigned_server_id": "server-a",
+            "attempt_count": claimed["attempt_count"],
+        },
+    )
+    assert terminal.status_code == 200
+    assert terminal.json()["status"] == "succeeded"
 
 
 def test_reclaimed_expired_shard_closes_stale_attempt_history(tmp_path):
