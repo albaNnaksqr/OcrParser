@@ -7,6 +7,7 @@ v0.3.1 maintenance release.
 
 Related documents:
 
+- [v0.4.0 Execution Plan](rfc-v0.4-execution-plan.md)
 - [Control Internals RFC](rfc-v0.4-control-internals.md)
 - [Control Module Map](control-module-map.md)
 

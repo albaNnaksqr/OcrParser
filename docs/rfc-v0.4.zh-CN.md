@@ -6,6 +6,7 @@
 
 相关文档：
 
+- [v0.4.0 执行计划](rfc-v0.4-execution-plan.zh-CN.md)
 - [Control 内部重构 RFC](rfc-v0.4-control-internals.zh-CN.md)
 - [Control 模块地图](control-module-map.zh-CN.md)
 
