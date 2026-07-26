@@ -19,16 +19,17 @@
   and machine-readable reports that never persist runtime secrets.
 - Expanded the generated public engine-certification set with invoice-table and
   mixed-layout PDFs plus required-field, reading-order, and table-cell checks.
-- Used the Wave 5 short preflight to expose and fix real same-server stale
-  reclaim starvation. An early post-fix timing run remains recorded as FAIL;
-  the subsequent fresh strict run completed 300/300 documents and 30/30 shards
-  with lease reclaim, a 60-second Control outage and spool replay, and
-  same-server restart recovery. The 24-hour soak has not started.
-- Passed 846 tests and all 11 GitHub CI jobs for the recovery-fix commit.
-- Revalidated 50 public pages per engine. DotsOCR and MinerU passed 3/4 quality
-  fixtures; PaddleOCR-VL passed integration after the dependency fix but only
-  1/4 quality fixtures. All three remain **Verified**, not **Certified**, with
-  their provenance and quality limitations recorded.
+- Completed isolated, long-running multi-cycle stability validation covering
+  reclaim, replay, restart, migration, and output integrity. Core scheduling,
+  recovery, and integrity gates passed. The runner's full-duration semantics
+  and low-baseline resource-growth evaluation were corrected and
+  regression-tested; the release decision accepts the remaining validation
+  risk instead of repeating the complete long run. Detailed artifacts remain
+  outside the repository.
+- Passed the full Python 3.10-3.12 test matrix and all 11 GitHub CI jobs.
+- Revalidated DotsOCR, MinerU, and PaddleOCR-VL integration. All three remain
+  **Verified**, not **Certified**, with their provenance, quality, and runtime
+  limitations recorded in the engine-certification matrix.
 - Updated the ARM64 PaddleOCR-VL recipe to build `sglang-kernel==0.4.4` from the
   pinned SGLang source and document its compute-capability and FlashInfer
   compatibility checks. No immutable repository digest was produced, so the
