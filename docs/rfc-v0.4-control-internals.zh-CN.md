@@ -2,7 +2,8 @@
 
 [English](rfc-v0.4-control-internals.md) | 中文
 
-状态：Draft。v0.3.1 观察期内仅允许编写文档和评审。
+状态：已批准分阶段实施。Maintainer 已于 2026-07-27 明确取消原
+`2026-08-02` 日历门禁；P0/P1、单写者、兼容性、评审和退出门禁继续有效。
 
 本 RFC 从属于 [v0.4 运维成熟度 RFC](rfc-v0.4.zh-CN.md)。其实施不得延后生产
 auto-migration/readiness、认证 engine profile、可观测性、容量规划和审计能力。
@@ -250,15 +251,15 @@ v0.4 发布前执行完整兼容、package、PostgreSQL、恢复、安全和 sou
 
 ## 进入门禁
 
-文档和设计评审可以立即进行。观察期从 v0.3.1 Release 发布时间
-2026-07-26 14:51:07+08:00 起算。运行时代码实施不早于
-2026-08-02 14:51:07+08:00，且必须满足：
+根据 2026-07-27 maintainer override，运行时代码已经获得立即实施授权，原按日期
+等待的观察门禁不再是进入条件。以下门禁继续有效：
 
-- v0.3.1 长时间、多周期验证已经按记录的风险接受完成评审；
-- 至少七天观察期内没有新的 P0/P1；
+- v0.3.1 长时间、多周期验证继续按记录的风险接受完成评审；
 - 没有未解决的数据丢失、重复 claim/artifact、migration、replay、shutdown、鉴权、
   source-offer 或资源泄漏问题；
 - 完整 contract baseline 和 rollback procedure 已批准。
+
+任何新的 P0/P1 都会冻结 v0.4，并将问题返回 v0.3.x 维护版本处理。
 
 ## 退出门禁
 

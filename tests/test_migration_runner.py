@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from pathlib import Path
 
 import pytest
@@ -45,6 +46,31 @@ def test_catalog_records_sha256_for_ordered_sql_files(tmp_path):
 
     assert catalog.versions == ["0001_baseline", "0002_add_item"]
     assert all(len(migration.checksum) == 64 for migration in catalog.migrations)
+
+
+def test_checked_in_migration_history_matches_fixed_sha256_fixture():
+    root = Path(__file__).resolve().parents[1]
+    fixture = json.loads(
+        (
+            root
+            / "tests"
+            / "fixtures"
+            / "contracts"
+            / "control_migration_checksums.json"
+        ).read_text(encoding="utf-8")
+    )
+    expected = fixture["migrations"]
+    catalog = MigrationCatalog.from_directory(
+        root / "ocr_platform" / "control" / "migrations"
+    )
+
+    assert fixture["schema_version"] == 1
+    assert catalog.versions == list(expected)
+    assert len(expected) == 20
+    assert {
+        migration.version: hashlib.sha256(migration.path.read_bytes()).hexdigest()
+        for migration in catalog.migrations
+    } == expected
 
 
 def test_postgres_runner_uses_transaction_advisory_lock():
@@ -141,3 +167,24 @@ def test_migration_cli_supports_apply_status_plan_and_verify(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)["latest_applied_migration"] == "0002_add_item"
     assert migrate_main(["verify", *common]) == 0
     assert json.loads(capsys.readouterr().out)["verified"] is True
+
+
+def test_older_catalog_reports_newer_applied_migration_as_unexpected(tmp_path):
+    migrations = tmp_path / "migrations"
+    _write_test_migrations(migrations)
+    _, engine = create_session_factory(f"sqlite:///{tmp_path / 'control.db'}")
+    current_runner = MigrationRunner(engine, migrations_dir=migrations)
+    current_runner.apply()
+
+    older_migrations = tmp_path / "older-migrations"
+    older_migrations.mkdir()
+    (older_migrations / "0001_baseline.sql").write_text(
+        (migrations / "0001_baseline.sql").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    older_runner = MigrationRunner(engine, migrations_dir=older_migrations)
+
+    status = older_runner.status()
+    assert status["is_current"] is False
+    assert status["unexpected_migrations"] == ["0002_add_item"]
+    assert older_runner.verify()["verified"] is False

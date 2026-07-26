@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.3.2 - 2026-07-27
+
+- Added migration `0020_model_profile_certification` and a matching optional
+  one-to-one ORM record as a compatibility bridge for v0.4 certified engine
+  profiles. v0.3.2 does not expose or enforce certification through the HTTP
+  API and does not create records for existing model profiles.
+- Made checksum-verified SQL migrations the PostgreSQL schema authority by
+  applying them before ORM `create_all`; SQLite keeps its local-development
+  create-all compatibility behavior.
+- Preserved the existing CLI, HTTP/OpenAPI, job preflight, state, manifest, and
+  output contracts. Databases with migration 0020 can roll back to v0.3.2
+  without a schema downgrade; v0.3.1 requires a pre-0020 database snapshot.
+
 ## 0.3.1 - 2026-07-22
 
 - Fixed three recovery classes without changing public APIs or data formats:

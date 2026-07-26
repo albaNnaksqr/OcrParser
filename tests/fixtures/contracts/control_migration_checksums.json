@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "migrations": {
+    "0001_control_schema": "3f36f5acbc4c3255c00de072dd15a0984a2db4bfc33cb4068ea19670256f927b",
+    "0002_enforce_work_shard_job_index": "3f8a4e5780a0814eed4da213d3a0fe2d13b9d5fd81b332a72e0b6d08d30d3869",
+    "0003_job_counter_failed_file_samples": "e83227c66e511c93ad451d908f910677ee508f9195d3ffa7f25088eba00df097",
+    "0004_unique_shard_attempt_number": "503709f5726c8cd33e6fa73d5d467669f13c0d2830cc27f779b3ab3075cbfe8f",
+    "0005_job_file_failure_category": "e04f2bd6db0e6395fe616d09f6ec83e79c0f22ba64e12add5096f4cbae3c7394",
+    "0006_job_log_pruning_index": "b331c6e6fbc2026bd760b2f5bb85ff2b703de74a648c1e97e00c83cb4aefd81e",
+    "0007_shard_attempt_execution_control": "23b08d08fa9bb9f46e4d95abd8736c09456a80142fb8a61ff250780116fa78db",
+    "0008_detail_pruning_indexes": "5526c869d6378ad717a598e659910773509198acabbb9e6d5bbd48c504426993",
+    "0009_compatibility_schema_columns": "a70e46f527ef70ff55a7968b48315c99ed2f2f8645f8eebbd86cef9b5f8db389",
+    "0010_shard_inspector_filter_indexes": "498fd45b682bef8f6867829bd9475d07a7a54c1c9881767998c448cb58580455",
+    "0011_unique_scan_unit_path": "698e99eb14af278b1111d86fc585f1968d42e6387c837b0bcc81c8062fec068e",
+    "0012_jobs_default_list_index": "bead9b48f5d75ca4a034273cf0153308e97d879bd87b8fe6a1ea6939531dfdf0",
+    "0013_job_counter_failure_category_counts": "b28dc952fe2e50eaf20eadf154535afbc58a6faaf341559b8e4aecc5e5b99daa",
+    "0014_job_event_failure_category": "07d2af3e92e5cf75fece212310d123b487232df65896fbbb55c9b951a7ea984f",
+    "0015_job_counter_recent_error_samples": "d2436e71e2954c832bfa8d9a2e9313315935cd9146c8f464f630f97f5cd99ea3",
+    "0016_job_file_upsert_path_index": "ea07325bc53674349d28645ca60d387e4db9624f2c53dacf95934d85c4d920f7",
+    "0017_worker_manifest_integrity": "d50885f6f8996ae6f804d2647854f1044ad74b5508471a432ab515edb878e714",
+    "0018_widen_input_mode_columns": "d919ca170cefb576c077fe83a3c058c6230971ecc0aa2420315ff7695f4708b5",
+    "0019_schema_migration_checksums": "fd86c244b8b418b030853a51246fe0b1e6df2f9cabdbcafb908c10a876f0caa4",
+    "0020_model_profile_certification": "777bf2e929da40c8f4cd7516fc64dfd7cd98fe276da31edc3954354cf784942d"
+  }
+}

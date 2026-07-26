@@ -4,7 +4,19 @@ import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import BigInteger, Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
@@ -68,6 +80,75 @@ class ModelProfile(Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow, onupdate=utcnow, nullable=False)
+
+    certification: Mapped[Optional["ModelProfileCertification"]] = relationship(
+        back_populates="profile",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        single_parent=True,
+        uselist=False,
+    )
+
+
+class ModelProfileCertification(Base):
+    __tablename__ = "model_profile_certifications"
+    __table_args__ = (
+        CheckConstraint(
+            "enforcement IN ('off', 'verified', 'certified')",
+            name="ck_model_profile_certifications_enforcement",
+        ),
+        CheckConstraint(
+            "status IN ('contract_only', 'verified', 'certified', 'blocked')",
+            name="ck_model_profile_certifications_status",
+        ),
+    )
+
+    profile_id: Mapped[str] = mapped_column(
+        String(128),
+        ForeignKey("model_profiles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    enforcement: Mapped[str] = mapped_column(
+        String(32),
+        default="off",
+        server_default="off",
+        nullable=False,
+    )
+    status: Mapped[str] = mapped_column(
+        String(32),
+        default="contract_only",
+        server_default="contract_only",
+        nullable=False,
+    )
+    parser_revision: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    parser_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model_revision: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    runtime_revision: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    runtime_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    layout_revision: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    layout_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    fixture_set_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    evidence_digest: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    certified_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+    risk_acceptance_json: Mapped[str] = mapped_column(
+        Text,
+        default="{}",
+        server_default="{}",
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=utcnow,
+        onupdate=utcnow,
+        server_default=func.current_timestamp(),
+        nullable=False,
+    )
+
+    profile: Mapped[ModelProfile] = relationship(back_populates="certification")
 
 
 class Job(Base):

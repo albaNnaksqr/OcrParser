@@ -8,7 +8,19 @@ from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
 import ocr_platform.control.service as service
 
-from ocr_platform.control.models import Job, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, WorkShard, utcnow
+from ocr_platform.control.models import (
+    Job,
+    JobEvent,
+    JobFile,
+    JobLog,
+    Manifest,
+    ModelProfile,
+    ModelProfileCertification,
+    ScanUnit,
+    Server,
+    WorkShard,
+    utcnow,
+)
 
 
 def make_client(tmp_path):
@@ -124,7 +136,7 @@ def test_database_status_exposes_applied_schema_migrations(tmp_path):
     payload = response.json()
     assert payload["dialect"] == "sqlite"
     assert payload["schema_migrations_table_exists"] is True
-    assert payload["known_migrations"][-1] == "0019_schema_migration_checksums"
+    assert payload["known_migrations"][-1] == "0020_model_profile_certification"
     assert payload["missing_migrations"] == [
         "0002_enforce_work_shard_job_index",
         "0003_job_counter_failed_file_samples",
@@ -141,10 +153,11 @@ def test_database_status_exposes_applied_schema_migrations(tmp_path):
         "0014_job_event_failure_category",
         "0015_job_counter_recent_error_samples",
         "0016_job_file_upsert_path_index",
-            "0017_worker_manifest_integrity",
-            "0018_widen_input_mode_columns",
-            "0019_schema_migration_checksums",
-        ]
+        "0017_worker_manifest_integrity",
+        "0018_widen_input_mode_columns",
+        "0019_schema_migration_checksums",
+        "0020_model_profile_certification",
+    ]
     assert payload["is_current"] is False
     assert payload["latest_applied_migration"] == "0001_control_schema"
     assert payload["applied_migrations"][0]["version"] == "0001_control_schema"
@@ -334,7 +347,7 @@ def test_register_server_create_job_and_claim(tmp_path):
 
 def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypatch):
     monkeypatch.setenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", "1")
-    client = make_client(tmp_path)
+    client, session_factory = make_client_with_session(tmp_path)
 
     profiles = client.get("/api/model-profiles")
 
@@ -344,6 +357,10 @@ def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypa
     assert dotsocr["requires_api_key"] is True
     assert dotsocr["has_api_key"] is False
     assert "api_key" not in dotsocr
+    assert "certification" not in dotsocr
+
+    with session_factory() as session:
+        assert session.get(ModelProfileCertification, "dotsocr_15") is None
 
     saved = client.put(
         "/api/model-profiles/dotsocr_15",
@@ -370,6 +387,10 @@ def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypa
     assert payload["label"] == "DotsOCR production"
     assert payload["has_api_key"] is True
     assert "api_key" not in payload
+    assert "certification" not in payload
+
+    with session_factory() as session:
+        assert session.get(ModelProfileCertification, "dotsocr_15") is None
 
 
 def test_model_profile_rejects_api_key_in_extra_args(tmp_path):

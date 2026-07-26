@@ -2,9 +2,10 @@
 
 English | [中文](rfc-v0.4-execution-plan.zh-CN.md)
 
-Status: Approved plan, frozen for documentation and review during the v0.3.1
-observation window. Runtime implementation must not start before
-2026-08-02 14:51:07+08:00.
+Status: Approved and in implementation. On 2026-07-27 the maintainer explicitly
+waived the previous 2026-08-02 calendar gate and authorized immediate
+implementation. This override removes only the date-based delay; P0/P1,
+single-writer, compatibility, review, and acceptance gates remain mandatory.
 
 This document turns the [v0.4 Operational Maturity RFC](rfc-v0.4.md) and the
 [Control Internals RFC](rfc-v0.4-control-internals.md) into an ordered delivery
@@ -48,8 +49,8 @@ parallel only in isolated task directories and must not change repository
 state. Every code wave ends with Main Agent review, targeted tests, full CI,
 and a clean working tree before the next writer starts.
 
-If the observation period finds a new P0/P1 defect, v0.4 work freezes and the
-defect returns to a v0.3.x maintenance release.
+If validation or release observation finds a new P0/P1 defect, v0.4 work
+freezes and the defect returns to a v0.3.x maintenance release.
 
 ## Delivery Sequence
 

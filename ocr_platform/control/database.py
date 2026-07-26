@@ -195,12 +195,13 @@ def _get_configured_database() -> tuple[sessionmaker[Session], Engine]:
 def init_db(db_engine: Engine | None = None) -> None:
     if db_engine is None:
         _, db_engine = _get_configured_database()
+    if db_engine.dialect.name == "postgresql":
+        # PostgreSQL migrations are the production schema authority. Applying
+        # them before ORM create_all prevents newly mapped tables from being
+        # created outside the checksum-verified migration history.
+        MigrationRunner(db_engine).apply()
     Base.metadata.create_all(bind=db_engine)
     _ensure_compatible_schema(db_engine)
-    if db_engine.dialect.name == "postgresql":
-        # v0.3 preserves automatic startup upgrades while routing all migration
-        # execution through the same checksum-verified runner as the CLI.
-        MigrationRunner(db_engine).apply()
 
 
 def _bigint_upgrade_statements(

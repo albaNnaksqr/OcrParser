@@ -2,8 +2,9 @@
 
 English | [中文](rfc-v0.4-control-internals.zh-CN.md)
 
-Status: Draft. Documentation and review only during the v0.3.1 observation
-period.
+Status: Approved for phased implementation. On 2026-07-27 the maintainer
+explicitly waived the prior 2026-08-02 calendar gate. All P0/P1,
+single-writer, compatibility, review, and exit gates remain in force.
 
 This RFC is subordinate to the [v0.4 Operational Maturity RFC](rfc-v0.4.md).
 Its implementation must not delay production auto-migration/readiness policy,
@@ -283,16 +284,18 @@ database migration, HTTP contract change, or algorithm change.
 
 ## Entry Gates
 
-Documentation and design review may proceed now. The observation window starts
-from the v0.3.1 release publication time, 2026-07-26 14:51:07+08:00. Runtime
-implementation starts no earlier than 2026-08-02 14:51:07+08:00 and only after:
+Runtime implementation is authorized immediately by the 2026-07-27 maintainer
+override; the former date-based observation delay is no longer an entry
+condition. The following gates still apply:
 
-- the v0.3.1 long-running, multi-cycle validation is reviewed under the recorded
-  risk acceptance;
-- at least seven observation days complete without a new P0/P1;
+- the v0.3.1 long-running, multi-cycle validation remains reviewed under the
+  recorded risk acceptance;
 - no unresolved data-loss, duplicate-claim/artifact, migration, replay,
   shutdown, authentication, source-offer, or resource-leak issue remains;
 - the complete contract baseline and rollback procedure are approved.
+
+Any new P0/P1 freezes v0.4 and returns the defect to a v0.3.x maintenance
+release.
 
 ## Exit Gates
 

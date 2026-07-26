@@ -5,7 +5,7 @@ import sys
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import BigInteger, Integer, delete, inspect, text
+from sqlalchemy import BigInteger, DateTime, Integer, delete, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 import ocr_platform.control.database as database
@@ -16,6 +16,8 @@ from ocr_platform.control.models import (
     JobFile,
     JobLog,
     Manifest,
+    ModelProfile,
+    ModelProfileCertification,
     ScanUnit,
     Server,
     ShardAttempt,
@@ -62,10 +64,10 @@ def test_postgres_init_db_routes_startup_upgrade_through_migration_runner(monkey
     init_db(engine)
 
     assert calls == [
-        ("create", engine),
-        ("compat", engine),
         ("runner", engine),
         ("apply", engine),
+        ("create", engine),
+        ("compat", engine),
     ]
 
 
@@ -196,6 +198,7 @@ def test_init_db_creates_expected_tables(tmp_path):
         "job_logs",
         "jobs",
         "manifests",
+        "model_profile_certifications",
         "model_profiles",
         "scan_units",
         "servers",
@@ -708,7 +711,170 @@ def test_checksum_migration_extends_history_without_replacing_prior_sql():
 
     assert "ADD COLUMN IF NOT EXISTS checksum VARCHAR(64)" in migration
     assert "0019_schema_migration_checksums" in migration
-    assert len(list((root / "ocr_platform" / "control" / "migrations").glob("*.sql"))) == 19
+    assert len(list((root / "ocr_platform" / "control" / "migrations").glob("*.sql"))) == 20
+
+
+def test_model_profile_certification_migration_is_additive_and_bounded():
+    root = Path(__file__).resolve().parents[1]
+    migration = (
+        root
+        / "ocr_platform"
+        / "control"
+        / "migrations"
+        / "0020_model_profile_certification.sql"
+    ).read_text(encoding="utf-8")
+    normalized_sql = " ".join(migration.split())
+
+    assert "CREATE TABLE IF NOT EXISTS model_profile_certifications" in normalized_sql
+    assert "profile_id VARCHAR(128) PRIMARY KEY REFERENCES model_profiles(id) ON DELETE CASCADE" in normalized_sql
+    assert "enforcement VARCHAR(32) NOT NULL DEFAULT 'off'" in normalized_sql
+    assert "status VARCHAR(32) NOT NULL DEFAULT 'contract_only'" in normalized_sql
+    assert "CHECK (enforcement IN ('off', 'verified', 'certified'))" in normalized_sql
+    assert "CHECK (status IN ('contract_only', 'verified', 'certified', 'blocked'))" in normalized_sql
+    assert "risk_acceptance_json TEXT NOT NULL DEFAULT '{}'" in normalized_sql
+    assert "0020_model_profile_certification" in normalized_sql
+
+
+def test_model_profile_certification_orm_matches_migration_contract():
+    table = ModelProfileCertification.__table__
+    expected_nullable = {
+        "profile_id": False,
+        "enforcement": False,
+        "status": False,
+        "parser_revision": True,
+        "parser_digest": True,
+        "model_revision": True,
+        "model_digest": True,
+        "runtime_revision": True,
+        "runtime_digest": True,
+        "layout_revision": True,
+        "layout_digest": True,
+        "fixture_set_digest": True,
+        "evidence_digest": True,
+        "certified_at": True,
+        "risk_acceptance_json": False,
+        "updated_at": False,
+    }
+
+    assert {column.name: column.nullable for column in table.columns} == expected_nullable
+    assert str(table.c.enforcement.server_default.arg) == "off"
+    assert str(table.c.status.server_default.arg) == "contract_only"
+    assert str(table.c.risk_acceptance_json.server_default.arg) == "{}"
+    assert isinstance(table.c.certified_at.type, DateTime)
+    assert table.c.certified_at.type.timezone is True
+    assert isinstance(table.c.updated_at.type, DateTime)
+    assert table.c.updated_at.type.timezone is True
+    assert {
+        constraint.name
+        for constraint in table.constraints
+        if constraint.name
+    } >= {
+        "ck_model_profile_certifications_enforcement",
+        "ck_model_profile_certifications_status",
+    }
+    [foreign_key] = list(table.c.profile_id.foreign_keys)
+    assert foreign_key.target_fullname == "model_profiles.id"
+    assert foreign_key.ondelete == "CASCADE"
+
+
+def test_model_profile_certification_model_defaults_relationship_and_cascade(tmp_path):
+    db_path = tmp_path / "control.db"
+    session_factory, engine = create_session_factory(f"sqlite:///{db_path}")
+    init_db(engine)
+
+    with session_factory() as session:
+        profile = ModelProfile(
+            id="profile-a",
+            label="Profile A",
+            engine="dotsocr",
+        )
+        session.add(profile)
+        session.commit()
+
+        assert session.get(ModelProfileCertification, "profile-a") is None
+
+        certification = ModelProfileCertification(profile_id=profile.id)
+        session.add(certification)
+        session.commit()
+        session.refresh(certification)
+
+        assert certification.enforcement == "off"
+        assert certification.status == "contract_only"
+        assert certification.risk_acceptance_json == "{}"
+        assert certification.updated_at is not None
+        assert profile.certification is certification
+
+        session.delete(profile)
+        session.commit()
+        assert session.get(ModelProfileCertification, "profile-a") is None
+
+
+def test_model_profile_certification_rejects_invalid_values_and_duplicate_profile(tmp_path):
+    db_path = tmp_path / "control.db"
+    session_factory, engine = create_session_factory(f"sqlite:///{db_path}")
+    init_db(engine)
+
+    with session_factory() as session:
+        session.add(ModelProfile(id="profile-a", label="Profile A", engine="dotsocr"))
+        session.commit()
+
+        session.add(
+            ModelProfileCertification(
+                profile_id="profile-a",
+                enforcement="invalid",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+        session.add(
+            ModelProfileCertification(
+                profile_id="profile-a",
+                status="invalid",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+        session.rollback()
+
+        session.add(ModelProfileCertification(profile_id="profile-a"))
+        session.commit()
+        session.add(
+            ModelProfileCertification(
+                profile_id="profile-a",
+                status="blocked",
+            )
+        )
+        with pytest.raises(IntegrityError):
+            session.commit()
+
+
+def test_existing_sqlite_database_gains_optional_certification_table(tmp_path):
+    db_path = tmp_path / "control.db"
+    session_factory, engine = create_session_factory(f"sqlite:///{db_path}")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "CREATE TABLE model_profiles ("
+                "id VARCHAR(128) PRIMARY KEY, "
+                "label VARCHAR(255) NOT NULL, "
+                "engine VARCHAR(64) NOT NULL)"
+            )
+        )
+        connection.execute(
+            text(
+                "INSERT INTO model_profiles (id, label, engine) "
+                "VALUES ('legacy', 'Legacy', 'dotsocr')"
+            )
+        )
+
+    init_db(engine)
+
+    inspector = inspect(engine)
+    assert "model_profile_certifications" in inspector.get_table_names()
+    with session_factory() as session:
+        assert session.get(ModelProfileCertification, "legacy") is None
 
 
 def test_manifest_and_work_shard_models_persist(tmp_path):

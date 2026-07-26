@@ -2,8 +2,9 @@
 
 English | [中文](rfc-v0.4.zh-CN.md)
 
-Status: proposed after v0.3.1 stabilization. This RFC is not implemented by the
-v0.3.1 maintenance release.
+Status: approved for implementation. On 2026-07-27 the maintainer explicitly
+waived the former 2026-08-02 calendar gate. The override does not waive P0/P1,
+compatibility, review, or release acceptance gates.
 
 Related documents:
 
@@ -64,13 +65,11 @@ own sake and does not rewrite OCR, layout, table, or Markdown algorithms.
 - Retain job/shard/attempt audit evidence long enough to explain reclaim,
   replay, stop/resume, and output provenance without logging document content.
 
-## Entry Gate
+## Implementation Gate
 
-Documentation and design review may start immediately. The seven-day
-observation window starts from the v0.3.1 release publication time,
-2026-07-26 14:51:07+08:00. Implementation starts no earlier than
-2026-08-02 14:51:07+08:00, after seven full days without a new P0/P1 stability
-defect and after the v0.3.1 long-running, multi-cycle validation has been
-reviewed under the recorded risk acceptance. Any unresolved data-loss,
-duplicate-claim, migration, replay, shutdown, or resource-leak issue remains a
-v0.3 maintenance priority instead.
+Implementation is authorized immediately under the maintainer override recorded
+on 2026-07-27. The earlier not-before timestamp is no longer an entry
+condition. The v0.3.1 long-running, multi-cycle validation remains accepted
+under its recorded risk decision. Any newly discovered or unresolved P0/P1,
+data-loss, duplicate-claim, migration, replay, shutdown, or resource-leak issue
+still freezes v0.4 and returns to a v0.3.x maintenance release.

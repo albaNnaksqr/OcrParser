@@ -53,6 +53,41 @@ def test_openapi_route_surface_matches_v01_contract() -> None:
     assert observed == CONTRACT["openapi_paths"]
 
 
+def test_v032_schema_bridge_does_not_expose_certification_over_http() -> None:
+    schemas = create_app().openapi()["components"]["schemas"]
+
+    assert list(schemas["ModelProfileRequest"]["properties"]) == [
+        "label",
+        "engine",
+        "ip",
+        "port",
+        "model_name",
+        "page_concurrency",
+        "extra_args",
+        "requires_api_key",
+        "is_default",
+        "api_key",
+        "api_key_env_var",
+        "clear_api_key",
+    ]
+    assert list(schemas["ModelProfileResponse"]["properties"]) == [
+        "id",
+        "label",
+        "engine",
+        "ip",
+        "port",
+        "model_name",
+        "page_concurrency",
+        "extra_args",
+        "requires_api_key",
+        "has_api_key",
+        "api_key_env_var",
+        "is_default",
+        "created_at",
+        "updated_at",
+    ]
+
+
 def test_manifest_and_engine_result_wire_formats_match_v01_contract() -> None:
     item = ManifestItem(
         input_path="/public/input.pdf",
