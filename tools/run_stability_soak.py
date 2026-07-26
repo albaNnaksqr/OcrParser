@@ -17,7 +17,7 @@ from collections import Counter
 from dataclasses import asdict, dataclass, field
 from email.parser import Parser
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Callable, Iterable, Sequence
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +45,13 @@ KNOWN_FALLBACK_REASONS = {
     "multiple",
     "other",
 }
+RESOURCE_SAMPLE_INTERVAL_SECONDS = 60.0
+# File descriptor counts commonly move by one or two for short-lived sockets.
+# Requiring both this absolute increase and a sustained upward trend avoids
+# treating a low, bounded 7 -> 9 fluctuation as a leak.
+FD_ABSOLUTE_GROWTH_THRESHOLD = 4
+FD_MIN_TREND_STEPS = 3
+FD_NON_DECREASING_STEP_RATIO = 0.75
 
 
 @dataclass(frozen=True)
@@ -529,6 +536,7 @@ def analyze_resource_growth(samples: Sequence[ResourceSample], *, limit: float =
     failures: list[str] = []
     observations: list[str] = []
     for label, rows in sorted(by_label.items()):
+        rows.sort(key=lambda sample: sample.captured_at)
         if len(rows) < 2:
             continue
         baseline, final = rows[0], rows[-1]
@@ -537,14 +545,106 @@ def analyze_resource_growth(samples: Sequence[ResourceSample], *, limit: float =
             observations.append(f"{label}:rss_growth={growth:.3f}")
             if growth > limit:
                 failures.append(f"{label} RSS growth {growth:.1%} exceeds {limit:.0%}")
-        if baseline.fd_count and final.fd_count:
-            growth = (final.fd_count - baseline.fd_count) / baseline.fd_count
-            observations.append(f"{label}:fd_growth={growth:.3f}")
-            if growth > limit:
-                failures.append(f"{label} FD growth {growth:.1%} exceeds {limit:.0%}")
+        fd_values = [row.fd_count for row in rows if row.fd_count is not None]
+        if len(fd_values) >= 2 and fd_values[0] > 0:
+            baseline_fd, final_fd = fd_values[0], fd_values[-1]
+            absolute_growth = final_fd - baseline_fd
+            steps = [current - previous for previous, current in zip(fd_values, fd_values[1:])]
+            upward_steps = sum(step > 0 for step in steps)
+            non_decreasing_steps = sum(step >= 0 for step in steps)
+            longest_upward_run = 0
+            current_upward_run = 0
+            for step in steps:
+                if step > 0:
+                    current_upward_run += 1
+                    longest_upward_run = max(longest_upward_run, current_upward_run)
+                else:
+                    current_upward_run = 0
+            non_decreasing_ratio = non_decreasing_steps / len(steps)
+            sustained_growth = (
+                longest_upward_run >= FD_MIN_TREND_STEPS
+                or (
+                    upward_steps >= FD_MIN_TREND_STEPS
+                    and non_decreasing_ratio >= FD_NON_DECREASING_STEP_RATIO
+                )
+            )
+            growth = absolute_growth / baseline_fd
+            observations.append(
+                f"{label}:fd_growth={growth:.3f},fd_delta={absolute_growth},"
+                f"fd_upward_steps={upward_steps},fd_non_decreasing_ratio={non_decreasing_ratio:.3f},"
+                f"fd_longest_upward_run={longest_upward_run}"
+            )
+            if absolute_growth >= FD_ABSOLUTE_GROWTH_THRESHOLD and sustained_growth:
+                failures.append(
+                    f"{label} FD sustained growth delta={absolute_growth} "
+                    f"upward_steps={upward_steps} non_decreasing_ratio={non_decreasing_ratio:.1%} "
+                    f"longest_run={longest_upward_run}"
+                )
     if not observations:
         return GateResult("resource_growth", "skip", "fewer than two usable samples per process")
     return GateResult("resource_growth", "fail" if failures else "pass", "; ".join(failures or observations))
+
+
+def run_soak_cycles(
+    *,
+    args: argparse.Namespace,
+    modes: Sequence[str],
+    token: str,
+    hooks: Sequence[FaultHook],
+    report_dir: Path,
+    resource_pid_files: Sequence[tuple[str, Path]],
+    clock: Callable[[], float] | None = None,
+    sleeper: Callable[[float], None] | None = None,
+    cycle_executor: Callable[..., CycleResult] | None = None,
+    resource_collector: Callable[[str, Path], ResourceSample] | None = None,
+) -> tuple[list[CycleResult], list[ResourceSample]]:
+    """Run every configured cycle, then remain alive until the soak deadline."""
+
+    monotonic = clock or time.monotonic
+    sleep = sleeper or time.sleep
+    execute = cycle_executor or execute_cycle
+    collect = resource_collector or collect_resource_sample
+    resources: list[ResourceSample] = []
+    cycles: list[CycleResult] = []
+    soak_started = monotonic()
+
+    def collect_resources() -> None:
+        for label, pid_file in resource_pid_files:
+            resources.append(collect(label, pid_file))
+
+    for cycle_index in range(1, args.cycles + 1):
+        collect_resources()
+        mode = modes[(cycle_index - 1) % len(modes)]
+        cycles.append(
+            execute(
+                cycle=cycle_index,
+                mode=mode,
+                args=args,
+                token=token,
+                hooks=hooks,
+                report_dir=report_dir,
+            )
+        )
+        if cycle_index < args.cycles and args.duration_seconds > 0:
+            target = soak_started + (args.duration_seconds * cycle_index / args.cycles)
+            delay = target - monotonic()
+            if delay > 0:
+                sleep(delay)
+
+    collected_during_deadline_wait = False
+    if args.duration_seconds > 0:
+        deadline = soak_started + args.duration_seconds
+        while True:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                break
+            sleep(min(RESOURCE_SAMPLE_INTERVAL_SECONDS, remaining))
+            collect_resources()
+            collected_during_deadline_wait = True
+
+    if not collected_during_deadline_wait:
+        collect_resources()
+    return cycles, resources
 
 
 def analyze_throughput(cycles: Sequence[CycleResult], *, max_regression: float = 0.10) -> GateResult:
@@ -756,30 +856,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         payload = write_reports(args.report_dir, configuration=configuration, gates=gates, cycles=[], resources=[])
         return 0 if payload["status"] == "pass" else 1
 
-    resources: list[ResourceSample] = []
-    cycles: list[CycleResult] = []
-    soak_started = time.monotonic()
-    for cycle_index in range(1, args.cycles + 1):
-        for label, pid_file in resource_pid_files:
-            resources.append(collect_resource_sample(label, pid_file))
-        mode = modes[(cycle_index - 1) % len(modes)]
-        cycles.append(
-            execute_cycle(
-                cycle=cycle_index,
-                mode=mode,
-                args=args,
-                token=token,
-                hooks=hooks,
-                report_dir=args.report_dir,
-            )
-        )
-        if cycle_index < args.cycles and args.duration_seconds > 0:
-            target = soak_started + (args.duration_seconds * cycle_index / args.cycles)
-            delay = target - time.monotonic()
-            if delay > 0:
-                time.sleep(delay)
-    for label, pid_file in resource_pid_files:
-        resources.append(collect_resource_sample(label, pid_file))
+    cycles, resources = run_soak_cycles(
+        args=args,
+        modes=modes,
+        token=token,
+        hooks=hooks,
+        report_dir=args.report_dir,
+        resource_pid_files=resource_pid_files,
+    )
     gates.append(analyze_resource_growth(resources))
     if args.engine_profile == "mock":
         gates.append(analyze_throughput(cycles))

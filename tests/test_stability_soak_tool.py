@@ -2,6 +2,7 @@ import json
 import sys
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 
 from tools import run_stability_soak as soak
 
@@ -177,6 +178,143 @@ def test_throughput_and_resource_gates_enforce_twenty_and_ten_percent_limits():
     )
     assert resources.status == "fail"
     assert "RSS growth" in resources.detail
+
+
+def test_resource_gate_allows_low_bounded_fd_fluctuation():
+    result = soak.analyze_resource_growth(
+        [
+            soak.ResourceSample("agent", 1, 1000, 7, 1.0, "ok"),
+            soak.ResourceSample("agent", 1, 1001, 9, 2.0, "ok"),
+            soak.ResourceSample("agent", 1, 1002, 8, 3.0, "ok"),
+            soak.ResourceSample("agent", 1, 1002, 9, 4.0, "ok"),
+            soak.ResourceSample("agent", 1, 1002, 7, 5.0, "ok"),
+            soak.ResourceSample("agent", 1, 1002, 9, 6.0, "ok"),
+        ]
+    )
+
+    assert result.status == "pass"
+    assert "fd_delta=2" in result.detail
+
+
+def test_resource_gate_rejects_sustained_fd_growth():
+    result = soak.analyze_resource_growth(
+        [
+            soak.ResourceSample("agent", 1, 1000, fd, float(index), "ok")
+            for index, fd in enumerate([7, 8, 9, 10, 11], start=1)
+        ]
+    )
+
+    assert result.status == "fail"
+    assert "FD sustained growth" in result.detail
+
+
+def test_resource_gate_rejects_staircase_fd_growth_with_plateaus():
+    result = soak.analyze_resource_growth(
+        [
+            soak.ResourceSample("agent", 1, 1000, fd, float(index), "ok")
+            for index, fd in enumerate([7, 8, 8, 9, 9, 10, 10, 11], start=1)
+        ]
+    )
+
+    assert result.status == "fail"
+    assert "non_decreasing_ratio=100.0%" in result.detail
+
+
+def test_resource_gate_rejects_sustained_rss_growth():
+    result = soak.analyze_resource_growth(
+        [
+            soak.ResourceSample("agent", 1, rss, 7, float(index), "ok")
+            for index, rss in enumerate([1000, 1050, 1125, 1250], start=1)
+        ]
+    )
+
+    assert result.status == "fail"
+    assert "RSS growth" in result.detail
+
+
+class FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def monotonic(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+def run_fake_schedule(*, cycles: int, duration: float, cycle_seconds: float):
+    clock = FakeClock()
+    executed: list[int] = []
+    samples: list[float] = []
+    args = SimpleNamespace(cycles=cycles, duration_seconds=duration)
+
+    def execute(**kwargs):
+        executed.append(kwargs["cycle"])
+        clock.now += cycle_seconds
+        return make_cycle(kwargs["cycle"], duration=cycle_seconds)
+
+    def collect(label, _pid_file):
+        samples.append(clock.now)
+        return soak.ResourceSample(label, 1, 1000, 7, clock.now, "ok")
+
+    results, resources = soak.run_soak_cycles(
+        args=args,
+        modes=["directory"],
+        token="runtime-only",
+        hooks=[],
+        report_dir=Path("/unused"),
+        resource_pid_files=[("agent", Path("/unused.pid"))],
+        clock=clock.monotonic,
+        sleeper=clock.sleep,
+        cycle_executor=execute,
+        resource_collector=collect,
+    )
+    return clock, executed, samples, results, resources
+
+
+def test_twenty_cycle_day_waits_until_full_duration_without_extra_cycle():
+    clock, executed, samples, results, resources = run_fake_schedule(
+        cycles=20,
+        duration=24 * 60 * 60,
+        cycle_seconds=1,
+    )
+
+    assert clock.now == 24 * 60 * 60
+    assert executed == list(range(1, 21))
+    assert len(results) == 20
+    assert samples[-1] == 24 * 60 * 60
+    assert samples.count(24 * 60 * 60) == 1
+    assert len(resources) > 20
+
+
+def test_non_positive_duration_runs_cycles_without_waiting():
+    for duration in (0, -1):
+        clock, executed, _samples, results, _resources = run_fake_schedule(
+            cycles=3,
+            duration=duration,
+            cycle_seconds=1,
+        )
+
+        assert clock.now == 3
+        assert clock.sleeps == []
+        assert executed == [1, 2, 3]
+        assert len(results) == 3
+
+
+def test_cycles_exceeding_deadline_do_not_wait_or_add_cycle():
+    clock, executed, _samples, results, _resources = run_fake_schedule(
+        cycles=2,
+        duration=10,
+        cycle_seconds=6,
+    )
+
+    assert clock.now == 12
+    assert clock.sleeps == []
+    assert executed == [1, 2]
+    assert len(results) == 2
 
 
 def test_reports_do_not_need_secret_values_and_include_failure_index(tmp_path):
