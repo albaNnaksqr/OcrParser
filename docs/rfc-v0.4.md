@@ -5,6 +5,11 @@ English | [中文](rfc-v0.4.zh-CN.md)
 Status: proposed after v0.3.1 stabilization. This RFC is not implemented by the
 v0.3.1 maintenance release.
 
+Related documents:
+
+- [Control Internals RFC](rfc-v0.4-control-internals.md)
+- [Control Module Map](control-module-map.md)
+
 ## Decision Summary
 
 v0.4 prioritizes explicit operations, certified engine profiles, alerts,
@@ -60,7 +65,11 @@ own sake and does not rewrite OCR, layout, table, or Markdown algorithms.
 
 ## Entry Gate
 
-Implementation starts only after v0.3.1 has completed the documented Spark
-soak and at least seven days of observation without a new P0/P1 stability
-defect. Any unresolved data-loss, duplicate-claim, migration, replay, shutdown,
-or resource-leak issue remains a v0.3 maintenance priority instead.
+Documentation and design review may start immediately. The seven-day
+observation window starts from the v0.3.1 release publication time,
+2026-07-26 14:51:07+08:00. Implementation starts no earlier than
+2026-08-02 14:51:07+08:00, after seven full days without a new P0/P1 stability
+defect and after the v0.3.1 long-running, multi-cycle validation has been
+reviewed under the recorded risk acceptance. Any unresolved data-loss,
+duplicate-claim, migration, replay, shutdown, or resource-leak issue remains a
+v0.3 maintenance priority instead.
