@@ -17,7 +17,7 @@ from sqlalchemy import Integer, case, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
 
 from ... import database
-from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
+from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ModelProfileCertification as __ModelProfileCertification, ScanUnit, Server, ShardAttempt, WorkShard
 from ...schemas import (
     JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
     ManifestFreezeReportResponse, ManifestIntegrityResponse, ManifestIntegrityWorkerCompleteRequest,
@@ -30,6 +30,7 @@ from ...schemas import (
 )
 from ... import settings as __control_settings
 from ..common import *
+from . import certification as __certification_policy
 
 
 def ensure_default_model_profiles(session: Session) -> None:
@@ -53,6 +54,9 @@ def model_profile_to_response(profile: ModelProfile) -> ModelProfileResponse:
         is_default=profile.is_default,
         created_at=profile.created_at,
         updated_at=profile.updated_at,
+        certification=__certification_policy.certification_to_response(
+            profile.certification
+        ),
     )
 
 def list_model_profiles(session: Session) -> list[ModelProfile]:
@@ -102,6 +106,13 @@ def upsert_model_profile(
 ) -> ModelProfile:
     _reject_secret_like_extra_args(request.extra_args, context="model profile")
     normalized_extra_args = _normalize_parser_extra_args(request.extra_args, context="model profile")
+    certification_values = (
+        __certification_policy.certification_request_values(
+            request.certification
+        )
+        if request.certification is not None
+        else None
+    )
     profile = session.get(ModelProfile, profile_id)
     if profile is None:
         profile = ModelProfile(id=profile_id)
@@ -136,6 +147,16 @@ def upsert_model_profile(
         profile.api_key = None
     elif request.api_key is not None:
         profile.api_key = request.api_key or None
+
+    if certification_values is not None:
+        certification = profile.certification
+        if certification is None:
+            certification = __ModelProfileCertification(
+                profile_id=profile_id
+            )
+            profile.certification = certification
+        for name, value in certification_values.items():
+            setattr(certification, name, value)
 
     session.commit()
     session.refresh(profile)

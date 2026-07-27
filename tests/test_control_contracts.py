@@ -89,10 +89,16 @@ def test_complete_canonical_openapi_baseline_is_locked() -> None:
 
     assert len(schema["paths"]) == 47
     assert len(operations) == 49
-    assert len(schema["components"]["schemas"]) == 56
-    assert len(path.read_bytes()) == 82_456
+    assert len(schema["components"]["schemas"]) == 60
+    assert {
+        "ModelProfileCertificationRequest",
+        "ModelProfileCertificationResponse",
+        "RiskAcceptanceRequest",
+        "RiskAcceptanceResponse",
+    } <= set(schema["components"]["schemas"])
+    assert len(path.read_bytes()) == 86_679
     assert hashlib.sha256(path.read_bytes()).hexdigest() == (
-        "2217e4551be81570540c406d501a2c1d23aba15fca31f9d933c6434abc0b76ad"
+        "8bd6cbffe721981e2c3e566e98cc28f371f6d912d17c506d43278592a04a23da"
     )
 
 

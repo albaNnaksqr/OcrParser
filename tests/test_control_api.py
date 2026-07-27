@@ -357,7 +357,8 @@ def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypa
     assert dotsocr["requires_api_key"] is True
     assert dotsocr["has_api_key"] is False
     assert "api_key" not in dotsocr
-    assert "certification" not in dotsocr
+    assert dotsocr["certification"]["status"] == "contract_only"
+    assert dotsocr["certification"]["enforcement"] == "off"
 
     with session_factory() as session:
         assert session.get(ModelProfileCertification, "dotsocr_15") is None
@@ -387,7 +388,8 @@ def test_model_profiles_are_persisted_and_do_not_echo_api_key(tmp_path, monkeypa
     assert payload["label"] == "DotsOCR production"
     assert payload["has_api_key"] is True
     assert "api_key" not in payload
-    assert "certification" not in payload
+    assert payload["certification"]["status"] == "contract_only"
+    assert payload["certification"]["enforcement"] == "off"
 
     with session_factory() as session:
         assert session.get(ModelProfileCertification, "dotsocr_15") is None

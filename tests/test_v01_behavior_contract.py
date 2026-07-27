@@ -53,7 +53,7 @@ def test_openapi_route_surface_matches_v01_contract() -> None:
     assert observed == CONTRACT["openapi_paths"]
 
 
-def test_v032_schema_bridge_does_not_expose_certification_over_http() -> None:
+def test_v04_model_profile_contract_adds_optional_certification() -> None:
     schemas = create_app().openapi()["components"]["schemas"]
 
     assert list(schemas["ModelProfileRequest"]["properties"]) == [
@@ -69,6 +69,7 @@ def test_v032_schema_bridge_does_not_expose_certification_over_http() -> None:
         "api_key",
         "api_key_env_var",
         "clear_api_key",
+        "certification",
     ]
     assert list(schemas["ModelProfileResponse"]["properties"]) == [
         "id",
@@ -85,7 +86,16 @@ def test_v032_schema_bridge_does_not_expose_certification_over_http() -> None:
         "is_default",
         "created_at",
         "updated_at",
+        "certification",
     ]
+    assert schemas["ModelProfileCertificationRequest"][
+        "additionalProperties"
+    ] is False
+    assert schemas["ModelProfileCertificationResponse"][
+        "additionalProperties"
+    ] is False
+    assert schemas["RiskAcceptanceRequest"]["additionalProperties"] is False
+    assert schemas["RiskAcceptanceResponse"]["additionalProperties"] is False
 
 
 def test_manifest_and_engine_result_wire_formats_match_v01_contract() -> None:

@@ -74,7 +74,7 @@
     "JobEvent": {
       "authority": {
         "sources": [
-          "ocr_platform/control/schemas.py:78",
+          "ocr_platform/control/schemas.py:166",
           "ocr_platform/control/domains/jobs/core.py:1559",
           "ocr_parser/domain/metadata.py:7"
         ],
@@ -93,7 +93,7 @@
     "JobFile": {
       "authority": {
         "sources": [
-          "ocr_platform/control/schemas.py:78",
+          "ocr_platform/control/schemas.py:166",
           "ocr_platform/control/domains/jobs/core.py:1242"
         ],
         "type": "event_payload_string"
@@ -334,7 +334,7 @@
     "ManifestIntegrityResponse.status": {
       "authority": {
         "sources": [
-          "ocr_platform/control/schemas.py:522",
+          "ocr_platform/control/schemas.py:610",
           "ocr_platform/control/domains/manifests/core.py:888",
           "ocr_platform/control/domains/manifests/core.py:893"
         ],
@@ -597,14 +597,14 @@
         },
         "sources": [
           "ocr_platform/control/domains/manifests/core.py:1995",
-          "ocr_platform/control/schemas.py:126"
+          "ocr_platform/control/schemas.py:214"
         ],
         "type": "derived_domain_transition",
         "value_evidence": {
           "failed": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -616,7 +616,7 @@
           "retrying": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -628,7 +628,7 @@
           "running": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -640,7 +640,7 @@
           "stale": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -652,7 +652,7 @@
           "stopped": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -664,7 +664,7 @@
           "succeeded": [
             {
               "kind": "derived_input",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
             },
             {
@@ -705,56 +705,56 @@
           "succeeded"
         ],
         "sources": [
-          "ocr_platform/control/schemas.py:126"
+          "ocr_platform/control/schemas.py:214"
         ],
         "type": "pydantic_literal",
         "value_evidence": {
           "failed": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "pending": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "retrying": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "running": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "stale": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "stopped": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ],
           "succeeded": [
             {
               "kind": "pydantic_literal",
-              "source": "ocr_platform/control/schemas.py:126",
+              "source": "ocr_platform/control/schemas.py:214",
               "symbol": "WorkShardUpdateRequest.status"
             }
           ]

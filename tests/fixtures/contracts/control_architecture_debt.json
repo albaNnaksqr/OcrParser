@@ -1560,7 +1560,7 @@
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.model_profiles.core:upsert_model_profile:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/model_profiles/core.py:140"
+        "source": "ocr_platform/control/domains/model_profiles/core.py:161"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",

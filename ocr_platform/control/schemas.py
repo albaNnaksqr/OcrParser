@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ServerRegisterRequest(BaseModel):
@@ -41,6 +41,92 @@ class JobCreateRequest(BaseModel):
     extra_args: dict[str, Any] = Field(default_factory=dict)
 
 
+class RiskAcceptanceRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    accepted_by: str = Field(min_length=1, max_length=255)
+    accepted_at: datetime
+    reason: str = Field(min_length=1, max_length=500)
+
+    @field_validator("accepted_by", "reason", mode="before")
+    @classmethod
+    def strip_required_text(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("accepted_at")
+    @classmethod
+    def require_timezone(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("accepted_at must include a timezone")
+        return value
+
+
+class RiskAcceptanceResponse(RiskAcceptanceRequest):
+    pass
+
+
+class ModelProfileCertificationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enforcement: Literal["off", "verified", "certified"] = "off"
+    status: Literal[
+        "contract_only",
+        "verified",
+        "certified",
+        "blocked",
+    ] = "contract_only"
+    parser_revision: Optional[str] = Field(default=None, max_length=255)
+    parser_digest: Optional[str] = Field(default=None, max_length=255)
+    model_revision: Optional[str] = Field(default=None, max_length=255)
+    model_digest: Optional[str] = Field(default=None, max_length=255)
+    runtime_revision: Optional[str] = Field(default=None, max_length=255)
+    runtime_digest: Optional[str] = Field(default=None, max_length=255)
+    layout_revision: Optional[str] = Field(default=None, max_length=255)
+    layout_digest: Optional[str] = Field(default=None, max_length=255)
+    fixture_set_digest: Optional[str] = Field(default=None, max_length=255)
+    evidence_digest: Optional[str] = Field(default=None, max_length=255)
+    certified_at: Optional[datetime] = None
+    risk_acceptance: Optional[RiskAcceptanceRequest] = None
+
+    @field_validator("certified_at")
+    @classmethod
+    def require_certified_at_timezone(
+        cls,
+        value: Optional[datetime],
+    ) -> Optional[datetime]:
+        if (
+            value is not None
+            and (value.tzinfo is None or value.utcoffset() is None)
+        ):
+            raise ValueError("certified_at must include a timezone")
+        return value
+
+
+class ModelProfileCertificationResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enforcement: Literal["off", "verified", "certified"]
+    status: Literal[
+        "contract_only",
+        "verified",
+        "certified",
+        "blocked",
+    ]
+    parser_revision: Optional[str] = None
+    parser_digest: Optional[str] = None
+    model_revision: Optional[str] = None
+    model_digest: Optional[str] = None
+    runtime_revision: Optional[str] = None
+    runtime_digest: Optional[str] = None
+    layout_revision: Optional[str] = None
+    layout_digest: Optional[str] = None
+    fixture_set_digest: Optional[str] = None
+    evidence_digest: Optional[str] = None
+    certified_at: Optional[datetime] = None
+    risk_acceptance: Optional[RiskAcceptanceResponse] = None
+    updated_at: Optional[datetime] = None
+
+
 class ModelProfileRequest(BaseModel):
     label: str = Field(min_length=1)
     engine: str = Field(min_length=1)
@@ -54,6 +140,7 @@ class ModelProfileRequest(BaseModel):
     api_key: Optional[str] = None
     api_key_env_var: Optional[str] = None
     clear_api_key: bool = False
+    certification: Optional[ModelProfileCertificationRequest] = None
 
 
 class ModelProfileResponse(BaseModel):
@@ -71,6 +158,7 @@ class ModelProfileResponse(BaseModel):
     is_default: bool
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    certification: Optional[ModelProfileCertificationResponse] = None
 
 
 class JobEventRequest(BaseModel):
