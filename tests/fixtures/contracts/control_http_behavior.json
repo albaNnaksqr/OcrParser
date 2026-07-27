@@ -82,7 +82,7 @@
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "kind": "global_readiness_middleware",
           "status": 503
@@ -1496,7 +1496,7 @@
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "kind": "global_api_token_middleware",
           "status": 401

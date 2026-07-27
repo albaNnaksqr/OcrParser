@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import BigInteger, Engine, Integer, create_engine, event, inspect, text
-from sqlalchemy.engine import URL, make_url
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -219,74 +218,14 @@ def create_session_factory(
     return sessionmaker(bind=db_engine, autoflush=False, expire_on_commit=False), db_engine
 
 
-SessionLocal: sessionmaker[Session] | None = None
-engine: Engine | None = None
-_configured_database_url: URL | None = None
-_configured_database_source: str | None = None
-
-
-def configure_database(
-    database_url: str | None = None,
-    *,
-    settings: ControlSettings | None = None,
-) -> tuple[sessionmaker[Session], Engine]:
-    global SessionLocal, engine
-    global _configured_database_source, _configured_database_url
-
-    SessionLocal, engine = create_session_factory(
-        database_url,
-        settings=settings,
-    )
-    _configured_database_url = engine.url
-    if database_url is not None:
-        _configured_database_source = "database_url"
-    elif settings is not None:
-        _configured_database_source = "settings"
-    else:
-        _configured_database_source = "environment"
-    return SessionLocal, engine
-
-
-def _get_configured_database(
-    *,
-    settings: ControlSettings | None = None,
-) -> tuple[sessionmaker[Session], Engine]:
-    global _configured_database_source, _configured_database_url
-
-    if SessionLocal is None or engine is None:
-        return configure_database(settings=settings)
-    if settings is None:
-        return SessionLocal, engine
-
-    try:
-        target_url = make_url(settings.database_url)
-    except (ArgumentError, TypeError, ValueError):
-        safe_url = redact_database_url(settings.database_url)
-        raise RuntimeError(
-            f"Invalid OCR Platform database URL: {safe_url}"
-        ) from None
-    configured_url = _configured_database_url or engine.url
-    if configured_url != target_url:
-        raise RuntimeError(
-            "Control database is already configured for a different database "
-            "URL; refusing to reuse the global engine."
-        )
-    if _configured_database_url is None:
-        _configured_database_url = engine.url
-        _configured_database_source = "existing_engine"
-    return SessionLocal, engine
-
-
 def init_db(
-    db_engine: Engine | None = None,
+    db_engine: Engine,
     *,
     settings: ControlSettings | None = None,
 ) -> None:
     control_settings = (
         settings if settings is not None else ControlSettings.from_environment()
     )
-    if db_engine is None:
-        _, db_engine = _get_configured_database(settings=settings)
     if db_engine.dialect.name == "postgresql":
         if control_settings.auto_migrate:
             _apply_startup_postgres_migrations(db_engine)
@@ -504,12 +443,3 @@ def apply_schema_migrations(
 
 def describe_database_status(db_engine: Engine) -> dict[str, object]:
     return MigrationRunner(db_engine).status()
-
-
-def get_session(
-    *,
-    settings: ControlSettings | None = None,
-) -> Generator[Session, None, None]:
-    session_factory, _ = _get_configured_database(settings=settings)
-    with session_factory() as session:
-        yield session

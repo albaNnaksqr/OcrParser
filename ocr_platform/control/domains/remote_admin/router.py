@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from ...remote_workers import RemoteWorkerExecutor
 from ...schemas import (
     RemoteWorkerInstallDryRunRequest,
     RemoteWorkerOperationResponse,
@@ -14,11 +13,12 @@ from ...schemas import (
 )
 from ...settings import ControlSettings
 from . import commands, queries, service
+from .ports import RemoteWorkerPort
 from .schemas import operation_response, scale_response, target_response
 
 
 def create_router(
-    executor: RemoteWorkerExecutor,
+    executor: RemoteWorkerPort,
     *,
     settings: ControlSettings | None = None,
 ) -> APIRouter:

@@ -142,7 +142,7 @@ def test_sqlite_development_database_is_ready_even_without_migrations() -> None:
     assert readiness.reason is None
 
 
-def test_probe_uses_actual_injected_and_default_app_binds(
+def test_probe_requires_and_uses_explicit_database_binds(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -168,8 +168,14 @@ def test_probe_uses_actual_injected_and_default_app_binds(
             return engine
 
     assert DatabaseReadinessProbe(BoundSession).check().ready is True
-    monkeypatch.setattr(database, "engine", engine)
-    assert DatabaseReadinessProbe().check().ready is True
+    assert DatabaseReadinessProbe(
+        bind_provider=lambda: engine
+    ).check().ready is True
+    with pytest.raises(
+        ValueError,
+        match="requires an explicit session_factory or bind_provider",
+    ):
+        DatabaseReadinessProbe()
     assert captured == [engine, engine]
     engine.dispose()
 

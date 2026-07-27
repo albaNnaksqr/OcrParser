@@ -4,13 +4,16 @@ import json
 from dataclasses import dataclass
 from typing import Sequence
 
+from sqlalchemy import Engine
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from . import database
 from .domains.common import DEFAULT_MODEL_PROFILES, json_dumps
+from .domains.remote_admin.ports import RemoteWorkerPort
 from .models import ModelProfile
+from .remote_workers import RemoteWorkerExecutor
 from .settings import ControlSettings
 
 
@@ -21,6 +24,46 @@ BOOTSTRAP_FAILED_ERROR = "Control database bootstrap failed."
 class BootstrapResult:
     status: str
     inserted_profiles: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class ControlRuntime:
+    settings: ControlSettings
+    session_factory: sessionmaker[Session]
+    engine: Engine
+    remote_worker_executor: RemoteWorkerPort
+    owns_engine: bool
+
+
+def build_control_runtime(
+    *,
+    settings: ControlSettings | None = None,
+    session_factory: sessionmaker[Session] | None = None,
+    remote_worker_executor: RemoteWorkerPort | None = None,
+) -> ControlRuntime:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    executor = (
+        remote_worker_executor
+        if remote_worker_executor is not None
+        else RemoteWorkerExecutor()
+    )
+    owns_engine = session_factory is None
+    if session_factory is None:
+        session_factory, db_engine = database.create_session_factory(
+            settings=control_settings
+        )
+    else:
+        with session_factory() as session:
+            db_engine = session.get_bind()
+    return ControlRuntime(
+        settings=control_settings,
+        session_factory=session_factory,
+        engine=db_engine,
+        remote_worker_executor=executor,
+        owns_engine=owns_engine,
+    )
 
 
 def _default_profile_rows() -> list[dict[str, object]]:
@@ -62,17 +105,10 @@ def seed_default_model_profiles(session: Session) -> int:
         raise RuntimeError(
             "Default model-profile bootstrap supports SQLite and PostgreSQL."
         )
-    try:
-        result = session.execute(statement)
-        if uses_returning:
-            inserted_count = len(result.scalars().all())
-        else:
-            inserted_count = max(int(result.rowcount or 0), 0)
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    return inserted_count
+    result = session.execute(statement)
+    if uses_returning:
+        return len(result.scalars().all())
+    return max(int(result.rowcount or 0), 0)
 
 
 def bootstrap_control_database(
@@ -90,7 +126,8 @@ def bootstrap_control_database(
         return BootstrapResult("schema_not_current")
     try:
         with session_factory() as session:
-            inserted = seed_default_model_profiles(session)
+            with session.begin():
+                inserted = seed_default_model_profiles(session)
     except Exception:
         raise RuntimeError(BOOTSTRAP_FAILED_ERROR) from None
     return BootstrapResult("complete", inserted_profiles=inserted)
@@ -125,7 +162,9 @@ if __name__ == "__main__":
 __all__ = [
     "BootstrapResult",
     "BOOTSTRAP_FAILED_ERROR",
+    "ControlRuntime",
     "bootstrap_control_database",
+    "build_control_runtime",
     "main",
     "seed_default_model_profiles",
 ]

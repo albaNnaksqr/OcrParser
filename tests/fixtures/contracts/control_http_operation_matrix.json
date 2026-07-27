@@ -32,20 +32,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_archive_job_api_jobs__job_id__archive_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -152,20 +152,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_archive_job_api_jobs__job_id__archive_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -208,20 +208,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_archive_server_api_servers__server_id__delete:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -313,20 +313,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_archive_server_api_servers__server_id__delete:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -369,20 +369,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -436,20 +436,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -490,20 +490,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -576,20 +576,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -631,20 +631,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_claim_scan_unit_api_scan_units_claim_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -698,20 +698,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_claim_scan_unit_api_scan_units_claim_post:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -752,20 +752,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -838,20 +838,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -893,20 +893,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -998,20 +998,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1180,20 +1180,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_create_job_api_jobs_post:401:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1247,20 +1247,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_create_job_api_jobs_post:503:07",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1298,20 +1298,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_database_status_api_system_database_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1370,20 +1370,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_delete_job_api_jobs__job_id__delete:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1475,20 +1475,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_delete_job_api_jobs__job_id__delete:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1531,20 +1531,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1636,20 +1636,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1694,20 +1694,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_get_job_api_jobs__job_id__get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1795,20 +1795,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_get_job_api_jobs__job_id__get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1850,20 +1850,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_get_job_summary_api_jobs__job_id__summary_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1936,20 +1936,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_get_job_summary_api_jobs__job_id__summary_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -1991,20 +1991,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2077,20 +2077,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2132,20 +2132,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2218,20 +2218,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2289,20 +2289,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2375,20 +2375,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2449,20 +2449,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_job_summaries_api_jobs_summary_get:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2516,20 +2516,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_job_summaries_api_jobs_summary_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2590,20 +2590,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_job_summaries_page_api_jobs_summary_page_get:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2657,20 +2657,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_job_summaries_page_api_jobs_summary_page_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2748,20 +2748,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_jobs_api_jobs_get:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2815,20 +2815,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_jobs_api_jobs_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -2889,20 +2889,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_jobs_page_api_jobs_page_get:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2956,20 +2956,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_jobs_page_api_jobs_page_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3007,20 +3007,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_model_profiles_api_model_profiles_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3038,20 +3038,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_model_profiles_api_model_profiles_get:503:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3091,20 +3091,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3177,20 +3177,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3232,20 +3232,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3318,20 +3318,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3378,20 +3378,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_servers_api_servers_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3445,20 +3445,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_servers_api_servers_get:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3499,20 +3499,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3604,20 +3604,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3659,20 +3659,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3764,20 +3764,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3838,20 +3838,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_list_work_shards_api_jobs__job_id__shards_get:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3924,20 +3924,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_list_work_shards_api_jobs__job_id__shards_get:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -3980,20 +3980,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_next_job_api_agents__server_id__next_job_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4047,20 +4047,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_next_job_api_agents__server_id__next_job_post:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4103,20 +4103,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_preflight_job_api_jobs_preflight_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4170,20 +4170,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_preflight_job_api_jobs_preflight_post:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4310,20 +4310,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_record_event_api_jobs__job_id__events_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4396,20 +4396,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_record_event_api_jobs__job_id__events_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4452,20 +4452,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_record_log_api_jobs__job_id__logs_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4538,20 +4538,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_record_log_api_jobs__job_id__logs_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4612,20 +4612,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4698,20 +4698,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4791,20 +4791,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_register_server_api_servers_register_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4858,20 +4858,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_register_server_api_servers_register_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -4935,20 +4935,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5032,20 +5032,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -5110,20 +5110,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5207,20 +5207,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -5285,20 +5285,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5382,20 +5382,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -5481,20 +5481,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:401:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5578,20 +5578,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:503:06",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -5677,20 +5677,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:401:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5774,20 +5774,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:503:06",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -5852,20 +5852,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5949,20 +5949,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6003,20 +6003,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6064,20 +6064,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6118,20 +6118,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_request_stop_api_jobs__job_id__request_stop_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6204,20 +6204,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_request_stop_api_jobs__job_id__request_stop_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6259,20 +6259,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6345,20 +6345,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6400,20 +6400,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_server_eligibility_api_servers_eligibility_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6467,20 +6467,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_server_eligibility_api_servers_eligibility_get:503:03",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6557,20 +6557,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6624,20 +6624,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -6677,20 +6677,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_system_diagnostics_api_system_diagnostics_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6748,20 +6748,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_system_metrics_api_system_metrics_get:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6835,20 +6835,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_update_work_shard_api_shards__shard_id__post:401:01",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -6940,20 +6940,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_update_work_shard_api_shards__shard_id__post:503:05",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -7015,20 +7015,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:213",
+                "evidence": "ocr_platform/control/readiness.py:216",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:213"
+            "source_evidence": "ocr_platform/control/readiness.py:216"
           },
           "branch_id": "api_upsert_model_profile_api_model_profiles__profile_id__put:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:213",
+          "evidence": "ocr_platform/control/readiness.py:216",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -7082,20 +7082,20 @@
                 "call_chain": [
                   "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/readiness.py:233",
+                "evidence": "ocr_platform/control/readiness.py:236",
                 "exception_types": [],
                 "kind": "global_readiness_middleware",
                 "status": 503
               },
               "mechanism": "global_readiness_middleware"
             },
-            "source_evidence": "ocr_platform/control/readiness.py:233"
+            "source_evidence": "ocr_platform/control/readiness.py:236"
           },
           "branch_id": "api_upsert_model_profile_api_model_profiles__profile_id__put:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:233",
+          "evidence": "ocr_platform/control/readiness.py:236",
           "exception_types": [],
           "exemption": null,
           "kind": "global_readiness_middleware",
@@ -7264,7 +7264,7 @@
           "ocr_platform/control/readiness.py:api_token_auth"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/readiness.py:213",
+        "evidence": "ocr_platform/control/readiness.py:216",
         "status": 401
       },
       {
@@ -7605,13 +7605,13 @@
           "ocr_platform/control/readiness.py:api_token_auth"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/readiness.py:233",
+        "evidence": "ocr_platform/control/readiness.py:236",
         "status": 503
       }
     ],
     "forbidden_dependencies": [],
     "scan_root": "ocr_platform/control",
-    "scanned_file_count": 61,
+    "scanned_file_count": 63,
     "unresolved_status_calls": []
   }
 }

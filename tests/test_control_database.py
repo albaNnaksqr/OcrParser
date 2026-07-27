@@ -1483,13 +1483,15 @@ def test_bulk_deleting_job_cascades_to_child_rows_in_database(tmp_path):
         assert session.query(WorkShard).count() == 0
 
 
-def test_database_import_does_not_configure_global_engine(tmp_path, monkeypatch):
+def test_database_import_has_no_mutable_runtime_registry(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     reloaded_database = importlib.reload(database)
 
-    assert reloaded_database.engine is None
-    assert reloaded_database.SessionLocal is None
-    assert reloaded_database._configured_database_url is None
-    assert reloaded_database._configured_database_source is None
+    assert not hasattr(reloaded_database, "engine")
+    assert not hasattr(reloaded_database, "SessionLocal")
+    assert not hasattr(reloaded_database, "_configured_database_url")
+    assert not hasattr(reloaded_database, "_configured_database_source")
+    assert not hasattr(reloaded_database, "configure_database")
+    assert not hasattr(reloaded_database, "get_session")
     assert not (tmp_path / "ocr_platform.db").exists()

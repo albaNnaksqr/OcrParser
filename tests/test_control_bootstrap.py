@@ -10,6 +10,7 @@ import pytest
 from sqlalchemy import delete, event, func, select
 from sqlalchemy.orm import Session
 
+import ocr_platform.control.bootstrap as bootstrap_module
 import ocr_platform.control.database as database
 from ocr_platform.control.app import create_app
 from ocr_platform.control.bootstrap import (
@@ -75,7 +76,8 @@ def _run_concurrent_seed(
     def seed() -> int:
         with session_factory() as session:
             barrier.wait(timeout=10)
-            return seed_default_model_profiles(session)
+            with session.begin():
+                return seed_default_model_profiles(session)
 
     with concurrent.futures.ThreadPoolExecutor(
         max_workers=workers
@@ -143,8 +145,79 @@ def test_seed_count_uses_returned_ids_instead_of_unreliable_rowcount() -> None:
     session = FakeSession()
 
     assert seed_default_model_profiles(session) == 2
-    assert session.commits == 1
+    assert session.commits == 0
     assert session.rollbacks == 0
+
+
+def test_bootstrap_owns_exactly_one_successful_transaction(tmp_path) -> None:
+    session_factory, engine = create_session_factory(
+        f"sqlite:///{tmp_path / 'control.db'}"
+    )
+    init_db(engine)
+    commits = []
+    rollbacks = []
+
+    def record_commit(session):
+        commits.append(1)
+
+    def record_rollback(session):
+        rollbacks.append(1)
+
+    event.listen(Session, "after_commit", record_commit)
+    event.listen(Session, "after_rollback", record_rollback)
+    try:
+        result = bootstrap_control_database(session_factory, engine)
+    finally:
+        event.remove(Session, "after_commit", record_commit)
+        event.remove(Session, "after_rollback", record_rollback)
+        engine.dispose()
+
+    assert result.status == "complete"
+    assert commits == [1]
+    assert rollbacks == []
+
+
+def test_bootstrap_rolls_back_and_redacts_leaf_failure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = create_session_factory(
+        f"sqlite:///{tmp_path / 'control.db'}"
+    )
+    init_db(engine)
+    commits = []
+    rollbacks = []
+
+    def record_commit(session):
+        commits.append(1)
+
+    def record_rollback(session):
+        rollbacks.append(1)
+
+    event.listen(Session, "after_commit", record_commit)
+    event.listen(Session, "after_rollback", record_rollback)
+    monkeypatch.setattr(
+        bootstrap_module,
+        "seed_default_model_profiles",
+        lambda session: (_ for _ in ()).throw(
+            RuntimeError("private bootstrap failure")
+        ),
+    )
+    try:
+        with pytest.raises(
+            RuntimeError,
+            match="^Control database bootstrap failed\\.$",
+        ) as exc_info:
+            bootstrap_control_database(session_factory, engine)
+    finally:
+        event.remove(Session, "after_commit", record_commit)
+        event.remove(Session, "after_rollback", record_rollback)
+        engine.dispose()
+
+    assert "private bootstrap failure" not in str(exc_info.value)
+    assert exc_info.value.__cause__ is None
+    assert commits == []
+    assert rollbacks == [1]
 
 
 @pytest.mark.skipif(

@@ -4,15 +4,17 @@ import os
 import importlib
 import subprocess
 import sys
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from fastapi.testclient import TestClient
 
+import ocr_platform.control.bootstrap as control_bootstrap_module
 import ocr_platform.control.database as database
 from ocr_platform.control.app import _LazyControlApp, create_app
+from ocr_platform.control.bootstrap import build_control_runtime
 from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.redaction import redact_database_url
 from ocr_platform.control.settings import ControlSettings
@@ -269,10 +271,8 @@ def test_default_and_injected_apps_share_database_startup_policy(
     )
     calls = []
 
-    def record_init(bind=None, *, settings=None):
-        selected_bind = bind or engine
-        calls.append(("init", selected_bind, settings))
-        monkeypatch.setattr(database, "engine", selected_bind)
+    def record_init(bind, *, settings=None):
+        calls.append(("init", bind, settings))
 
     def record_validation(bind, *, settings=None):
         calls.append(("validate", bind, settings))
@@ -280,8 +280,6 @@ def test_default_and_injected_apps_share_database_startup_policy(
     def record_bootstrap(factory, bind):
         calls.append(("bootstrap", factory, bind))
 
-    monkeypatch.setattr(database, "engine", None)
-    monkeypatch.setattr(database, "SessionLocal", session_factory)
     monkeypatch.setattr(database, "init_db", record_init)
     monkeypatch.setattr(
         control_app_module,
@@ -294,13 +292,15 @@ def test_default_and_injected_apps_share_database_startup_policy(
         record_bootstrap,
     )
 
-    injected_app = create_app(
+    injected_runtime = build_control_runtime(
         session_factory=session_factory,
         settings=settings,
     )
+    injected_app = create_app(runtime=injected_runtime)
     with TestClient(injected_app):
         pass
-    default_app = create_app(settings=settings)
+    owned_runtime = replace(injected_runtime, owns_engine=True)
+    default_app = create_app(runtime=owned_runtime)
     with TestClient(default_app):
         pass
 
@@ -435,86 +435,302 @@ def test_uvicorn_compatibility_app_import_does_not_parse_environment() -> None:
     assert "unresolved" in completed.stdout
 
 
-def test_global_database_rejects_explicit_settings_url_mismatch(
-    tmp_path,
-    monkeypatch,
-) -> None:
+def test_explicit_session_factories_are_isolated(tmp_path) -> None:
     first_url = f"sqlite:///{tmp_path / 'first-sensitive.db'}"
     second_url = f"sqlite:///{tmp_path / 'second-sensitive.db'}"
+    first_factory, first_engine = create_session_factory(first_url)
+    second_factory, second_engine = create_session_factory(second_url)
+
+    assert first_engine.url.database != second_engine.url.database
+    with first_factory() as first_session, second_factory() as second_session:
+        assert first_session.get_bind() is first_engine
+        assert second_session.get_bind() is second_engine
+
+    first_engine.dispose()
+    second_engine.dispose()
+
+
+def test_create_app_runtime_rejects_legacy_dependency_arguments(tmp_path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'control.db'}"
+    settings = ControlSettings(database_url=database_url)
     session_factory, engine = create_session_factory(
-        settings=ControlSettings(database_url=first_url)
+        settings=settings
     )
-    monkeypatch.setattr(database, "SessionLocal", session_factory)
-    monkeypatch.setattr(database, "engine", engine)
+    runtime = build_control_runtime(
+        settings=settings,
+        session_factory=session_factory,
+    )
 
-    with pytest.raises(
-        RuntimeError,
-        match="already configured for a different database URL",
-    ) as exc_info:
-        next(
-            database.get_session(
-                settings=ControlSettings(database_url=second_url)
-            )
-        )
+    for legacy_argument in (
+        {"session_factory": session_factory},
+        {"remote_worker_executor": runtime.remote_worker_executor},
+        {"settings": settings},
+    ):
+        with pytest.raises(
+            ValueError,
+            match="runtime cannot be combined",
+        ):
+            create_app(runtime=runtime, **legacy_argument)
 
-    message = str(exc_info.value)
-    assert "first-sensitive.db" not in message
-    assert "second-sensitive.db" not in message
     engine.dispose()
 
 
-def test_global_database_accepts_matching_explicit_settings(
+def test_runtime_builder_uses_explicit_database_settings(
     tmp_path,
-    monkeypatch,
 ) -> None:
     database_url = f"sqlite:///{tmp_path / 'matching.db'}"
     settings = ControlSettings(database_url=database_url)
-    session_factory, engine = create_session_factory(settings=settings)
-    monkeypatch.setattr(database, "SessionLocal", session_factory)
-    monkeypatch.setattr(database, "engine", engine)
+    runtime = build_control_runtime(settings=settings)
 
-    session_generator = database.get_session(settings=settings)
-    session = next(session_generator)
-    session.close()
-    session_generator.close()
+    assert runtime.settings is settings
+    assert runtime.engine.url.database == str(tmp_path / "matching.db")
+    assert runtime.owns_engine is True
+    with runtime.session_factory() as session:
+        assert session.get_bind() is runtime.engine
 
-    engine.dispose()
+    runtime.engine.dispose()
 
 
-def test_no_arg_database_calls_reuse_explicitly_configured_engine(
+def test_falsey_remote_worker_port_keeps_identity_for_builder_and_legacy_app_signature(
     tmp_path,
     monkeypatch,
 ) -> None:
-    first_url = f"sqlite:///{tmp_path / 'first-sensitive.db'}"
-    second_url = f"sqlite:///{tmp_path / 'second-sensitive.db'}"
-    monkeypatch.setattr(database, "SessionLocal", None)
-    monkeypatch.setattr(database, "engine", None)
-    monkeypatch.setattr(database, "_configured_database_url", None)
-    monkeypatch.setattr(database, "_configured_database_source", None)
+    class FalseyRemoteWorkerPort:
+        def __bool__(self):
+            return False
 
-    _, engine = database.configure_database(first_url)
-    database.init_db()
-    session_generator = database.get_session()
-    session = next(session_generator)
-    session.close()
-    session_generator.close()
+    port = FalseyRemoteWorkerPort()
 
-    assert database._configured_database_url == engine.url
-    assert database._configured_database_source == "database_url"
-    with pytest.raises(
-        RuntimeError,
-        match="already configured for a different database URL",
-    ) as exc_info:
-        next(
-            database.get_session(
-                settings=ControlSettings(database_url=second_url)
+    def forbidden_executor():
+        raise AssertionError("real remote executor must not be constructed")
+
+    monkeypatch.setattr(
+        control_bootstrap_module,
+        "RemoteWorkerExecutor",
+        forbidden_executor,
+    )
+    settings = ControlSettings(
+        database_url=f"sqlite:///{tmp_path / 'control.db'}"
+    )
+    session_factory, engine = create_session_factory(settings=settings)
+
+    runtime = build_control_runtime(
+        settings=settings,
+        session_factory=session_factory,
+        remote_worker_executor=port,
+    )
+    app = create_app(session_factory, port, settings)
+
+    assert runtime.remote_worker_executor is port
+    assert app.state.control_runtime.remote_worker_executor is port
+    engine.dispose()
+
+
+def test_api_token_validation_precedes_default_runtime_construction(
+    monkeypatch,
+) -> None:
+    calls = []
+
+    def forbidden_runtime(**kwargs):
+        calls.append(kwargs)
+        raise AssertionError("runtime must not be constructed")
+
+    monkeypatch.setattr(
+        control_app_module,
+        "build_control_runtime",
+        forbidden_runtime,
+    )
+
+    with pytest.raises(RuntimeError, match="API token is required"):
+        create_app(
+            settings=ControlSettings(
+                require_api_token=True,
+                api_token=None,
             )
         )
 
-    message = str(exc_info.value)
-    assert "first-sensitive.db" not in message
-    assert "second-sensitive.db" not in message
-    engine.dispose()
+    assert calls == []
+
+
+def test_owned_runtime_defers_database_io_and_disposes_on_shutdown(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    database_path = tmp_path / "owned.db"
+    runtime = build_control_runtime(
+        settings=ControlSettings(
+            database_url=f"sqlite:///{database_path}"
+        )
+    )
+    original_dispose = runtime.engine.dispose
+    dispose_calls = []
+    monkeypatch.setattr(
+        runtime.engine,
+        "dispose",
+        lambda: dispose_calls.append(runtime.engine),
+    )
+
+    app = create_app(runtime=runtime)
+
+    assert not database_path.exists()
+    assert app.openapi()["info"]["title"] == "OCR Platform Control API"
+    assert not database_path.exists()
+    assert dispose_calls == []
+
+    with TestClient(app) as client:
+        assert client.get("/healthz").status_code == 200
+        assert database_path.exists()
+        assert dispose_calls == []
+
+    assert dispose_calls == [runtime.engine]
+    original_dispose()
+
+
+def test_explicit_owned_runtime_validation_failure_disposes_once(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    runtime = build_control_runtime(
+        settings=ControlSettings(
+            database_url=f"sqlite:///{tmp_path / 'validation.db'}",
+            require_api_token=True,
+            api_token=None,
+        )
+    )
+    original_dispose = runtime.engine.dispose
+    dispose_calls = []
+    monkeypatch.setattr(
+        runtime.engine,
+        "dispose",
+        lambda: dispose_calls.append(runtime.engine),
+    )
+
+    with pytest.raises(RuntimeError, match="API token is required"):
+        create_app(runtime=runtime)
+
+    assert dispose_calls == [runtime.engine]
+    original_dispose()
+
+
+def test_default_owned_runtime_assembly_failure_disposes_once(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured = []
+    dispose_calls = []
+    original_build = control_app_module.build_control_runtime
+
+    def build(**kwargs):
+        runtime = original_build(**kwargs)
+        captured.append((runtime, runtime.engine.dispose))
+        monkeypatch.setattr(
+            runtime.engine,
+            "dispose",
+            lambda: dispose_calls.append(runtime.engine),
+        )
+        return runtime
+
+    monkeypatch.setattr(control_app_module, "build_control_runtime", build)
+    monkeypatch.setattr(
+        control_app_module,
+        "create_diagnostics_router",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            RuntimeError("router assembly failed")
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="router assembly failed"):
+        create_app(
+            settings=ControlSettings(
+                database_url=f"sqlite:///{tmp_path / 'assembly.db'}"
+            )
+        )
+
+    runtime, original_dispose = captured[0]
+    assert runtime.owns_engine is True
+    assert dispose_calls == [runtime.engine]
+    original_dispose()
+
+
+def test_caller_owned_runtime_assembly_failure_does_not_dispose(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _session_factory(tmp_path)
+    runtime = build_control_runtime(session_factory=session_factory)
+    original_dispose = engine.dispose
+    dispose_calls = []
+    monkeypatch.setattr(
+        engine,
+        "dispose",
+        lambda: dispose_calls.append(engine),
+    )
+    monkeypatch.setattr(
+        control_app_module,
+        "_assemble_control_app",
+        lambda runtime: (_ for _ in ()).throw(
+            RuntimeError("application assembly failed")
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="application assembly failed"):
+        create_app(runtime=runtime)
+
+    assert dispose_calls == []
+    original_dispose()
+
+
+def test_injected_runtime_never_disposes_callers_engine(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _session_factory(tmp_path)
+    original_dispose = engine.dispose
+    dispose_calls = []
+    monkeypatch.setattr(
+        engine,
+        "dispose",
+        lambda: dispose_calls.append(engine),
+    )
+
+    app = create_app(session_factory=session_factory)
+    with TestClient(app) as client:
+        assert client.get("/healthz").status_code == 200
+
+    assert dispose_calls == []
+    original_dispose()
+
+
+def test_owned_runtime_disposes_engine_when_startup_fails(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    runtime = build_control_runtime(
+        settings=ControlSettings(
+            database_url=f"sqlite:///{tmp_path / 'startup-failure.db'}"
+        )
+    )
+    original_dispose = runtime.engine.dispose
+    dispose_calls = []
+    monkeypatch.setattr(
+        runtime.engine,
+        "dispose",
+        lambda: dispose_calls.append(runtime.engine),
+    )
+    monkeypatch.setattr(
+        control_app_module,
+        "_initialize_control_runtime",
+        lambda runtime: (_ for _ in ()).throw(
+            RuntimeError("startup failed")
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="startup failed"):
+        with TestClient(create_app(runtime=runtime)):
+            pass
+
+    assert dispose_calls == [runtime.engine]
+    original_dispose()
 
 
 def test_explicit_remote_admin_settings_override_environment(

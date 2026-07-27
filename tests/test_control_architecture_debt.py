@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ast
 import copy
 import json
 import re
@@ -40,6 +41,61 @@ def _replace_once(path: Path, old: str, new: str) -> None:
     source = path.read_text(encoding="utf-8")
     assert source.count(old) >= 1
     path.write_text(source.replace(old, new, 1), encoding="utf-8")
+
+
+def test_control_runtime_composition_has_no_database_registry_or_leaf_transaction() -> None:
+    database_path = ROOT / "ocr_platform" / "control" / "database.py"
+    bootstrap_path = ROOT / "ocr_platform" / "control" / "bootstrap.py"
+    readiness_path = ROOT / "ocr_platform" / "control" / "readiness.py"
+    database_tree = ast.parse(database_path.read_text(encoding="utf-8"))
+    bootstrap_tree = ast.parse(bootstrap_path.read_text(encoding="utf-8"))
+
+    module_assignments = {
+        target.id
+        for statement in database_tree.body
+        if isinstance(statement, (ast.Assign, ast.AnnAssign))
+        for target in (
+            statement.targets
+            if isinstance(statement, ast.Assign)
+            else [statement.target]
+        )
+        if isinstance(target, ast.Name)
+    }
+    function_names = {
+        node.name
+        for node in database_tree.body
+        if isinstance(node, ast.FunctionDef)
+    }
+    assert {
+        "SessionLocal",
+        "engine",
+        "_configured_database_url",
+        "_configured_database_source",
+    }.isdisjoint(module_assignments)
+    assert {
+        "configure_database",
+        "_get_configured_database",
+        "get_session",
+    }.isdisjoint(function_names)
+
+    functions = {
+        node.name: node
+        for node in bootstrap_tree.body
+        if isinstance(node, ast.FunctionDef)
+    }
+
+    def session_methods(function_name: str) -> list[str]:
+        return [
+            node.func.attr
+            for node in ast.walk(functions[function_name])
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in {"begin", "commit", "rollback"}
+        ]
+
+    assert session_methods("seed_default_model_profiles") == []
+    assert session_methods("bootstrap_control_database") == ["begin"]
+    assert "database.engine" not in readiness_path.read_text(encoding="utf-8")
 
 
 def test_architecture_debt_fixture_matches_generated_sites() -> None:

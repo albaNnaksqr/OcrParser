@@ -54,6 +54,11 @@ class DatabaseReadinessProbe:
         clock: Callable[[], float] = time.monotonic,
         ready_ttl_seconds: float = 1.0,
     ) -> None:
+        if session_factory is None and bind_provider is None:
+            raise ValueError(
+                "DatabaseReadinessProbe requires an explicit "
+                "session_factory or bind_provider"
+            )
         self._session_factory = session_factory
         self._bind_provider = bind_provider
         self._clock = clock
@@ -67,9 +72,7 @@ class DatabaseReadinessProbe:
         if self._session_factory is not None:
             with self._session_factory() as session:
                 return session.get_bind()
-        if database.engine is None:
-            raise RuntimeError("control database is not configured")
-        return database.engine
+        raise RuntimeError("control database bind is unavailable")
 
     def check(self, *, force: bool = False) -> DatabaseReadiness:
         now = self._clock()
