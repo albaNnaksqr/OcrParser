@@ -8,6 +8,7 @@ from typing import Any
 from ocr_parser.infra.failure_category import infer_failure_category
 from sqlalchemy.orm import Session
 
+from .. import settings as __control_settings
 from ..schemas import ScanUnitFailRequest
 
 TERMINAL_JOB_STATUSES = {"succeeded", "failed", "stopped"}
@@ -36,18 +37,19 @@ PRIORITY_TERMINAL_EVENT_TYPES = {"file_done", "job_done", "job_stopped"}
 RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED = {"manifest_scan_progress"}
 RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = 1
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
-DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS"
-ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS"
-
-
 def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
 
 
-def saved_model_profile_keys_allowed() -> bool:
-    if _env_truthy(DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV):
-        return False
-    return _env_truthy(ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV)
+def saved_model_profile_keys_allowed(
+    settings: __control_settings.ControlSettings | None = None,
+) -> bool:
+    control_settings = (
+        settings
+        if settings is not None
+        else __control_settings.ControlSettings.from_environment()
+    )
+    return control_settings.saved_model_profile_keys_allowed
 
 
 def _env_positive_int(name: str, default: int) -> int:

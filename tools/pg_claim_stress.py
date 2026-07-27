@@ -26,6 +26,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.models import Job, Manifest, ScanUnit, Server, WorkShard
+from ocr_platform.control.settings import ControlSettings
 from ocr_platform.control.service import (
     POOL_SERVER_ID,
     ShardAttemptConflictError,
@@ -160,7 +161,14 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument("--workers", type=int, default=16, help="Concurrent claiming workers")
-    parser.add_argument("--apply-init-db", action="store_true", help="Run SQLAlchemy create_all/compat init before seeding")
+    parser.add_argument(
+        "--apply-init-db",
+        action="store_true",
+        help=(
+            "Apply checksum-verified PostgreSQL migrations before seeding "
+            "(explicit automatic-migration opt-in)."
+        ),
+    )
     parser.add_argument("--keep-job", action="store_true", help="Keep the seeded stress job rows for manual inspection")
     parser.add_argument("--json", action="store_true", help="Emit JSON only")
     return parser
@@ -371,7 +379,13 @@ def run_stress(
 
     session_factory, engine = create_session_factory(database_url)
     if apply_init_db:
-        init_db(engine)
+        init_db(
+            engine,
+            settings=ControlSettings(
+                database_url=database_url,
+                auto_migrate=True,
+            ),
+        )
     with session_factory() as session:
         job_id = _seed_job(session, shard_count=shard_count)
         scan_unit_job_id = (

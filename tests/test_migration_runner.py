@@ -11,6 +11,7 @@ from ocr_platform.control.migrate_cli import main as migrate_main
 from ocr_platform.control.migration import (
     MigrationCatalog,
     MigrationChecksumError,
+    MigrationError,
     MigrationRunner,
 )
 
@@ -188,3 +189,5 @@ def test_older_catalog_reports_newer_applied_migration_as_unexpected(tmp_path):
     assert status["is_current"] is False
     assert status["unexpected_migrations"] == ["0002_add_item"]
     assert older_runner.verify()["verified"] is False
+    with pytest.raises(MigrationError, match="unexpected versions"):
+        older_runner.apply()

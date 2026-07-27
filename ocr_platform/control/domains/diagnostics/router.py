@@ -7,14 +7,24 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from ... import database
+from ...readiness import database_status_unavailable_body
+from ...redaction import diagnostics_unavailable_message
 from ...schemas import DatabaseStatusResponse
+from ...settings import ControlSettings
 from .queries import agpl_license_text, source_offer, system_diagnostics
 
 
 GetDb = Callable[[], Generator[Session, None, None]]
 
 
-def create_router(get_db: GetDb) -> APIRouter:
+def create_router(
+    get_db: GetDb,
+    *,
+    settings: ControlSettings | None = None,
+) -> APIRouter:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     router = APIRouter()
 
     @router.api_route("/source", methods=["GET", "HEAD"], include_in_schema=False)
@@ -36,17 +46,43 @@ def create_router(get_db: GetDb) -> APIRouter:
     @router.get("/readyz")
     def api_readyz(session: Session = Depends(get_db)):
         try:
-            payload = system_diagnostics(session)
-        except Exception as exc:  # pragma: no cover
-            return JSONResponse(status_code=503, content={"ok": False, "service": "ocr-platform-control", "error": str(exc)})
+            payload = system_diagnostics(
+                session,
+                settings=control_settings,
+            )
+        except Exception:  # pragma: no cover
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "ok": False,
+                    "service": "ocr-platform-control",
+                    "error": diagnostics_unavailable_message(),
+                },
+            )
         return JSONResponse(status_code=200 if payload["ok"] else 503, content=payload)
 
     @router.get("/api/system/database", response_model=DatabaseStatusResponse)
     def api_database_status(session: Session = Depends(get_db)):
-        return database.describe_database_status(session.get_bind())
+        try:
+            return database.describe_database_status(session.get_bind())
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content=database_status_unavailable_body(),
+            )
 
     @router.get("/api/system/diagnostics")
     def api_system_diagnostics(session: Session = Depends(get_db)):
-        return system_diagnostics(session, strict_production=True)
+        try:
+            return system_diagnostics(
+                session,
+                strict_production=True,
+                settings=control_settings,
+            )
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content=database_status_unavailable_body(),
+            )
 
     return router

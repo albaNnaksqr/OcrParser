@@ -1,19 +1,20 @@
 from __future__ import annotations
 
-import os
-
 from fastapi import HTTPException
 
 from ...remote_workers import default_ssh_user, validate_ssh_token
 from ...schemas import RemoteWorkerScaleRequest
+from ...settings import ControlSettings
 
 
-ENABLE_REMOTE_ADMIN_ENV = "OCR_PLATFORM_ENABLE_REMOTE_ADMIN"
-TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
-
-
-def require_enabled() -> None:
-    if os.environ.get(ENABLE_REMOTE_ADMIN_ENV, "").strip().lower() in TRUTHY_ENV_VALUES:
+def require_enabled(
+    *,
+    settings: ControlSettings | None = None,
+) -> None:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    if control_settings.enable_remote_admin:
         return
     raise HTTPException(
         status_code=403,

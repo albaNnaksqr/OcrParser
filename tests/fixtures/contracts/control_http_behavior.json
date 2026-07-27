@@ -15,7 +15,7 @@
     503
   ],
   "error_envelope": {
-    "application_error_code": null,
+    "application_error_code": "control_database_not_ready",
     "http_exception": {
       "detail": "string"
     },
@@ -56,6 +56,54 @@
     },
     {
       "body_shape": {
+        "detail": {
+          "code": "string",
+          "commands": {
+            "array_items": [
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 3
+          },
+          "reason": "string"
+        }
+      },
+      "error_code": "control_database_not_ready",
+      "method": "GET",
+      "normalization_rules": [],
+      "note": "Database readiness is a shared conditional transport guard for non-allowlisted API operations.",
+      "operation_id": "api_list_servers_api_servers_get",
+      "path": "/api/servers",
+      "request_condition": "Bearer token is valid and PostgreSQL migrations are pending",
+      "scenario": "authorized_database_not_ready",
+      "shared_branch_authority": {
+        "authority": {
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "kind": "global_readiness_middleware",
+          "status": 503
+        },
+        "mechanism": "global_readiness_middleware"
+      },
+      "stable_body": {
+        "detail": {
+          "code": "control_database_not_ready",
+          "commands": [
+            "ocr-platform-migrate plan",
+            "ocr-platform-migrate apply",
+            "ocr-platform-migrate verify"
+          ],
+          "reason": "migrations_pending"
+        }
+      },
+      "status": 503
+    },
+    {
+      "body_shape": {
         "detail": "string"
       },
       "error_code": null,
@@ -63,7 +111,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_list_jobs"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:60",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:79",
         "exception_types": [
           "ValueError"
         ],
@@ -90,7 +138,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_archive_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:221",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:240",
         "exception_types": [
           "commands.JobNotTerminalError"
         ],
@@ -246,7 +294,7 @@
         "call_chain": [
           "ocr_platform.control.domains.diagnostics.router.api_readyz"
         ],
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:42",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:62",
         "exception_types": [],
         "kind": "explicit_response_status",
         "status": 503
@@ -353,7 +401,7 @@
           "ready": 0,
           "resource_constrained": 0,
           "stale": 0,
-          "total": 2,
+          "total": 1,
           "with_shared_roots": 0
         }
       },
@@ -368,7 +416,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_get_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:125",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:144",
         "exception_types": [
           "commands.UnknownJobError"
         ],
@@ -483,7 +531,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_preflight",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -509,7 +557,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_apply",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -535,7 +583,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_dry_run",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -561,7 +609,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_apply",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -587,7 +635,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_plan",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -613,7 +661,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_service_action",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -639,7 +687,7 @@
           "ocr_platform.control.domains.remote_admin.router.api_remote_worker_targets",
           "ocr_platform.control.domains.remote_admin.service.require_enabled"
         ],
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "exception_types": [],
         "kind": "called_service_http_exception",
         "status": 403
@@ -669,9 +717,9 @@
       "shared_branch_authority": {
         "authority": {
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "kind": "global_api_token_middleware",
           "status": 401

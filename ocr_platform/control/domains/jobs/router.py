@@ -18,6 +18,7 @@ from ...schemas import (
     JobSummaryListResponse,
     JobSummaryResponse,
 )
+from ...settings import ControlSettings
 from . import commands, queries
 from ..workers.core import preflight_job
 from .schemas import job_file_to_response, job_to_response
@@ -26,17 +27,35 @@ from .schemas import job_file_to_response, job_to_response
 GetDb = Callable[[], Generator[Session, None, None]]
 
 
-def create_router(get_db: GetDb) -> APIRouter:
+def create_router(
+    get_db: GetDb,
+    *,
+    settings: ControlSettings | None = None,
+) -> APIRouter:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     router = APIRouter()
 
     @router.post("/api/jobs/preflight", response_model=JobPreflightResponse)
     def api_preflight_job(request: JobCreateRequest, session: Session = Depends(get_db)):
-        return preflight_job(session, request)
+        return preflight_job(
+            session,
+            request,
+            settings=control_settings,
+        )
 
     @router.post("/api/jobs", response_model=JobResponse)
     def api_create_job(request: JobCreateRequest, session: Session = Depends(get_db)):
         try:
-            return job_to_response(commands.create_job(session, request), session)
+            return job_to_response(
+                commands.create_job(
+                    session,
+                    request,
+                    settings=control_settings,
+                ),
+                session,
+            )
         except (FileNotFoundError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

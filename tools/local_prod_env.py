@@ -170,6 +170,7 @@ def build_control_env(config: LocalProdConfig) -> dict[str, str]:
     return {
         "OCR_PLATFORM_DATABASE_URL": config.database_url,
         "OCR_PLATFORM_REQUIRE_POSTGRES": "1",
+        "OCR_PLATFORM_AUTO_MIGRATE": "0",
         "OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS": "1",
         "OCR_PLATFORM_HOST": config.control_host,
         "OCR_PLATFORM_PORT": str(config.control_port),
@@ -286,18 +287,21 @@ def build_up_plan(
     steps = [
         PlanStep("write postgres compose", message=str(config.compose_file)),
         PlanStep("start postgres", [*compose, "up", "-d", "postgres"]),
-        PlanStep(
-            "apply control migrations",
-            [
-                python_executable,
-                "-m",
-                "ocr_platform.control.migrate_cli",
-                "apply",
-                "--database-url",
-                config.database_url,
-            ],
-            env=repo_python_env(config),
-        ),
+        *[
+            PlanStep(
+                f"{action} control migrations",
+                [
+                    python_executable,
+                    "-m",
+                    "ocr_platform.control.migrate_cli",
+                    action,
+                    "--database-url",
+                    config.database_url,
+                ],
+                env=repo_python_env(config),
+            )
+            for action in ("plan", "apply", "verify")
+        ],
         PlanStep(
             "start local control",
             [python_executable, "-u", "-m", "ocr_platform.control"],
@@ -595,21 +599,22 @@ def command_up(args: argparse.Namespace) -> int:
     compose_command = resolve_compose_command()
     run_step(PlanStep("start postgres", [*compose_command, "-f", str(config.compose_file), "up", "-d", "postgres"]), cwd=config.root)
     wait_for_postgres(config, compose_command)
-    run_step(
-        PlanStep(
-            "apply control migrations",
-            [
-                sys.executable,
-                "-m",
-                "ocr_platform.control.migrate_cli",
-                "apply",
-                "--database-url",
-                config.database_url,
-            ],
-            env=repo_python_env(config),
-        ),
-        cwd=config.root,
-    )
+    for action in ("plan", "apply", "verify"):
+        run_step(
+            PlanStep(
+                f"{action} control migrations",
+                [
+                    sys.executable,
+                    "-m",
+                    "ocr_platform.control.migrate_cli",
+                    action,
+                    "--database-url",
+                    config.database_url,
+                ],
+                env=repo_python_env(config),
+            ),
+            cwd=config.root,
+        )
     if _port_open(config.control_host, config.control_port):
         raise RuntimeError(f"control port {config.control_host}:{config.control_port} is already in use.")
     if config.with_mock_ocr and _port_open("127.0.0.1", config.mock_ocr_port):

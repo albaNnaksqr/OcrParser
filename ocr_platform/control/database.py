@@ -1,19 +1,28 @@
 from __future__ import annotations
 
-import os
 from collections.abc import Generator
 from pathlib import Path
 
 from sqlalchemy import BigInteger, Engine, Integer, create_engine, event, inspect, text
+from sqlalchemy.engine import URL, make_url
+from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import Session, sessionmaker
 
 from .migration import MIGRATIONS_DIR, MigrationCatalog, MigrationRunner, split_sql_script
 from .models import Base
+from .redaction import redact_database_url
+from .settings import ControlSettings, DEFAULT_DATABASE_URL
 
 
-DEFAULT_DATABASE_URL = "sqlite:///./ocr_platform.db"
 SQLITE_BUSY_TIMEOUT_MS = 30000
-TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
+AUTOMATIC_MIGRATION_HISTORY_ERROR = (
+    "Automatic PostgreSQL migration refused because the migration history "
+    "is not compatible with this build."
+)
+AUTOMATIC_MIGRATION_APPLY_ERROR = (
+    "Automatic PostgreSQL migration failed; use ocr-platform-migrate "
+    "status|plan|apply|verify for details."
+)
 BYTE_TOTAL_COLUMNS = {
     "manifests": ("total_bytes",),
     "scan_units": ("total_bytes",),
@@ -132,26 +141,37 @@ PRODUCTION_INDEXES = {
 }
 
 
-def _env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
-
-
 def _is_postgresql_url(url: str) -> bool:
     return url.startswith("postgresql://") or url.startswith("postgresql+")
 
 
-def validate_database_url_for_mode(url: str) -> str:
-    if _env_truthy("OCR_PLATFORM_REQUIRE_POSTGRES") and not _is_postgresql_url(url):
+def validate_database_url_for_mode(
+    url: str,
+    *,
+    settings: ControlSettings | None = None,
+) -> str:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    if control_settings.require_postgres and not _is_postgresql_url(url):
         raise RuntimeError(
             "PostgreSQL is required when OCR_PLATFORM_REQUIRE_POSTGRES=1; "
-            f"refusing database URL: {url}"
+            "refusing the configured non-PostgreSQL database URL."
         )
     return url
 
 
-def create_session_factory(database_url: str | None = None) -> tuple[sessionmaker[Session], Engine]:
+def create_session_factory(
+    database_url: str | None = None,
+    *,
+    settings: ControlSettings | None = None,
+) -> tuple[sessionmaker[Session], Engine]:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     url = validate_database_url_for_mode(
-        database_url or os.environ.get("OCR_PLATFORM_DATABASE_URL") or DEFAULT_DATABASE_URL
+        database_url or control_settings.database_url,
+        settings=control_settings,
     )
     connect_args = (
         {
@@ -161,7 +181,13 @@ def create_session_factory(database_url: str | None = None) -> tuple[sessionmake
         if url.startswith("sqlite")
         else {}
     )
-    db_engine = create_engine(url, connect_args=connect_args, future=True)
+    try:
+        db_engine = create_engine(url, connect_args=connect_args, future=True)
+    except (ArgumentError, TypeError, ValueError):
+        safe_url = redact_database_url(url)
+        raise RuntimeError(
+            f"Invalid OCR Platform database URL: {safe_url}"
+        ) from None
     if url.startswith("sqlite"):
 
         @event.listens_for(db_engine, "connect")
@@ -177,31 +203,92 @@ def create_session_factory(database_url: str | None = None) -> tuple[sessionmake
 
 SessionLocal: sessionmaker[Session] | None = None
 engine: Engine | None = None
+_configured_database_url: URL | None = None
+_configured_database_source: str | None = None
 
 
-def configure_database(database_url: str | None = None) -> tuple[sessionmaker[Session], Engine]:
+def configure_database(
+    database_url: str | None = None,
+    *,
+    settings: ControlSettings | None = None,
+) -> tuple[sessionmaker[Session], Engine]:
     global SessionLocal, engine
+    global _configured_database_source, _configured_database_url
 
-    SessionLocal, engine = create_session_factory(database_url)
+    SessionLocal, engine = create_session_factory(
+        database_url,
+        settings=settings,
+    )
+    _configured_database_url = engine.url
+    if database_url is not None:
+        _configured_database_source = "database_url"
+    elif settings is not None:
+        _configured_database_source = "settings"
+    else:
+        _configured_database_source = "environment"
     return SessionLocal, engine
 
 
-def _get_configured_database() -> tuple[sessionmaker[Session], Engine]:
+def _get_configured_database(
+    *,
+    settings: ControlSettings | None = None,
+) -> tuple[sessionmaker[Session], Engine]:
+    global _configured_database_source, _configured_database_url
+
     if SessionLocal is None or engine is None:
-        return configure_database()
+        return configure_database(settings=settings)
+    if settings is None:
+        return SessionLocal, engine
+
+    try:
+        target_url = make_url(settings.database_url)
+    except (ArgumentError, TypeError, ValueError):
+        safe_url = redact_database_url(settings.database_url)
+        raise RuntimeError(
+            f"Invalid OCR Platform database URL: {safe_url}"
+        ) from None
+    configured_url = _configured_database_url or engine.url
+    if configured_url != target_url:
+        raise RuntimeError(
+            "Control database is already configured for a different database "
+            "URL; refusing to reuse the global engine."
+        )
+    if _configured_database_url is None:
+        _configured_database_url = engine.url
+        _configured_database_source = "existing_engine"
     return SessionLocal, engine
 
 
-def init_db(db_engine: Engine | None = None) -> None:
+def init_db(
+    db_engine: Engine | None = None,
+    *,
+    settings: ControlSettings | None = None,
+) -> None:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     if db_engine is None:
-        _, db_engine = _get_configured_database()
+        _, db_engine = _get_configured_database(settings=settings)
     if db_engine.dialect.name == "postgresql":
-        # PostgreSQL migrations are the production schema authority. Applying
-        # them before ORM create_all prevents newly mapped tables from being
-        # created outside the checksum-verified migration history.
-        MigrationRunner(db_engine).apply()
+        if control_settings.auto_migrate:
+            _apply_startup_postgres_migrations(db_engine)
+        return
     Base.metadata.create_all(bind=db_engine)
     _ensure_compatible_schema(db_engine)
+
+
+def _apply_startup_postgres_migrations(db_engine: Engine) -> None:
+    runner = MigrationRunner(db_engine)
+    try:
+        status = runner.status()
+    except Exception:
+        raise RuntimeError(AUTOMATIC_MIGRATION_HISTORY_ERROR) from None
+    if status.get("unexpected_migrations") or status.get("checksum_mismatches"):
+        raise RuntimeError(AUTOMATIC_MIGRATION_HISTORY_ERROR)
+    try:
+        runner.apply()
+    except Exception:
+        raise RuntimeError(AUTOMATIC_MIGRATION_APPLY_ERROR) from None
 
 
 def _bigint_upgrade_statements(
@@ -401,7 +488,10 @@ def describe_database_status(db_engine: Engine) -> dict[str, object]:
     return MigrationRunner(db_engine).status()
 
 
-def get_session() -> Generator[Session, None, None]:
-    session_factory, _ = _get_configured_database()
+def get_session(
+    *,
+    settings: ControlSettings | None = None,
+) -> Generator[Session, None, None]:
+    session_factory, _ = _get_configured_database(settings=settings)
     with session_factory() as session:
         yield session

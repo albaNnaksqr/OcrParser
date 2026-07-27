@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-import os
-import secrets
+import threading
 from collections.abc import AsyncIterator, Generator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
-from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, sessionmaker
 
 from . import database
+from .bootstrap import bootstrap_control_database
 from .domains.diagnostics.commands import validate_current_migrations
 from .domains.diagnostics.router import create_router as create_diagnostics_router
 from .domains.jobs.router import create_router as create_jobs_router
@@ -20,50 +20,27 @@ from .domains.manifests.router import create_router as create_manifests_router
 from .domains.model_profiles.router import create_router as create_model_profiles_router
 from .domains.remote_admin.router import create_router as create_remote_admin_router
 from .domains.workers.router import create_router as create_workers_router
+from .readiness import install_control_request_guard
 from .remote_workers import RemoteWorkerExecutor
+from .settings import ControlSettings
 
 
-API_TOKEN_ENV = "OCR_PLATFORM_API_TOKEN"
-REQUIRE_API_TOKEN_ENV = "OCR_PLATFORM_REQUIRE_API_TOKEN"
-TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
-
-
-def _env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
-
-
-def _configured_api_token() -> str | None:
-    return os.environ.get(API_TOKEN_ENV) or None
-
-
-def _validate_api_token_config() -> None:
-    if _env_truthy(REQUIRE_API_TOKEN_ENV) and not _configured_api_token():
+def _validate_api_token_config(settings: ControlSettings) -> None:
+    if settings.require_api_token and not settings.api_token:
         raise RuntimeError(
             "API token is required when OCR_PLATFORM_REQUIRE_API_TOKEN=1; "
             "set OCR_PLATFORM_API_TOKEN to a high-entropy shared secret."
         )
 
 
-def _request_api_token(request: Request) -> str | None:
-    generic_header_token = request.headers.get("X-API-Key")
-    if generic_header_token:
-        return generic_header_token
-    platform_header_token = request.headers.get("X-OCR-Platform-Token")
-    if platform_header_token:
-        return platform_header_token
-    authorization = request.headers.get("Authorization") or ""
-    if authorization.startswith("Bearer "):
-        return authorization[len("Bearer ") :]
-    return None
-
-
 def _create_get_db(
     session_factory: Optional[sessionmaker[Session]],
+    settings: ControlSettings,
 ):
     if session_factory is None:
 
         def get_db() -> Generator[Session, None, None]:
-            yield from database.get_session()
+            yield from database.get_session(settings=settings)
 
     else:
 
@@ -93,46 +70,118 @@ def _register_static_ui(app: FastAPI) -> None:
 def create_app(
     session_factory: Optional[sessionmaker[Session]] = None,
     remote_worker_executor: Optional[RemoteWorkerExecutor] = None,
+    settings: ControlSettings | None = None,
 ) -> FastAPI:
-    _validate_api_token_config()
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    _validate_api_token_config(control_settings)
     remote_worker_executor = remote_worker_executor or RemoteWorkerExecutor()
 
     if session_factory is None:
 
         @asynccontextmanager
         async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-            database.init_db()
+            database.init_db(settings=control_settings)
             if database.engine is not None:
-                validate_current_migrations(database.engine)
+                validate_current_migrations(
+                    database.engine,
+                    settings=control_settings,
+                )
+                if database.SessionLocal is not None:
+                    bootstrap_control_database(
+                        database.SessionLocal,
+                        database.engine,
+                    )
             yield
 
         app = FastAPI(title="OCR Platform Control API", lifespan=lifespan)
     else:
         with session_factory() as session:
-            validate_current_migrations(session.get_bind())
+            db_engine = session.get_bind()
+            database.init_db(db_engine, settings=control_settings)
+            validate_current_migrations(
+                db_engine,
+                settings=control_settings,
+            )
+        bootstrap_control_database(session_factory, db_engine)
         app = FastAPI(title="OCR Platform Control API")
 
-    @app.middleware("http")
-    async def api_token_auth(request: Request, call_next):
-        configured_token = _configured_api_token()
-        if configured_token and request.url.path.startswith("/api/"):
-            request_token = _request_api_token(request)
-            if request_token is None or not secrets.compare_digest(request_token, configured_token):
-                return JSONResponse(
-                    status_code=401,
-                    content={"detail": "Missing or invalid API token"},
-                )
-        return await call_next(request)
+    app.state.control_settings = control_settings
+    install_control_request_guard(
+        app,
+        settings=control_settings,
+        session_factory=session_factory,
+    )
 
-    get_db = _create_get_db(session_factory)
-    app.include_router(create_diagnostics_router(get_db))
+    get_db = _create_get_db(session_factory, control_settings)
+    app.include_router(
+        create_diagnostics_router(
+            get_db,
+            settings=control_settings,
+        )
+    )
     app.include_router(create_workers_router(get_db))
-    app.include_router(create_model_profiles_router(get_db))
-    app.include_router(create_jobs_router(get_db))
-    app.include_router(create_remote_admin_router(remote_worker_executor))
+    app.include_router(
+        create_model_profiles_router(
+            get_db,
+            settings=control_settings,
+        )
+    )
+    app.include_router(
+        create_jobs_router(
+            get_db,
+            settings=control_settings,
+        )
+    )
+    app.include_router(
+        create_remote_admin_router(
+            remote_worker_executor,
+            settings=control_settings,
+        )
+    )
     app.include_router(create_manifests_router(get_db))
     _register_static_ui(app)
     return app
 
 
-app = create_app()
+class _LazyControlApp:
+    """Resolve the compatibility ASGI application on first actual use."""
+
+    def __init__(
+        self,
+        factory: Callable[[], FastAPI] | None = None,
+    ) -> None:
+        self._factory = factory or create_app
+        self._application: FastAPI | None = None
+        self._lock = threading.Lock()
+
+    def _resolve(self) -> FastAPI:
+        application = self._application
+        if application is not None:
+            return application
+        with self._lock:
+            application = self._application
+            if application is None:
+                application = self._factory()
+                self._application = application
+        return application
+
+    async def __call__(
+        self,
+        scope: dict[str, Any],
+        receive: Callable[..., Any],
+        send: Callable[..., Any],
+    ) -> None:
+        await self._resolve()(scope, receive, send)
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._resolve(), name)
+
+    def __repr__(self) -> str:
+        state = "resolved" if self._application is not None else "unresolved"
+        return f"<ocr-platform-control ASGI app ({state})>"
+
+
+# Lazy compatibility for ``uvicorn ocr_platform.control.app:app``.
+app = _LazyControlApp()

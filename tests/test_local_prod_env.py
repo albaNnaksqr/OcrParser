@@ -23,6 +23,7 @@ def test_default_config_uses_postgres_and_production_guards(tmp_path):
 
     assert env["OCR_PLATFORM_DATABASE_URL"] == config.database_url
     assert env["OCR_PLATFORM_REQUIRE_POSTGRES"] == "1"
+    assert env["OCR_PLATFORM_AUTO_MIGRATE"] == "0"
     assert env["OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS"] == "1"
     assert env["OCR_PLATFORM_API_TOKEN"] == "local-dev-token"
     assert env["OCR_PLATFORM_REQUIRE_API_TOKEN"] == "1"
@@ -59,7 +60,8 @@ def test_up_plan_applies_migrations_then_starts_control_and_optional_worker(tmp_
 
     assert "docker compose -f" in rendered
     assert "up -d postgres" in rendered
-    assert "-m ocr_platform.control.migrate_cli apply --database-url" in rendered
+    for action in ("plan", "apply", "verify"):
+        assert f"-m ocr_platform.control.migrate_cli {action} --database-url" in rendered
     assert config.database_url in rendered
     assert f"PYTHONPATH={tmp_path}" in rendered
     assert "OCR_PLATFORM_REQUIRE_POSTGRES=1" in rendered
@@ -70,7 +72,9 @@ def test_up_plan_applies_migrations_then_starts_control_and_optional_worker(tmp_
     assert "--model-name local-mock" in rendered
     assert "--server_id local-worker-01" in rendered
     assert f"--shared_root {tmp_path / 'shared'}" in rendered
-    assert rendered.index("ocr_platform.control.migrate_cli") < rendered.index("ocr_platform.control\n")
+    assert rendered.index("migrate_cli plan") < rendered.index("migrate_cli apply")
+    assert rendered.index("migrate_cli apply") < rendered.index("migrate_cli verify")
+    assert rendered.index("migrate_cli verify") < rendered.index("ocr_platform.control\n")
 
 
 def test_up_plan_can_start_two_isolated_workers(tmp_path):
@@ -134,6 +138,7 @@ def test_env_file_text_is_shell_compatible(tmp_path):
 
     assert "OCR_PLATFORM_DATABASE_URL=postgresql+psycopg://ocr_platform:ocr_platform_local@127.0.0.1:15432/ocr_platform" in text
     assert "OCR_PLATFORM_REQUIRE_POSTGRES=1" in text
+    assert "OCR_PLATFORM_AUTO_MIGRATE=0" in text
     assert text.endswith("\n")
     assert "[object Object]" not in text
 

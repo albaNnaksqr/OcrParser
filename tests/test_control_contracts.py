@@ -225,8 +225,7 @@ def test_http_behavior_contract_is_built_from_real_testclient_calls() -> None:
         assert "stable_body" in scenario
         assert "normalization_rules" in scenario
         if scenario["status"] >= 300:
-            if scenario["status"] in {401, 422}:
-                assert "shared_branch_authority" in scenario
+            if "shared_branch_authority" in scenario:
                 assert "executed_branch" not in scenario
             else:
                 assert "executed_branch" in scenario
@@ -531,9 +530,9 @@ def test_http_operation_matrix_covers_every_openapi_operation_and_branch() -> No
 
     assert set(operations) == set(expected)
     assert matrix["operation_count"] == 49
-    assert matrix["non_2xx_branch_count"] == 147
-    assert matrix["behavior_covered_branch_count"] == 101
-    assert matrix["source_backed_exemption_count"] == 46
+    assert matrix["non_2xx_branch_count"] == 194
+    assert matrix["behavior_covered_branch_count"] == 146
+    assert matrix["source_backed_exemption_count"] == 48
     for operation_id, operation in operations.items():
         assert operation["method"] == expected[operation_id]["method"]
         assert operation["path"] == expected[operation_id]["path"]
@@ -563,6 +562,7 @@ def test_http_operation_matrix_covers_every_openapi_operation_and_branch() -> No
                     assert branch["kind"] in {
                         "framework_request_validation",
                         "global_api_token_middleware",
+                        "global_readiness_middleware",
                     }
                     assert "shared_authority" in (
                         branch["behavior_reference"]
@@ -641,9 +641,10 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
 
     assert by_kind == {
         "called_service_http_exception": 15,
-        "explicit_response_status": 2,
+        "explicit_response_status": 4,
         "framework_request_validation": 43,
         "global_api_token_middleware": 47,
+        "global_readiness_middleware": 45,
         "router_exception_mapping": 40,
     }
     assert by_status == {
@@ -653,7 +654,7 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
         404: 25,
         409: 6,
         422: 43,
-        503: 2,
+        503: 49,
     }
     scale_plan = next(
         operation
@@ -671,6 +672,30 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
         chain[-1].endswith(".validate_scale_request")
         for chain in scale_400_chains
     )
+
+
+def test_http_operation_matrix_records_conditional_readiness_503() -> None:
+    matrix = control_contracts.build_http_operation_matrix()
+
+    for operation in matrix["operations"]:
+        branches = [
+            branch
+            for branch in operation["non_2xx_branches"]
+            if branch["kind"] == "global_readiness_middleware"
+        ]
+        expected = (
+            operation["path"].startswith("/api/")
+            and operation["path"]
+            not in {
+                "/api/system/database",
+                "/api/system/diagnostics",
+            }
+        )
+        assert len(branches) == int(expected), operation["operation_id"]
+        if branches:
+            reference = branches[0]["behavior_reference"]
+            assert reference["scenario"] == "authorized_database_not_ready"
+            assert reference["coverage"] == "shared middleware branch"
 
 
 def test_readyz_behavior_binds_semantically_to_one_exact_503_branch() -> None:
@@ -710,7 +735,7 @@ def test_control_transport_future_gate_scans_all_runtime_python_sources() -> Non
 
     assert inventory["scanned_file_count"] == len(expected_files)
     assert inventory["scanned_file_count"] >= 52
-    assert len(inventory["branches"]) == 46
+    assert len(inventory["branches"]) == 49
     assert inventory["forbidden_dependencies"] == []
     assert inventory["unresolved_status_calls"] == []
     matrix = control_contracts.build_http_operation_matrix()

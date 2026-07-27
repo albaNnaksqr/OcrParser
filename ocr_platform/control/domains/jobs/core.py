@@ -28,6 +28,7 @@ from ...schemas import (
     ScanUnitCompleteRequest, ScanUnitFailRequest, ServerHeartbeatRequest, ServerRegisterRequest,
     ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
 )
+from ... import settings as __control_settings
 from ..common import *
 
 def _create_distributed_scan_for_job(*args, **kwargs):
@@ -95,7 +96,12 @@ def stop_reclaimable_work_for_job(*args, **kwargs):
     return target(*args, **kwargs)
 
 
-def create_job(session: Session, request: JobCreateRequest) -> Job:
+def create_job(
+    session: Session,
+    request: JobCreateRequest,
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+) -> Job:
     if request.input_mode not in ALLOWED_INPUT_MODES:
         raise ValueError(f"unknown input_mode: {request.input_mode}")
     migration_issue = _database_migration_preflight_issue(
@@ -103,7 +109,11 @@ def create_job(session: Session, request: JobCreateRequest) -> Job:
     )
     if migration_issue is not None:
         raise ValueError(migration_issue.message)
-    model_config = _effective_job_model_config(session, request)
+    model_config = _effective_job_model_config(
+        session,
+        request,
+        settings=settings,
+    )
     assigned_server_id = request.assigned_server_id
     if request.input_mode == "directory" and not assigned_server_id:
         raise ValueError("assigned_server_id is required for directory input_mode")

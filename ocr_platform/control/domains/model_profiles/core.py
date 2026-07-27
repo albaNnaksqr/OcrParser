@@ -28,31 +28,14 @@ from ...schemas import (
     ScanUnitCompleteRequest, ScanUnitFailRequest, ServerHeartbeatRequest, ServerRegisterRequest,
     ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
 )
+from ... import settings as __control_settings
 from ..common import *
 
 
 def ensure_default_model_profiles(session: Session) -> None:
-    changed = False
-    for profile_id, defaults in DEFAULT_MODEL_PROFILES.items():
-        if session.get(ModelProfile, profile_id) is not None:
-            continue
-        session.add(
-            ModelProfile(
-                id=profile_id,
-                label=str(defaults["label"]),
-                engine=str(defaults["engine"]),
-                ip=defaults.get("ip"),
-                port=defaults.get("port"),
-                model_name=defaults.get("model_name"),
-                page_concurrency=defaults.get("page_concurrency"),
-                extra_args_json=json_dumps(defaults.get("extra_args", {})),
-                requires_api_key=bool(defaults.get("requires_api_key", False)),
-                is_default=bool(defaults.get("is_default", False)),
-            )
-        )
-        changed = True
-    if changed:
-        session.commit()
+    from ...bootstrap import seed_default_model_profiles
+
+    seed_default_model_profiles(session)
 
 def model_profile_to_response(profile: ModelProfile) -> ModelProfileResponse:
     return ModelProfileResponse(
@@ -73,11 +56,9 @@ def model_profile_to_response(profile: ModelProfile) -> ModelProfileResponse:
     )
 
 def list_model_profiles(session: Session) -> list[ModelProfile]:
-    ensure_default_model_profiles(session)
     return session.execute(select(ModelProfile).order_by(ModelProfile.id)).scalars().all()
 
 def get_model_profile_or_raise(session: Session, profile_id: str) -> ModelProfile:
-    ensure_default_model_profiles(session)
     profile = session.get(ModelProfile, profile_id)
     if profile is None:
         raise ValueError(f"unknown model_profile_id: {profile_id}")
@@ -112,8 +93,13 @@ def _reject_secret_like_extra_args(
 def _normalize_parser_extra_args(extra_args: dict[str, Any], *, context: str) -> dict[str, Any]:
     return ParserConfig.validate_option_dict(extra_args or {}, context=f"{context} extra_args")
 
-def upsert_model_profile(session: Session, profile_id: str, request: ModelProfileRequest) -> ModelProfile:
-    ensure_default_model_profiles(session)
+def upsert_model_profile(
+    session: Session,
+    profile_id: str,
+    request: ModelProfileRequest,
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+) -> ModelProfile:
     _reject_secret_like_extra_args(request.extra_args, context="model profile")
     normalized_extra_args = _normalize_parser_extra_args(request.extra_args, context="model profile")
     profile = session.get(ModelProfile, profile_id)
@@ -124,7 +110,7 @@ def upsert_model_profile(session: Session, profile_id: str, request: ModelProfil
     if request.is_default:
         session.execute(update(ModelProfile).where(ModelProfile.id != profile_id).values(is_default=False))
 
-    saved_profile_keys_disabled = not saved_model_profile_keys_allowed()
+    saved_profile_keys_disabled = not saved_model_profile_keys_allowed(settings)
     requested_saved_key = request.api_key is not None and bool(request.api_key)
     existing_saved_key_would_remain = bool(profile.api_key) and not request.clear_api_key and request.api_key is None
     if saved_profile_keys_disabled and requested_saved_key:
@@ -177,22 +163,34 @@ def _resolve_job_extra_args_api_key_env_var(extra_args: dict[str, Any]) -> str |
         )
     return value
 
-def _validate_job_extra_args_saved_api_key(extra_args: dict[str, Any]) -> None:
-    if saved_model_profile_keys_allowed():
+def _validate_job_extra_args_saved_api_key(
+    extra_args: dict[str, Any],
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+) -> None:
+    if saved_model_profile_keys_allowed(settings):
         return
     if extra_args.get("api_key"):
         raise ValueError(
             "saved job api_key is disabled; set extra_args.api_key_env_var on the control server environment instead"
         )
 
-def _effective_job_model_config(session: Session, request: JobCreateRequest) -> dict[str, Any]:
+def _effective_job_model_config(
+    session: Session,
+    request: JobCreateRequest,
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+) -> dict[str, Any]:
     _reject_secret_like_extra_args(
         request.extra_args,
         context="job",
         allowed_names={"api_key", "api_key_env_var"},
     )
     request_extra_args = _normalize_parser_extra_args(request.extra_args, context="job")
-    _validate_job_extra_args_saved_api_key(request_extra_args)
+    _validate_job_extra_args_saved_api_key(
+        request_extra_args,
+        settings=settings,
+    )
     if not request.model_profile_id:
         _resolve_job_extra_args_api_key_env_var(request_extra_args)
         return {

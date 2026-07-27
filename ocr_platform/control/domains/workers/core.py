@@ -28,6 +28,7 @@ from ...schemas import (
     ScanUnitCompleteRequest, ScanUnitFailRequest, ServerHeartbeatRequest, ServerRegisterRequest,
     ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
 )
+from ... import settings as __control_settings
 from ..common import *
 
 def _resolve_model_profile_api_key(*args, **kwargs):
@@ -584,14 +585,21 @@ def _database_migration_preflight_issue(database_status: dict[str, Any]) -> JobP
 
     return None
 
-def _control_api_auth_preflight_issue() -> JobPreflightIssue | None:
-    if os.environ.get("OCR_PLATFORM_API_TOKEN"):
+def _control_api_auth_preflight_issue(
+    settings: __control_settings.ControlSettings | None = None,
+) -> JobPreflightIssue | None:
+    control_settings = (
+        settings
+        if settings is not None
+        else __control_settings.ControlSettings.from_environment()
+    )
+    if control_settings.api_token:
         return None
     return _preflight_issue(
         "warning",
         "control_api_auth_disabled",
         "Control API token authentication is not configured; set OCR_PLATFORM_API_TOKEN before exposing production endpoints.",
-        require_api_token=_env_truthy("OCR_PLATFORM_REQUIRE_API_TOKEN"),
+        require_api_token=control_settings.require_api_token,
     )
 
 def _server_versions(session: Session, server_ids: set[str]) -> dict[str, list[str]]:
@@ -758,9 +766,18 @@ def _workers_with_pending_shard_update_backlog(session: Session, server_ids: set
         )
     return workers
 
-def preflight_job(session: Session, request: JobCreateRequest) -> JobPreflightResponse:
+def preflight_job(
+    session: Session,
+    request: JobCreateRequest,
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+) -> JobPreflightResponse:
+    control_settings = (
+        settings
+        if settings is not None
+        else __control_settings.ControlSettings.from_environment()
+    )
     ensure_pool_server(session)
-    ensure_default_model_profiles(session)
     issues: list[JobPreflightIssue] = []
     database_status = database.describe_database_status(session.get_bind())
     database_dialect = str(database_status.get("dialect") or session.get_bind().dialect.name)
@@ -771,13 +788,13 @@ def preflight_job(session: Session, request: JobCreateRequest) -> JobPreflightRe
                 "database_not_postgres",
                 "Production jobs should use PostgreSQL; SQLite is for local development.",
                 dialect=database_dialect,
-                require_postgres=_env_truthy("OCR_PLATFORM_REQUIRE_POSTGRES"),
+                require_postgres=control_settings.require_postgres,
             )
         )
     migration_issue = _database_migration_preflight_issue(database_status)
     if migration_issue is not None:
         issues.append(migration_issue)
-    auth_issue = _control_api_auth_preflight_issue()
+    auth_issue = _control_api_auth_preflight_issue(control_settings)
     if auth_issue is not None:
         issues.append(auth_issue)
 

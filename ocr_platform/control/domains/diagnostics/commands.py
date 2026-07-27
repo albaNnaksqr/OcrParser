@@ -1,11 +1,21 @@
 from __future__ import annotations
 
-from .queries import REQUIRE_CURRENT_MIGRATIONS_ENV, env_truthy
 from ... import database
+from ...settings import ControlSettings
 
 
-def validate_current_migrations(db_engine) -> None:
-    if not env_truthy(REQUIRE_CURRENT_MIGRATIONS_ENV):
+REQUIRE_CURRENT_MIGRATIONS_ENV = "OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS"
+
+
+def validate_current_migrations(
+    db_engine,
+    *,
+    settings: ControlSettings | None = None,
+) -> None:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    if not control_settings.require_current_migrations:
         return
     status = database.describe_database_status(db_engine)
     if status.get("dialect") != "postgresql" or status.get("is_current"):

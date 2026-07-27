@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ...schemas import ModelProfileRequest, ModelProfileResponse
+from ...settings import ControlSettings
 from . import commands, queries
 from .schemas import model_profile_to_response
 
@@ -13,7 +14,14 @@ from .schemas import model_profile_to_response
 GetDb = Callable[[], Generator[Session, None, None]]
 
 
-def create_router(get_db: GetDb) -> APIRouter:
+def create_router(
+    get_db: GetDb,
+    *,
+    settings: ControlSettings | None = None,
+) -> APIRouter:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     router = APIRouter()
 
     @router.get("/api/model-profiles", response_model=list[ModelProfileResponse])
@@ -27,7 +35,14 @@ def create_router(get_db: GetDb) -> APIRouter:
         session: Session = Depends(get_db),
     ):
         try:
-            return model_profile_to_response(commands.upsert_model_profile(session, profile_id, request))
+            return model_profile_to_response(
+                commands.upsert_model_profile(
+                    session,
+                    profile_id,
+                    request,
+                    settings=control_settings,
+                )
+            )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

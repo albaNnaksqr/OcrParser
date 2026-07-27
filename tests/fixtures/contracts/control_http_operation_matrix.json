@@ -1,7 +1,7 @@
 {
-  "behavior_covered_branch_count": 101,
+  "behavior_covered_branch_count": 146,
   "builder": "tools.control_contracts.build_http_operation_matrix",
-  "non_2xx_branch_count": 147,
+  "non_2xx_branch_count": 194,
   "operation_count": 49,
   "operations": [
     {
@@ -30,22 +30,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_archive_job_api_jobs__job_id__archive_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -57,15 +57,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_archive_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:219",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:238",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:219"
+              "ocr_platform/control/domains/jobs/router.py:238"
             ],
-            "reason": "api_archive_job_api_jobs__job_id__archive_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:219 but is not separately executed."
+            "reason": "api_archive_job_api_jobs__job_id__archive_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:238 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -81,7 +81,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.jobs.router.api_archive_job"
               ],
-              "evidence": "ocr_platform/control/domains/jobs/router.py:221",
+              "evidence": "ocr_platform/control/domains/jobs/router.py:240",
               "exception_types": [
                 "commands.JobNotTerminalError"
               ],
@@ -90,13 +90,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "conflict_archive_nonterminal_job",
-            "source_evidence": "ocr_platform/control/domains/jobs/router.py:221"
+            "source_evidence": "ocr_platform/control/domains/jobs/router.py:240"
           },
           "branch_id": "api_archive_job_api_jobs__job_id__archive_post:409:03",
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_archive_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:221",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:240",
           "exception_types": [
             "commands.JobNotTerminalError"
           ],
@@ -139,6 +139,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_archive_job_api_jobs__job_id__archive_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_archive_job_api_jobs__job_id__archive_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_archive_job_api_jobs__job_id__archive_post",
@@ -147,7 +178,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -174,22 +206,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_archive_server_api_servers__server_id__delete:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -268,6 +300,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_archive_server_api_servers__server_id__delete:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_archive_server_api_servers__server_id__delete:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_archive_server_api_servers__server_id__delete",
@@ -276,7 +339,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -303,22 +367,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -359,13 +423,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_claim_manifest_integrity_api_manifest_integrity_claim_post",
       "path": "/api/manifest-integrity/claim",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -392,22 +488,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -467,6 +563,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_claim_next_shard_api_jobs__job_id__shards_claim_post",
@@ -474,7 +601,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -501,22 +629,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_claim_scan_unit_api_scan_units_claim_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -557,13 +685,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_claim_scan_unit_api_scan_units_claim_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_claim_scan_unit_api_scan_units_claim_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_claim_scan_unit_api_scan_units_claim_post",
       "path": "/api/scan-units/claim",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -590,22 +750,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -665,6 +825,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_complete_manifest_integrity_api_manifest_integrity__manifest_id__complete_post",
@@ -672,7 +863,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -699,22 +891,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -793,6 +985,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_complete_scan_unit_api_scan_units__scan_unit_id__complete_post",
@@ -801,7 +1024,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -824,16 +1048,16 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_create_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:41",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:60",
           "exception_types": [
             "FileNotFoundError",
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:41"
+              "ocr_platform/control/domains/jobs/router.py:60"
             ],
-            "reason": "api_create_job_api_jobs_post has an invalid input/state branch requiring FileNotFoundError, ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:41 but is not executed by the representative behavior set."
+            "reason": "api_create_job_api_jobs_post has an invalid input/state branch requiring FileNotFoundError, ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:60 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -848,22 +1072,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_create_job_api_jobs_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -904,6 +1128,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_create_job_api_jobs_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_create_job_api_jobs_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_create_job_api_jobs_post",
@@ -911,7 +1166,8 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -934,32 +1190,52 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_database_status_api_system_database_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
           "status": 401
+        },
+        {
+          "behavior_reference": null,
+          "branch_id": "api_database_status_api_system_database_get:503:02",
+          "call_chain": [
+            "ocr_platform.control.domains.diagnostics.router.api_database_status"
+          ],
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:69",
+          "exception_types": [
+            "Exception"
+          ],
+          "exemption": {
+            "evidence": [
+              "ocr_platform/control/domains/diagnostics/router.py:69"
+            ],
+            "reason": "This distinct status branch is source-reachable but is not executed by the representative behavior set for api_database_status_api_system_database_get."
+          },
+          "kind": "explicit_response_status",
+          "status": 503
         }
       ],
       "operation_id": "api_database_status_api_system_database_get",
       "path": "/api/system/database",
       "source_reachable_statuses": [
-        401
+        401,
+        503
       ]
     },
     {
@@ -986,22 +1262,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_delete_job_api_jobs__job_id__delete:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1013,15 +1289,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_delete_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:232",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:251",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:232"
+              "ocr_platform/control/domains/jobs/router.py:251"
             ],
-            "reason": "api_delete_job_api_jobs__job_id__delete has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:232 but is not separately executed."
+            "reason": "api_delete_job_api_jobs__job_id__delete has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:251 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -1032,15 +1308,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_delete_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:234",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:253",
           "exception_types": [
             "commands.JobNotTerminalError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:234"
+              "ocr_platform/control/domains/jobs/router.py:253"
             ],
-            "reason": "api_delete_job_api_jobs__job_id__delete has a state, server, or attempt conflict that requires commands.JobNotTerminalError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:234 but is not separately executed."
+            "reason": "api_delete_job_api_jobs__job_id__delete has a state, server, or attempt conflict that requires commands.JobNotTerminalError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:253 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 409
@@ -1080,6 +1356,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_delete_job_api_jobs__job_id__delete:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_delete_job_api_jobs__job_id__delete:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_delete_job_api_jobs__job_id__delete",
@@ -1088,7 +1395,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1115,22 +1423,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1209,6 +1517,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_fail_scan_unit_api_scan_units__scan_unit_id__fail_post",
@@ -1217,7 +1556,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1246,22 +1586,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_get_job_api_jobs__job_id__get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1278,7 +1618,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.jobs.router.api_get_job"
               ],
-              "evidence": "ocr_platform/control/domains/jobs/router.py:125",
+              "evidence": "ocr_platform/control/domains/jobs/router.py:144",
               "exception_types": [
                 "commands.UnknownJobError"
               ],
@@ -1287,13 +1627,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "not_found_unknown_job",
-            "source_evidence": "ocr_platform/control/domains/jobs/router.py:125"
+            "source_evidence": "ocr_platform/control/domains/jobs/router.py:144"
           },
           "branch_id": "api_get_job_api_jobs__job_id__get:404:02",
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_get_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:125",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:144",
           "exception_types": [
             "commands.UnknownJobError"
           ],
@@ -1336,6 +1676,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_get_job_api_jobs__job_id__get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_get_job_api_jobs__job_id__get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_get_job_api_jobs__job_id__get",
@@ -1343,7 +1714,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1370,22 +1742,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_get_job_summary_api_jobs__job_id__summary_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1397,15 +1769,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_get_job_summary"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:132",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:151",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:132"
+              "ocr_platform/control/domains/jobs/router.py:151"
             ],
-            "reason": "api_get_job_summary_api_jobs__job_id__summary_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:132 but is not separately executed."
+            "reason": "api_get_job_summary_api_jobs__job_id__summary_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:151 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -1445,6 +1817,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_get_job_summary_api_jobs__job_id__summary_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_get_job_summary_api_jobs__job_id__summary_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_get_job_summary_api_jobs__job_id__summary_get",
@@ -1452,7 +1855,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1479,22 +1883,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1554,6 +1958,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_get_manifest_freeze_report_api_jobs__job_id__manifest_freeze_report_get",
@@ -1561,7 +1996,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1588,22 +2024,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1663,6 +2099,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_get_manifest_integrity_api_jobs__job_id__manifest_integrity_get",
@@ -1670,7 +2137,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1713,22 +2181,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1740,15 +2208,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_logs_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:204",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:223",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:204"
+              "ocr_platform/control/domains/jobs/router.py:223"
             ],
-            "reason": "api_list_job_logs_page_api_jobs__job_id__logs_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:204 but is not separately executed."
+            "reason": "api_list_job_logs_page_api_jobs__job_id__logs_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:223 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -1788,6 +2256,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_job_logs_page_api_jobs__job_id__logs_page_get",
@@ -1795,7 +2294,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1818,15 +2318,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_summaries"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:99",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:118",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:99"
+              "ocr_platform/control/domains/jobs/router.py:118"
             ],
-            "reason": "api_list_job_summaries_api_jobs_summary_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:99 but is not executed by the representative behavior set."
+            "reason": "api_list_job_summaries_api_jobs_summary_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:118 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -1841,22 +2341,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_job_summaries_api_jobs_summary_get:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -1897,6 +2397,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_job_summaries_api_jobs_summary_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_job_summaries_api_jobs_summary_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_job_summaries_api_jobs_summary_get",
@@ -1904,7 +2435,8 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -1927,15 +2459,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_summaries_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:118",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:137",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:118"
+              "ocr_platform/control/domains/jobs/router.py:137"
             ],
-            "reason": "api_list_job_summaries_page_api_jobs_summary_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:118 but is not executed by the representative behavior set."
+            "reason": "api_list_job_summaries_page_api_jobs_summary_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:137 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -1950,22 +2482,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_job_summaries_page_api_jobs_summary_page_get:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2006,6 +2538,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_job_summaries_page_api_jobs_summary_page_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_job_summaries_page_api_jobs_summary_page_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_job_summaries_page_api_jobs_summary_page_get",
@@ -2013,7 +2576,8 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2043,7 +2607,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.jobs.router.api_list_jobs"
               ],
-              "evidence": "ocr_platform/control/domains/jobs/router.py:60",
+              "evidence": "ocr_platform/control/domains/jobs/router.py:79",
               "exception_types": [
                 "ValueError"
               ],
@@ -2052,13 +2616,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "bad_request_invalid_job_status",
-            "source_evidence": "ocr_platform/control/domains/jobs/router.py:60"
+            "source_evidence": "ocr_platform/control/domains/jobs/router.py:79"
           },
           "branch_id": "api_list_jobs_api_jobs_get:400:01",
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_jobs"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:60",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:79",
           "exception_types": [
             "ValueError"
           ],
@@ -2076,22 +2640,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_jobs_api_jobs_get:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2132,6 +2696,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_jobs_api_jobs_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_jobs_api_jobs_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_jobs_api_jobs_get",
@@ -2139,7 +2734,8 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2162,15 +2758,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_jobs_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:80",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:99",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:80"
+              "ocr_platform/control/domains/jobs/router.py:99"
             ],
-            "reason": "api_list_jobs_page_api_jobs_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:80 but is not executed by the representative behavior set."
+            "reason": "api_list_jobs_page_api_jobs_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:99 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -2185,22 +2781,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_jobs_page_api_jobs_page_get:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2241,6 +2837,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_jobs_page_api_jobs_page_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_jobs_page_api_jobs_page_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_jobs_page_api_jobs_page_get",
@@ -2248,7 +2875,8 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2271,32 +2899,64 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_model_profiles_api_model_profiles_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
           "status": 401
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_model_profiles_api_model_profiles_get:503:02",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_model_profiles_api_model_profiles_get:503:02",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_model_profiles_api_model_profiles_get",
       "path": "/api/model-profiles",
       "source_reachable_statuses": [
-        401
+        401,
+        503
       ]
     },
     {
@@ -2323,22 +2983,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2350,15 +3010,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_recent_job_errors_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:166",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:185",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:166"
+              "ocr_platform/control/domains/jobs/router.py:185"
             ],
-            "reason": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:166 but is not separately executed."
+            "reason": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:185 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -2398,6 +3058,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get",
@@ -2405,7 +3096,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2432,22 +3124,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2459,15 +3151,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_recent_job_files"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:147",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:166",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:147"
+              "ocr_platform/control/domains/jobs/router.py:166"
             ],
-            "reason": "api_list_recent_job_files_api_jobs__job_id__recent_files_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:147 but is not separately executed."
+            "reason": "api_list_recent_job_files_api_jobs__job_id__recent_files_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:166 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -2507,6 +3199,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_recent_job_files_api_jobs__job_id__recent_files_get",
@@ -2514,13 +3237,15 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
       "behavior_scenario_refs": [
         "api_auth_disabled_success",
         "authorized_bearer_success",
+        "authorized_database_not_ready",
         "unauthorized_missing_api_token"
       ],
       "declared_statuses": [
@@ -2545,22 +3270,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_servers_api_servers_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2601,13 +3326,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_servers_api_servers_get:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_servers_api_servers_get:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_servers_api_servers_get",
       "path": "/api/servers",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2634,22 +3391,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2728,6 +3485,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_shard_attempts_api_jobs__job_id__shards__shard_id__attempts_get",
@@ -2735,7 +3523,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2762,22 +3551,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2856,6 +3645,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_shard_attempts_page_api_jobs__job_id__shards__shard_id__attempts_page_get",
@@ -2863,7 +3683,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -2909,22 +3730,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_list_work_shards_api_jobs__job_id__shards_get:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -2984,6 +3805,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_list_work_shards_api_jobs__job_id__shards_get:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_list_work_shards_api_jobs__job_id__shards_get:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_list_work_shards_api_jobs__job_id__shards_get",
@@ -2992,7 +3844,8 @@
         400,
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3019,22 +3872,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_next_job_api_agents__server_id__next_job_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3075,13 +3928,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_next_job_api_agents__server_id__next_job_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_next_job_api_agents__server_id__next_job_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_next_job_api_agents__server_id__next_job_post",
       "path": "/api/agents/{server_id}/next-job",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3110,22 +3995,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_preflight_job_api_jobs_preflight_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3166,13 +4051,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_preflight_job_api_jobs_preflight_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_preflight_job_api_jobs_preflight_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_preflight_job_api_jobs_preflight_post",
       "path": "/api/jobs/preflight",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3193,13 +4110,13 @@
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_readyz"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:41",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:54",
           "exception_types": [
             "Exception"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/diagnostics/router.py:41"
+              "ocr_platform/control/domains/diagnostics/router.py:54"
             ],
             "reason": "This defensive 503 requires system_diagnostics itself to raise an unexpected exception; the ordinary non-ready 503 branch is executed separately."
           },
@@ -3215,20 +4132,20 @@
               "call_chain": [
                 "ocr_platform.control.domains.diagnostics.router.api_readyz"
               ],
-              "evidence": "ocr_platform/control/domains/diagnostics/router.py:42",
+              "evidence": "ocr_platform/control/domains/diagnostics/router.py:62",
               "exception_types": [],
               "kind": "explicit_response_status",
               "status": 503
             },
             "fixture": "control_http_behavior.json",
             "scenario": "migration_readiness_not_current",
-            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:42"
+            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:62"
           },
           "branch_id": "api_readyz_readyz_get:503:02",
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_readyz"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:42",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:62",
           "exception_types": [],
           "exemption": null,
           "kind": "explicit_response_status",
@@ -3262,15 +4179,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_event"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:175",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:194",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:175"
+              "ocr_platform/control/domains/jobs/router.py:194"
             ],
-            "reason": "api_record_event_api_jobs__job_id__events_post has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:175 but is not executed by the representative behavior set."
+            "reason": "api_record_event_api_jobs__job_id__events_post has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:194 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -3285,22 +4202,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_record_event_api_jobs__job_id__events_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3312,15 +4229,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_event"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:173",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:192",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:173"
+              "ocr_platform/control/domains/jobs/router.py:192"
             ],
-            "reason": "api_record_event_api_jobs__job_id__events_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:173 but is not separately executed."
+            "reason": "api_record_event_api_jobs__job_id__events_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:192 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -3360,6 +4277,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_record_event_api_jobs__job_id__events_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_record_event_api_jobs__job_id__events_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_record_event_api_jobs__job_id__events_post",
@@ -3368,7 +4316,8 @@
         400,
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3395,22 +4344,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_record_log_api_jobs__job_id__logs_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3422,15 +4371,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_log"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:183",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:202",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:183"
+              "ocr_platform/control/domains/jobs/router.py:202"
             ],
-            "reason": "api_record_log_api_jobs__job_id__logs_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:183 but is not separately executed."
+            "reason": "api_record_log_api_jobs__job_id__logs_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:202 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -3470,6 +4419,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_record_log_api_jobs__job_id__logs_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_record_log_api_jobs__job_id__logs_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_record_log_api_jobs__job_id__logs_post",
@@ -3477,7 +4457,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3523,22 +4504,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3598,6 +4579,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_register_remote_manifest_api_jobs__job_id__manifest_post",
@@ -3606,7 +4618,8 @@
         400,
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3635,22 +4648,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_register_server_api_servers_register_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3691,13 +4704,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_register_server_api_servers_register_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_register_server_api_servers_register_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_register_server_api_servers_register_post",
       "path": "/api/servers/register",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3723,15 +4768,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_apply",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_install_apply_api_remote_workers_install_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_install_apply_api_remote_workers_install_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -3746,22 +4791,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3777,21 +4822,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_apply",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_install_apply_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:403:03",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_apply",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -3832,6 +4877,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post",
@@ -3840,7 +4916,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -3866,15 +4943,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_dry_run",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -3889,22 +4966,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -3920,21 +4997,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_dry_run",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_install_dry_run_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:403:03",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_dry_run",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -3975,6 +5052,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post",
@@ -3983,7 +5091,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4009,15 +5118,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_preflight",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_preflight_api_remote_workers_preflight_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_preflight_api_remote_workers_preflight_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4032,22 +5141,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4063,21 +5172,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_preflight",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:403:03",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_preflight",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -4118,6 +5227,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_preflight_api_remote_workers_preflight_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_preflight_api_remote_workers_preflight_post",
@@ -4126,7 +5266,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4153,15 +5294,15 @@
             "ocr_platform.control.domains.remote_admin.service.validate_scale_request",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4173,15 +5314,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_apply",
             "ocr_platform.control.domains.remote_admin.service.validate_scale_request"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:43",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:44",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:43"
+              "ocr_platform/control/domains/remote_admin/service.py:44"
             ],
-            "reason": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_scale_request can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:43."
+            "reason": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_scale_request can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:44."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4196,22 +5337,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:401:03",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4227,21 +5368,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_apply",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_scale_apply_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:403:04",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_apply",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -4282,6 +5423,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:503:06",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post:503:06",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post",
@@ -4290,7 +5462,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4317,15 +5490,15 @@
             "ocr_platform.control.domains.remote_admin.service.validate_scale_request",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4337,15 +5510,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_plan",
             "ocr_platform.control.domains.remote_admin.service.validate_scale_request"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:43",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:44",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:43"
+              "ocr_platform/control/domains/remote_admin/service.py:44"
             ],
-            "reason": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_scale_request can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:43."
+            "reason": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_scale_request can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:44."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4360,22 +5533,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:401:03",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4391,21 +5564,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_plan",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_scale_plan_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:403:04",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_plan",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -4446,6 +5619,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:503:06",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post:503:06",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post",
@@ -4454,7 +5658,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4480,15 +5685,15 @@
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_service_action",
             "ocr_platform.control.domains.remote_admin.service.validate_target"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/remote_admin/service.py:33"
+              "ocr_platform/control/domains/remote_admin/service.py:34"
             ],
-            "reason": "api_remote_worker_service_action_api_remote_workers_service_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:33."
+            "reason": "api_remote_worker_service_action_api_remote_workers_service_post requires Remote Admin to be enabled before ocr_platform.control.domains.remote_admin.service.validate_target can reject this exact target or scale-token input; that service mapping is frozen from ocr_platform/control/domains/remote_admin/service.py:34."
           },
           "kind": "called_service_http_exception",
           "status": 400
@@ -4503,22 +5708,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4534,21 +5739,21 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_service_action",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_service_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:403:03",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_service_action",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
@@ -4589,6 +5794,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_service_action_api_remote_workers_service_post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_service_action_api_remote_workers_service_post",
@@ -4597,7 +5833,8 @@
         400,
         401,
         403,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4622,22 +5859,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4653,32 +5890,64 @@
                 "ocr_platform.control.domains.remote_admin.router.api_remote_worker_targets",
                 "ocr_platform.control.domains.remote_admin.service.require_enabled"
               ],
-              "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+              "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
               "exception_types": [],
               "kind": "called_service_http_exception",
               "status": 403
             },
             "fixture": "control_http_behavior.json",
             "scenario": "remote_admin_targets_disabled",
-            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:18"
+            "source_evidence": "ocr_platform/control/domains/remote_admin/service.py:19"
           },
           "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:403:02",
           "call_chain": [
             "ocr_platform.control.domains.remote_admin.router.api_remote_worker_targets",
             "ocr_platform.control.domains.remote_admin.service.require_enabled"
           ],
-          "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+          "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
           "exception_types": [],
           "exemption": null,
           "kind": "called_service_http_exception",
           "status": 403
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_remote_worker_targets_api_remote_workers_targets_get:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_remote_worker_targets_api_remote_workers_targets_get",
       "path": "/api/remote-workers/targets",
       "source_reachable_statuses": [
         401,
-        403
+        403,
+        503
       ]
     },
     {
@@ -4705,22 +5974,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_request_stop_api_jobs__job_id__request_stop_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4732,15 +6001,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_request_stop"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:211",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:230",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:211"
+              "ocr_platform/control/domains/jobs/router.py:230"
             ],
-            "reason": "api_request_stop_api_jobs__job_id__request_stop_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:211 but is not separately executed."
+            "reason": "api_request_stop_api_jobs__job_id__request_stop_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:230 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -4780,6 +6049,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_request_stop_api_jobs__job_id__request_stop_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_request_stop_api_jobs__job_id__request_stop_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_request_stop_api_jobs__job_id__request_stop_post",
@@ -4787,7 +6087,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4814,22 +6115,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4889,6 +6190,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_request_worker_manifest_integrity_api_jobs__job_id__manifest_integrity_worker_request_post",
@@ -4896,7 +6228,8 @@
       "source_reachable_statuses": [
         401,
         404,
-        422
+        422,
+        503
       ]
     },
     {
@@ -4923,22 +6256,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_server_eligibility_api_servers_eligibility_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -4979,13 +6312,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_server_eligibility_api_servers_eligibility_get:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_server_eligibility_api_servers_eligibility_get:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_server_eligibility_api_servers_eligibility_get",
       "path": "/api/servers/eligibility",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -5012,22 +6377,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5068,13 +6433,45 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:03",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:03",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post",
       "path": "/api/servers/{server_id}/heartbeat",
       "source_reachable_statuses": [
         401,
-        422
+        422,
+        503
       ]
     },
     {
@@ -5097,32 +6494,52 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_system_diagnostics_api_system_diagnostics_get:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
           "status": 401
+        },
+        {
+          "behavior_reference": null,
+          "branch_id": "api_system_diagnostics_api_system_diagnostics_get:503:02",
+          "call_chain": [
+            "ocr_platform.control.domains.diagnostics.router.api_system_diagnostics"
+          ],
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:83",
+          "exception_types": [
+            "Exception"
+          ],
+          "exemption": {
+            "evidence": [
+              "ocr_platform/control/domains/diagnostics/router.py:83"
+            ],
+            "reason": "This distinct status branch is source-reachable but is not executed by the representative behavior set for api_system_diagnostics_api_system_diagnostics_get."
+          },
+          "kind": "explicit_response_status",
+          "status": 503
         }
       ],
       "operation_id": "api_system_diagnostics_api_system_diagnostics_get",
       "path": "/api/system/diagnostics",
       "source_reachable_statuses": [
-        401
+        401,
+        503
       ]
     },
     {
@@ -5149,22 +6566,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_update_work_shard_api_shards__shard_id__post:401:01",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5243,6 +6660,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_update_work_shard_api_shards__shard_id__post:503:05",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_update_work_shard_api_shards__shard_id__post:503:05",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_update_work_shard_api_shards__shard_id__post",
@@ -5251,7 +6699,8 @@
         401,
         404,
         409,
-        422
+        422,
+        503
       ]
     },
     {
@@ -5274,15 +6723,15 @@
           "call_chain": [
             "ocr_platform.control.domains.model_profiles.router.api_upsert_model_profile"
           ],
-          "evidence": "ocr_platform/control/domains/model_profiles/router.py:32",
+          "evidence": "ocr_platform/control/domains/model_profiles/router.py:47",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/model_profiles/router.py:32"
+              "ocr_platform/control/domains/model_profiles/router.py:47"
             ],
-            "reason": "api_upsert_model_profile_api_model_profiles__profile_id__put has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/model_profiles/router.py:32 but is not executed by the representative behavior set."
+            "reason": "api_upsert_model_profile_api_model_profiles__profile_id__put has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/model_profiles/router.py:47 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -5297,22 +6746,22 @@
             "shared_authority": {
               "authority": {
                 "call_chain": [
-                  "ocr_platform.control.app.api_token_auth"
+                  "ocr_platform.control.readiness.api_token_auth"
                 ],
-                "evidence": "ocr_platform/control/app.py:121",
+                "evidence": "ocr_platform/control/readiness.py:212",
                 "exception_types": [],
                 "kind": "global_api_token_middleware",
                 "status": 401
               },
               "mechanism": "global_api_token_middleware"
             },
-            "source_evidence": "ocr_platform/control/app.py:121"
+            "source_evidence": "ocr_platform/control/readiness.py:212"
           },
           "branch_id": "api_upsert_model_profile_api_model_profiles__profile_id__put:401:02",
           "call_chain": [
-            "ocr_platform.control.app.api_token_auth"
+            "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/app.py:121",
+          "evidence": "ocr_platform/control/readiness.py:212",
           "exception_types": [],
           "exemption": null,
           "kind": "global_api_token_middleware",
@@ -5353,6 +6802,37 @@
           "exemption": null,
           "kind": "framework_request_validation",
           "status": 422
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_upsert_model_profile_api_model_profiles__profile_id__put:503:04",
+            "coverage": "shared middleware branch",
+            "exception_types": [],
+            "fixture": "control_http_behavior.json",
+            "scenario": "authorized_database_not_ready",
+            "shared_authority": {
+              "authority": {
+                "call_chain": [
+                  "ocr_platform.control.readiness.api_token_auth"
+                ],
+                "evidence": "ocr_platform/control/readiness.py:232",
+                "exception_types": [],
+                "kind": "global_readiness_middleware",
+                "status": 503
+              },
+              "mechanism": "global_readiness_middleware"
+            },
+            "source_evidence": "ocr_platform/control/readiness.py:232"
+          },
+          "branch_id": "api_upsert_model_profile_api_model_profiles__profile_id__put:503:04",
+          "call_chain": [
+            "ocr_platform.control.readiness.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/readiness.py:232",
+          "exception_types": [],
+          "exemption": null,
+          "kind": "global_readiness_middleware",
+          "status": 503
         }
       ],
       "operation_id": "api_upsert_model_profile_api_model_profiles__profile_id__put",
@@ -5360,18 +6840,19 @@
       "source_reachable_statuses": [
         400,
         401,
-        422
+        422,
+        503
       ]
     }
   ],
   "schema_version": 1,
-  "source_backed_exemption_count": 46,
+  "source_backed_exemption_count": 48,
   "transport_inventory": {
     "branches": [
       {
         "call_chain": [
           "ocr_platform/control/domains/jobs/router.py:create_router",
-          "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries_page"
+          "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries"
         ],
         "constructor": "HTTPException",
         "evidence": "ocr_platform/control/domains/jobs/router.py:118",
@@ -5380,10 +6861,19 @@
       {
         "call_chain": [
           "ocr_platform/control/domains/jobs/router.py:create_router",
+          "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries_page"
+        ],
+        "constructor": "HTTPException",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:137",
+        "status": 400
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/domains/jobs/router.py:create_router",
           "ocr_platform/control/domains/jobs/router.py:api_record_event"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:175",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:194",
         "status": 400
       },
       {
@@ -5392,7 +6882,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_create_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:41",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:60",
         "status": 400
       },
       {
@@ -5401,22 +6891,13 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_jobs"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:60",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:79",
         "status": 400
       },
       {
         "call_chain": [
           "ocr_platform/control/domains/jobs/router.py:create_router",
           "ocr_platform/control/domains/jobs/router.py:api_list_jobs_page"
-        ],
-        "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:80",
-        "status": 400
-      },
-      {
-        "call_chain": [
-          "ocr_platform/control/domains/jobs/router.py:create_router",
-          "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries"
         ],
         "constructor": "HTTPException",
         "evidence": "ocr_platform/control/domains/jobs/router.py:99",
@@ -5446,7 +6927,7 @@
           "ocr_platform/control/domains/model_profiles/router.py:api_upsert_model_profile"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/model_profiles/router.py:32",
+        "evidence": "ocr_platform/control/domains/model_profiles/router.py:47",
         "status": 400
       },
       {
@@ -5454,7 +6935,7 @@
           "ocr_platform/control/domains/remote_admin/service.py:validate_target"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:33",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:34",
         "status": 400
       },
       {
@@ -5462,16 +6943,16 @@
           "ocr_platform/control/domains/remote_admin/service.py:validate_scale_request"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:43",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:44",
         "status": 400
       },
       {
         "call_chain": [
-          "ocr_platform/control/app.py:create_app",
-          "ocr_platform/control/app.py:api_token_auth"
+          "ocr_platform/control/readiness.py:install_control_request_guard",
+          "ocr_platform/control/readiness.py:api_token_auth"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/app.py:121",
+        "evidence": "ocr_platform/control/readiness.py:212",
         "status": 401
       },
       {
@@ -5479,7 +6960,7 @@
           "ocr_platform/control/domains/remote_admin/service.py:require_enabled"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:19",
         "status": 403
       },
       {
@@ -5488,7 +6969,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_get_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:125",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:144",
         "status": 404
       },
       {
@@ -5497,7 +6978,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_get_job_summary"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:132",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:151",
         "status": 404
       },
       {
@@ -5506,7 +6987,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_recent_job_files"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:147",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:166",
         "status": 404
       },
       {
@@ -5515,7 +6996,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_recent_job_errors_page"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:166",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:185",
         "status": 404
       },
       {
@@ -5524,7 +7005,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_record_event"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:173",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:192",
         "status": 404
       },
       {
@@ -5533,7 +7014,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_record_log"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:183",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:202",
         "status": 404
       },
       {
@@ -5542,7 +7023,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_job_logs_page"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:204",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:223",
         "status": 404
       },
       {
@@ -5551,7 +7032,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_request_stop"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:211",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:230",
         "status": 404
       },
       {
@@ -5560,7 +7041,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_archive_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:219",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:238",
         "status": 404
       },
       {
@@ -5569,7 +7050,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_delete_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:232",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:251",
         "status": 404
       },
       {
@@ -5713,7 +7194,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_archive_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:221",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:240",
         "status": 409
       },
       {
@@ -5722,7 +7203,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_delete_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:234",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:253",
         "status": 409
       },
       {
@@ -5767,7 +7248,7 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_readyz"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:41",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:54",
         "status": 503
       },
       {
@@ -5776,13 +7257,40 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_readyz"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:42",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:62",
+        "status": 503
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/domains/diagnostics/router.py:create_router",
+          "ocr_platform/control/domains/diagnostics/router.py:api_database_status"
+        ],
+        "constructor": "JSONResponse",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:69",
+        "status": 503
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/domains/diagnostics/router.py:create_router",
+          "ocr_platform/control/domains/diagnostics/router.py:api_system_diagnostics"
+        ],
+        "constructor": "JSONResponse",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:83",
+        "status": 503
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/readiness.py:install_control_request_guard",
+          "ocr_platform/control/readiness.py:api_token_auth"
+        ],
+        "constructor": "JSONResponse",
+        "evidence": "ocr_platform/control/readiness.py:232",
         "status": 503
       }
     ],
     "forbidden_dependencies": [],
     "scan_root": "ocr_platform/control",
-    "scanned_file_count": 52,
+    "scanned_file_count": 56,
     "unresolved_status_calls": []
   }
 }

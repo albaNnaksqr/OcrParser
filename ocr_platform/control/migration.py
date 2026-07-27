@@ -279,6 +279,12 @@ class MigrationRunner:
                     f"refusing to apply migrations after checksum mismatch: {versions}"
                 )
             applied_versions = {str(row["version"]) for row in applied_rows}
+            unexpected = sorted(applied_versions - set(known))
+            if unexpected:
+                versions = ", ".join(unexpected)
+                raise MigrationError(
+                    f"refusing to apply migrations after unexpected versions: {versions}"
+                )
 
             for migration in self.catalog.migrations:
                 if migration.version in applied_versions:

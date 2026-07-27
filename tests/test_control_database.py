@@ -23,6 +23,7 @@ from ocr_platform.control.models import (
     ShardAttempt,
     WorkShard,
 )
+from ocr_platform.control.settings import ControlSettings
 
 
 def test_init_db_creates_core_tables(tmp_path):
@@ -45,8 +46,88 @@ def test_init_db_creates_core_tables(tmp_path):
     assert Path(db_path).exists()
 
 
-def test_postgres_init_db_routes_startup_upgrade_through_migration_runner(monkeypatch):
+@pytest.mark.parametrize("environment_value", [None, "0", "true", "on"])
+def test_postgres_init_db_does_no_implicit_ddl_without_exact_opt_in(
+    monkeypatch,
+    environment_value,
+):
     engine = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    calls = []
+
+    monkeypatch.setattr(database.Base.metadata, "create_all", lambda bind: calls.append(("create", bind)))
+    monkeypatch.setattr(database, "_ensure_compatible_schema", lambda bind: calls.append(("compat", bind)))
+    monkeypatch.setattr(database, "_ensure_production_indexes", lambda bind: calls.append(("indexes", bind)))
+
+    class RunnerStub:
+        def __init__(self, bind):
+            calls.append(("runner", bind))
+
+        def status(self):
+            calls.append(("status", engine))
+            return {
+                "unexpected_migrations": [],
+                "checksum_mismatches": [],
+            }
+
+        def apply(self):
+            calls.append(("apply", engine))
+
+    monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
+    if environment_value is None:
+        monkeypatch.delenv("OCR_PLATFORM_AUTO_MIGRATE", raising=False)
+    else:
+        monkeypatch.setenv("OCR_PLATFORM_AUTO_MIGRATE", environment_value)
+
+    init_db(engine)
+
+    assert calls == []
+
+
+@pytest.mark.parametrize("use_explicit_settings", [False, True])
+def test_postgres_init_db_routes_exact_opt_in_through_checked_migration_runner(
+    monkeypatch,
+    use_explicit_settings,
+):
+    engine = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    calls = []
+
+    monkeypatch.setattr(database.Base.metadata, "create_all", lambda bind: calls.append(("create", bind)))
+    monkeypatch.setattr(database, "_ensure_compatible_schema", lambda bind: calls.append(("compat", bind)))
+    monkeypatch.setattr(database, "_ensure_production_indexes", lambda bind: calls.append(("indexes", bind)))
+
+    class RunnerStub:
+        def __init__(self, bind):
+            calls.append(("runner", bind))
+
+        def status(self):
+            calls.append(("status", engine))
+            return {
+                "unexpected_migrations": [],
+                "checksum_mismatches": [],
+            }
+
+        def apply(self):
+            calls.append(("apply", engine))
+
+    monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
+    monkeypatch.setenv("OCR_PLATFORM_AUTO_MIGRATE", "0")
+    settings = None
+    if use_explicit_settings:
+        settings = ControlSettings(auto_migrate=True)
+    else:
+        monkeypatch.setenv("OCR_PLATFORM_AUTO_MIGRATE", "1")
+
+    init_db(engine, settings=settings)
+
+    assert calls == [
+        ("runner", engine),
+        ("status", engine),
+        ("apply", engine),
+    ]
+
+
+def test_sqlite_init_db_keeps_development_schema_convenience(monkeypatch):
+    engine = SimpleNamespace(dialect=SimpleNamespace(name="sqlite"))
     calls = []
 
     monkeypatch.setattr(database.Base.metadata, "create_all", lambda bind: calls.append(("create", bind)))
@@ -56,19 +137,92 @@ def test_postgres_init_db_routes_startup_upgrade_through_migration_runner(monkey
         def __init__(self, bind):
             calls.append(("runner", bind))
 
-        def apply(self):
-            calls.append(("apply", engine))
-
     monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
 
-    init_db(engine)
+    init_db(engine, settings=ControlSettings(auto_migrate=True))
 
     assert calls == [
-        ("runner", engine),
-        ("apply", engine),
         ("create", engine),
         ("compat", engine),
     ]
+
+
+@pytest.mark.parametrize(
+    "unsafe_status",
+    [
+        {
+            "unexpected_migrations": ["private-sensitive-version"],
+            "checksum_mismatches": [],
+        },
+        {
+            "unexpected_migrations": [],
+            "checksum_mismatches": [
+                {
+                    "version": "private-sensitive-version",
+                    "applied_checksum": "private-sensitive-checksum",
+                }
+            ],
+        },
+    ],
+)
+def test_postgres_auto_migrate_rejects_unsafe_history_before_apply(
+    monkeypatch,
+    unsafe_status,
+):
+    engine = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    calls = []
+
+    class RunnerStub:
+        def __init__(self, bind):
+            assert bind is engine
+
+        def status(self):
+            calls.append("status")
+            return unsafe_status
+
+        def apply(self):
+            calls.append("apply")
+
+    monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
+
+    with pytest.raises(
+        RuntimeError,
+        match="migration history is not compatible",
+    ) as exc_info:
+        init_db(engine, settings=ControlSettings(auto_migrate=True))
+
+    assert calls == ["status"]
+    assert "private-sensitive-version" not in str(exc_info.value)
+    assert "private-sensitive-checksum" not in str(exc_info.value)
+
+
+def test_explicit_auto_migrate_setting_overrides_environment(monkeypatch):
+    engine = SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+    calls = []
+
+    class RunnerStub:
+        def __init__(self, bind):
+            assert bind is engine
+
+        def status(self):
+            calls.append("status")
+            return {
+                "unexpected_migrations": [],
+                "checksum_mismatches": [],
+            }
+
+        def apply(self):
+            calls.append("apply")
+
+    monkeypatch.setattr(database, "MigrationRunner", RunnerStub)
+    monkeypatch.setenv("OCR_PLATFORM_AUTO_MIGRATE", "1")
+
+    init_db(engine, settings=ControlSettings(auto_migrate=False))
+    assert calls == []
+
+    monkeypatch.setenv("OCR_PLATFORM_AUTO_MIGRATE", "0")
+    init_db(engine, settings=ControlSettings(auto_migrate=True))
+    assert calls == ["status", "apply"]
 
 
 def test_sqlite_uses_busy_timeout_and_wal_for_control_plane_writes(tmp_path):
@@ -1320,4 +1474,6 @@ def test_database_import_does_not_configure_global_engine(tmp_path, monkeypatch)
 
     assert reloaded_database.engine is None
     assert reloaded_database.SessionLocal is None
+    assert reloaded_database._configured_database_url is None
+    assert reloaded_database._configured_database_source is None
     assert not (tmp_path / "ocr_platform.db").exists()

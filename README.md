@@ -235,13 +235,18 @@ Install `[platform]`, then for local development run:
 
 ```bash
 export OCR_PLATFORM_DATABASE_URL='postgresql+psycopg://user:password@db/ocr_platform'
+export OCR_PLATFORM_AUTO_MIGRATE=0
 ocr-platform-migrate plan
 ocr-platform-migrate apply
 ocr-platform-migrate verify
 ```
 
 See [database migration operations](docs/database-migrations.md). For SQLite-only
-local development these PostgreSQL migration commands are not required. Then run:
+local development these PostgreSQL migration commands are not required.
+PostgreSQL startup migration is disabled by default; run the three commands
+before restarting Control. If migrations are applied to an already-running
+Control, restart it or run `python -m ocr_platform.control.bootstrap` to seed
+missing default profiles explicitly. Then run:
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

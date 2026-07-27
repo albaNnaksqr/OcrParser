@@ -203,7 +203,9 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://ocr_platform:ocr_platform@127.0.0.1:5432/ocr_platform
       - name: Verify PostgreSQL 0020 ORM contract and rollback floor
-        run: python -m pytest -q tests/test_postgres_migration_bridge.py
+        run: >-
+          python -m pytest -q tests/test_postgres_migration_bridge.py
+          tests/test_control_bootstrap.py
         env:
           OCR_TEST_POSTGRES_URL: postgresql+psycopg://ocr_platform:ocr_platform@127.0.0.1:5432/ocr_platform
       - name: Verify fresh PostgreSQL bootstrap is migration-first
@@ -211,10 +213,15 @@ jobs:
           python - <<'PY'
           import os
           import psycopg
+          from fastapi.testclient import TestClient
           from sqlalchemy import text
 
           from ocr_platform.control import database
+          from ocr_platform.control.app import create_app
+          from ocr_platform.control.bootstrap import bootstrap_control_database
+          from ocr_platform.control.domains.common import DEFAULT_MODEL_PROFILES
           from ocr_platform.control.migration import MigrationRunner
+          from ocr_platform.control.settings import ControlSettings
 
           with psycopg.connect(
               "postgresql://ocr_platform:ocr_platform@127.0.0.1:5432/postgres",
@@ -222,28 +229,91 @@ jobs:
           ) as connection:
               connection.execute("CREATE DATABASE ocr_platform_fresh")
 
-          _, engine = database.create_session_factory(os.environ["FRESH_DATABASE_URL"])
+          database_url = os.environ["FRESH_DATABASE_URL"]
+          session_factory, engine = database.create_session_factory(database_url)
           original_create_all = database.Base.metadata.create_all
+          original_compat = database._ensure_compatible_schema
+          original_indexes = database._ensure_production_indexes
 
-          def assert_migrated_before_create_all(*, bind):
-              with bind.connect() as connection:
+          def fail_implicit_ddl(*args, **kwargs):
+              raise AssertionError("PostgreSQL startup must not use ORM or compatibility DDL")
+
+          database.Base.metadata.create_all = fail_implicit_ddl
+          database._ensure_compatible_schema = fail_implicit_ddl
+          database._ensure_production_indexes = fail_implicit_ddl
+          try:
+              startup_settings = ControlSettings(
+                  database_url=database_url,
+                  auto_migrate=False,
+              )
+              database.init_db(engine, settings=startup_settings)
+              with engine.connect() as connection:
+                  assert connection.execute(
+                      text("SELECT to_regclass('schema_migrations')")
+                  ).scalar_one() is None
+                  assert connection.execute(
+                      text("SELECT to_regclass('model_profile_certifications')")
+                  ).scalar_one() is None
+
+              app = create_app(
+                  session_factory=session_factory,
+                  settings=startup_settings,
+              )
+              with TestClient(app) as client:
+                  assert client.get("/healthz").status_code == 200
+                  not_ready = client.get("/readyz")
+                  assert not_ready.status_code == 503
+                  assert not_ready.json()["code"] == "control_database_not_ready"
+                  assert client.get("/api/servers").status_code == 503
+
+                  database.init_db(
+                      engine,
+                      settings=ControlSettings(
+                          database_url=database_url,
+                          auto_migrate=True,
+                          require_current_migrations=True,
+                      ),
+                  )
+                  assert client.get("/readyz").status_code == 200
+                  assert client.get("/api/servers").status_code == 200
+                  assert client.get("/api/model-profiles").json() == []
+                  bootstrap = bootstrap_control_database(
+                      session_factory,
+                      engine,
+                  )
+                  assert bootstrap.status == "complete"
+                  profiles = client.get("/api/model-profiles")
+                  assert profiles.status_code == 200
+                  assert {item["id"] for item in profiles.json()} == set(
+                      DEFAULT_MODEL_PROFILES
+                  )
+              with engine.connect() as connection:
                   assert connection.execute(
                       text("SELECT to_regclass('model_profile_certifications')")
                   ).scalar_one() == "model_profile_certifications"
                   assert connection.execute(
                       text(
-                          "SELECT COUNT(*) FROM schema_migrations "
-                          "WHERE version = '0020_model_profile_certification'"
+                          "SELECT COUNT(*) FROM information_schema.columns "
+                          "WHERE table_schema = current_schema() "
+                          "AND table_name = 'schema_migrations' "
+                          "AND column_name = 'checksum'"
                       )
                   ).scalar_one() == 1
-              original_create_all(bind=bind)
-
-          database.Base.metadata.create_all = assert_migrated_before_create_all
-          try:
-              database.init_db(engine)
-              assert MigrationRunner(engine).verify()["verified"] is True
+                  assert connection.execute(
+                      text(
+                          "SELECT COUNT(*) FROM schema_migrations "
+                          "WHERE version = '0020_model_profile_certification' "
+                          "AND checksum IS NOT NULL"
+                      )
+                  ).scalar_one() == 1
+              verification = MigrationRunner(engine).verify()
+              assert verification["verified"] is True
+              assert verification["checksum_mismatches"] == []
+              assert verification["missing_checksums"] == []
           finally:
               database.Base.metadata.create_all = original_create_all
+              database._ensure_compatible_schema = original_compat
+              database._ensure_production_indexes = original_indexes
               engine.dispose()
           PY
         env:

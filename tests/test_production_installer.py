@@ -286,6 +286,7 @@ def test_render_control_env_disables_api_auth_by_default():
     assert "OCR_PLATFORM_REQUIRE_API_TOKEN=0" in text
     assert "OCR_PLATFORM_API_TOKEN=" not in text
     assert "OCR_PLATFORM_DATABASE_URL=postgresql+psycopg://ocr_platform:secret@db:5432/ocr_platform" in text
+    assert "OCR_PLATFORM_AUTO_MIGRATE=0" in text
 
 
 def test_render_control_env_can_enable_api_auth():
@@ -340,6 +341,7 @@ def test_render_control_service_uses_service_identity():
     assert "Group=ocr-runtime" in text
     assert "EnvironmentFile=/etc/ocr-platform/control.env" in text
     assert "ExecStart=/opt/ocr-platform/ocrparser/.venv/bin/python -u -m ocr_platform.control" in text
+    assert "ExecStartPre=" not in text
 
 
 def test_build_control_plan_warns_when_auth_disabled_on_public_bind():
@@ -357,6 +359,24 @@ def test_build_control_plan_warns_when_auth_disabled_on_public_bind():
     assert plan.role == "control"
     assert "Control API auth is disabled" in "\n".join(plan.warnings)
     assert any(action.description == "write control env file" for action in plan.actions)
+
+
+def test_control_install_plan_runs_explicit_migration_workflow_in_order():
+    config = installer.ControlInstallConfig(
+        role="control",
+        service_user="ocr_user",
+        service_group="ocr-runtime",
+        database_url="postgresql+psycopg://ocr_platform:secret@db:5432/ocr_platform",
+    )
+
+    plan = installer.build_install_plan(config, validation_errors=[])
+    commands = [
+        action.command
+        for action in plan.actions
+        if action.command and "ocr-platform-migrate" in action.command[0]
+    ]
+
+    assert [command[1] for command in commands] == ["plan", "apply", "verify"]
 
 
 def test_production_roles_install_platform_extra():

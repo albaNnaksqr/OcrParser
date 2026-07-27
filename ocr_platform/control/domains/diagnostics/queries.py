@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import os
-
 from sqlalchemy.orm import Session
 
 from ocr_platform.legal import agpl_license_text, source_offer
 
 from ... import database
+from ...settings import ControlSettings
 from ..common import json_loads_object
 from ..workers.core import (
     effective_server_status,
@@ -15,21 +14,16 @@ from ..workers.core import (
 )
 
 
-API_TOKEN_ENV = "OCR_PLATFORM_API_TOKEN"
-REQUIRE_API_TOKEN_ENV = "OCR_PLATFORM_REQUIRE_API_TOKEN"
-REQUIRE_CURRENT_MIGRATIONS_ENV = "OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS"
-TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
-
-
-def env_truthy(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
-
-
-def api_auth_status() -> dict[str, bool]:
-    configured = bool(os.environ.get(API_TOKEN_ENV))
+def api_auth_status(
+    settings: ControlSettings | None = None,
+) -> dict[str, bool]:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
+    configured = bool(control_settings.api_token)
     return {
         "enabled": configured,
-        "required": env_truthy(REQUIRE_API_TOKEN_ENV),
+        "required": control_settings.require_api_token,
         "configured": configured,
     }
 
@@ -73,11 +67,37 @@ def worker_diagnostics(session: Session) -> dict[str, int]:
     }
 
 
-def system_diagnostics(session: Session, *, strict_production: bool = False) -> dict[str, object]:
+def system_diagnostics(
+    session: Session,
+    *,
+    strict_production: bool = False,
+    settings: ControlSettings | None = None,
+) -> dict[str, object]:
+    control_settings = (
+        settings if settings is not None else ControlSettings.from_environment()
+    )
     database_status = database.describe_database_status(session.get_bind())
-    auth = api_auth_status()
-    workers = worker_diagnostics(session)
+    auth = api_auth_status(control_settings)
     issues: list[dict[str, object]] = []
+    worker_status_available = True
+    try:
+        workers = worker_diagnostics(session)
+    except Exception:
+        worker_status_available = False
+        workers = {
+            "total": 0,
+            "ready": 0,
+            "stale": 0,
+            "with_shared_roots": 0,
+            "resource_constrained": 0,
+        }
+        issues.append(
+            {
+                "severity": "error",
+                "code": "worker_diagnostics_unavailable",
+                "message": "Worker diagnostics are unavailable.",
+            }
+        )
     if database_status.get("dialect") != "postgresql":
         issues.append({"severity": "warning", "code": "database_not_postgres", "message": "Production control deployments should use PostgreSQL."})
     if not database_status.get("schema_migrations_table_exists"):
@@ -90,16 +110,21 @@ def system_diagnostics(session: Session, *, strict_production: bool = False) -> 
         issues.append({"severity": "warning", "code": "database_migration_not_current", "message": "Control database migrations are not current.", "details": {"missing_migrations": database_status.get("missing_migrations") or []}})
     if not auth["enabled"]:
         issues.append({"severity": "warning", "code": "api_auth_disabled", "message": "Control API auth is disabled."})
-    if workers["total"] == 0:
+    if worker_status_available and workers["total"] == 0:
         issues.append({"severity": "warning", "code": "no_workers", "message": "No workers have registered with the control API."})
-    elif workers["ready"] == 0:
+    elif worker_status_available and workers["ready"] == 0:
         issues.append({"severity": "error", "code": "no_ready_workers", "message": "No ready workers are reporting writable shared roots."})
     if workers["resource_constrained"]:
         issues.append({"severity": "warning", "code": "resource_constrained_workers", "message": "One or more workers report resource pressure.", "details": {"count": workers["resource_constrained"]}})
     ok = not any(issue["severity"] == "error" for issue in issues)
-    if (strict_production or env_truthy("OCR_PLATFORM_REQUIRE_POSTGRES")) and database_status.get("dialect") != "postgresql":
+    if (
+        strict_production or control_settings.require_postgres
+    ) and database_status.get("dialect") != "postgresql":
         ok = False
-    if env_truthy(REQUIRE_CURRENT_MIGRATIONS_ENV) and not database_status.get("is_current"):
+    if (
+        control_settings.require_current_migrations
+        and not database_status.get("is_current")
+    ):
         ok = False
     return {"ok": ok, "service": "ocr-platform-control", "database": database_status, "api_auth": auth, "workers": workers, "issues": issues}
 

@@ -6,6 +6,7 @@ import pytest
 
 
 TOOL_PATH = Path(__file__).resolve().parents[1] / "tools" / "pg_claim_stress.py"
+CI_PATH = Path(__file__).resolve().parents[1] / ".github" / "workflows" / "ci.yml"
 
 
 def load_tool():
@@ -110,6 +111,8 @@ def test_pg_claim_stress_parser_exposes_production_knobs():
     assert args.workers == 5
     assert args.scan_units == 7
     assert args.scan_unit_shards == 2
+    assert args.apply_init_db is False
+    assert "checksum-verified PostgreSQL migrations" in parser.format_help()
 
     env_args = parser.parse_args(["--database-url-env-var", "OCR_SOAK_DATABASE_URL"])
     assert env_args.database_url is None
@@ -148,3 +151,71 @@ def test_pg_claim_stress_uses_run_scoped_worker_ids():
     assert 'f"pg-stress-worker-{worker_run_id}-{index}"' in source
     assert "session.query(Server).filter(Server.id.in_(server_ids)).delete" in source
     assert "if scan_unit_job_id is not None:\n                scan_unit_job =" in source
+
+
+def test_pg_claim_stress_explicitly_opts_in_to_startup_migrations(monkeypatch):
+    tool = load_tool()
+    engine = object()
+    captured = []
+
+    class SessionContext:
+        def __enter__(self):
+            return object()
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+    class StopAfterInit(RuntimeError):
+        pass
+
+    monkeypatch.setattr(
+        tool,
+        "create_session_factory",
+        lambda database_url: (SessionContext, engine),
+    )
+    monkeypatch.setattr(
+        tool,
+        "init_db",
+        lambda bind, *, settings: captured.append((bind, settings)),
+    )
+    monkeypatch.setattr(
+        tool,
+        "_seed_job",
+        lambda session, *, shard_count: (_ for _ in ()).throw(StopAfterInit()),
+    )
+
+    database_url = "postgresql+psycopg://u:p@db/ocr"
+    with pytest.raises(StopAfterInit):
+        tool.run_stress(
+            database_url=database_url,
+            shard_count=1,
+            worker_count=1,
+            apply_init_db=True,
+        )
+
+    assert len(captured) == 1
+    bind, settings = captured[0]
+    assert bind is engine
+    assert settings.database_url == database_url
+    assert settings.auto_migrate is True
+
+
+def test_ci_fresh_postgres_bootstrap_enforces_explicit_migration_policy():
+    source = CI_PATH.read_text(encoding="utf-8")
+    step = source.split(
+        "- name: Verify fresh PostgreSQL bootstrap is migration-first",
+        1,
+    )[1].split(
+        "- name: Verify concurrent shard and scan-unit claims",
+        1,
+    )[0]
+
+    assert "auto_migrate=False" in step
+    assert "to_regclass('schema_migrations')" in step
+    assert "to_regclass('model_profile_certifications')" in step
+    assert "database.Base.metadata.create_all = fail_implicit_ddl" in step
+    assert "database._ensure_compatible_schema = fail_implicit_ddl" in step
+    assert "database._ensure_production_indexes = fail_implicit_ddl" in step
+    assert "auto_migrate=True" in step
+    assert "require_current_migrations=True" in step
+    assert "MigrationRunner(engine).verify()" in step

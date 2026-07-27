@@ -20,9 +20,10 @@ import sys
 import tempfile
 import textwrap
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable, Iterator, Sequence, get_args
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 
@@ -34,9 +35,14 @@ if str(ROOT) not in sys.path:
 CONTRACT_ROOT = ROOT / "tests" / "fixtures" / "contracts"
 MIGRATION_FIXTURE = CONTRACT_ROOT / "control_migration_checksums.json"
 CONTROL_CONTRACT_ENV_VARS = (
+    "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS",
     "OCR_PLATFORM_API_TOKEN",
+    "OCR_PLATFORM_AUTO_MIGRATE",
     "OCR_PLATFORM_DATABASE_URL",
+    "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS",
     "OCR_PLATFORM_ENABLE_REMOTE_ADMIN",
+    "OCR_PLATFORM_HOST",
+    "OCR_PLATFORM_PORT",
     "OCR_PLATFORM_REQUIRE_API_TOKEN",
     "OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS",
     "OCR_PLATFORM_REQUIRE_POSTGRES",
@@ -566,10 +572,20 @@ def build_http_behavior_contract() -> dict[str, Any]:
                 )
             )
 
-            with _temporary_environment(
-                set_values={"OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS": "1"}
-            ):
-                response = client.get("/readyz")
+            from fastapi.testclient import TestClient
+
+            from ocr_platform.control.app import create_app
+
+            strict_settings = replace(
+                app.state.control_settings,
+                require_current_migrations=True,
+            )
+            strict_app = create_app(
+                session_factory=_session_factory,
+                settings=strict_settings,
+            )
+            with TestClient(strict_app) as strict_client:
+                response = strict_client.get("/readyz")
             observations.append(
                 _http_observation(
                     scenario="migration_readiness_not_current",
@@ -636,6 +652,43 @@ def build_http_behavior_contract() -> dict[str, Any]:
                     expected_status=200,
                 )
             )
+            from ocr_platform.control.readiness import DatabaseReadiness
+
+            with patch.object(
+                app.state.database_readiness_probe,
+                "check",
+                return_value=DatabaseReadiness(
+                    ready=False,
+                    reason="migrations_pending",
+                ),
+            ):
+                response = client.get(
+                    "/api/servers",
+                    headers={
+                        "Authorization": "Bearer contract-runtime-secret",
+                    },
+                )
+            observations.append(
+                _http_observation(
+                    scenario="authorized_database_not_ready",
+                    app=app,
+                    method="get",
+                    path_template="/api/servers",
+                    request_condition=(
+                        "Bearer token is valid and PostgreSQL migrations "
+                        "are pending"
+                    ),
+                    response=response,
+                    expected_status=503,
+                    branch_selector={
+                        "kind": "global_readiness_middleware",
+                    },
+                    note=(
+                        "Database readiness is a shared conditional transport "
+                        "guard for non-allowlisted API operations."
+                    ),
+                )
+            )
 
     observations = _bind_http_behavior_branches(observations)
     statuses = sorted({item["status"] for item in observations})
@@ -657,7 +710,7 @@ def build_http_behavior_contract() -> dict[str, Any]:
         "error_envelope": {
             "http_exception": {"detail": "string"},
             "validation": {"detail": "array[validation-error]"},
-            "application_error_code": None,
+            "application_error_code": "control_database_not_ready",
         },
         "covered_statuses": statuses,
         "scenarios": sorted(
@@ -865,8 +918,12 @@ def _scan_callable_status_branches(function: Any) -> list[dict[str, Any]]:
     )
 
 
-def _global_auth_branch() -> dict[str, Any]:
-    path = ROOT / "ocr_platform" / "control" / "app.py"
+def _global_guard_branch(
+    *,
+    status: int,
+    kind: str,
+) -> dict[str, Any]:
+    path = ROOT / "ocr_platform" / "control" / "readiness.py"
     tree = ast.parse(path.read_text(encoding="utf-8"))
     function = next(
         (
@@ -878,24 +935,39 @@ def _global_auth_branch() -> dict[str, Any]:
         None,
     )
     if function is None:
-        raise RuntimeError("cannot locate api_token_auth middleware")
+        raise RuntimeError("cannot locate control request guard middleware")
     visitor = _StatusBranchVisitor(
         source_path=path.relative_to(ROOT).as_posix(),
         source_line_offset=0,
-        call_chain=["ocr_platform.control.app.api_token_auth"],
+        call_chain=["ocr_platform.control.readiness.api_token_auth"],
         service_function=False,
     )
     visitor.visit(function)
     branches = [
-        branch for branch in visitor.branches if branch["status"] == 401
+        branch for branch in visitor.branches if branch["status"] == status
     ]
     if len(branches) != 1:
         raise RuntimeError(
-            f"expected one API auth 401 branch, found {len(branches)}"
+            f"expected one control guard HTTP {status} branch, "
+            f"found {len(branches)}"
         )
     branch = branches[0]
-    branch["kind"] = "global_api_token_middleware"
+    branch["kind"] = kind
     return branch
+
+
+def _global_auth_branch() -> dict[str, Any]:
+    return _global_guard_branch(
+        status=401,
+        kind="global_api_token_middleware",
+    )
+
+
+def _global_readiness_branch() -> dict[str, Any]:
+    return _global_guard_branch(
+        status=503,
+        kind="global_readiness_middleware",
+    )
 
 
 def _branch_identity(branch: dict[str, Any]) -> dict[str, Any]:
@@ -1083,6 +1155,7 @@ def _bind_http_behavior_branches(
     }
 
     auth_identity = _branch_identity(_global_auth_branch())
+    readiness_identity = _branch_identity(_global_readiness_branch())
     bound = copy.deepcopy(observations)
     for observation in bound:
         selector = observation.pop("_branch_selector", None)
@@ -1098,6 +1171,16 @@ def _bind_http_behavior_branches(
             observation["shared_branch_authority"] = {
                 "mechanism": "global_api_token_middleware",
                 "authority": auth_identity,
+            }
+            continue
+        if (
+            status == 503
+            and selector is not None
+            and selector.get("kind") == "global_readiness_middleware"
+        ):
+            observation["shared_branch_authority"] = {
+                "mechanism": "global_readiness_middleware",
+                "authority": readiness_identity,
             }
             continue
         if status == 422:
@@ -1156,6 +1239,25 @@ def _behavior_reference(
             for scenario in scenarios
             if scenario.get("shared_branch_authority", {}).get("mechanism")
             == "global_api_token_middleware"
+        ]
+        if not shared:
+            return None
+        return {
+            "scenario": shared[0]["scenario"],
+            "fixture": "control_http_behavior.json",
+            "coverage": "shared middleware branch",
+            "shared_authority": shared[0]["shared_branch_authority"],
+            "branch_id": branch["branch_id"],
+            "source_evidence": branch["evidence"],
+            "exception_types": branch["exception_types"],
+        }
+    if kind == "global_readiness_middleware":
+        shared = [
+            scenario
+            for scenarios in scenarios_by_operation_status.values()
+            for scenario in scenarios
+            if scenario.get("shared_branch_authority", {}).get("mechanism")
+            == "global_readiness_middleware"
         ]
         if not shared:
             return None
@@ -1325,6 +1427,7 @@ def validate_http_operation_matrix(
                 if reference.get("coverage", "").startswith("shared"):
                     if branch["kind"] not in {
                         "global_api_token_middleware",
+                        "global_readiness_middleware",
                         "framework_request_validation",
                     }:
                         raise ValueError(
@@ -1410,6 +1513,7 @@ def build_http_operation_matrix() -> dict[str, Any]:
         ).append(scenario)
 
     auth_branch = _global_auth_branch()
+    readiness_branch = _global_readiness_branch()
     operations: list[dict[str, Any]] = []
     branch_count = 0
     behavior_count = 0
@@ -1436,6 +1540,11 @@ def build_http_operation_matrix() -> dict[str, Any]:
             branches = _scan_callable_status_branches(route.endpoint)
             if path.startswith("/api/"):
                 branches.append(copy.deepcopy(auth_branch))
+            if path.startswith("/api/") and path not in {
+                "/api/system/database",
+                "/api/system/diagnostics",
+            }:
+                branches.append(copy.deepcopy(readiness_branch))
             if any(item["status"] == 422 for item in declared_statuses):
                 branches.append(
                     {

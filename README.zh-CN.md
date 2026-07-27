@@ -218,13 +218,17 @@ asyncio.run(main())
 
 ```bash
 export OCR_PLATFORM_DATABASE_URL='postgresql+psycopg://user:password@db/ocr_platform'
+export OCR_PLATFORM_AUTO_MIGRATE=0
 ocr-platform-migrate plan
 ocr-platform-migrate apply
 ocr-platform-migrate verify
 ```
 
 详细说明见[数据库迁移操作](docs/database-migrations.zh-CN.md)。仅使用 SQLite 的本地
-开发无需执行上述 PostgreSQL migration 命令。然后启动：
+开发无需执行上述 PostgreSQL migration 命令。PostgreSQL 默认不在 startup 自动
+迁移；请在重启 Control 前执行上述三条命令。若对运行中的 Control 从外部完成
+migration，请重启 Control，或执行 `python -m ocr_platform.control.bootstrap`
+显式补齐缺失的默认 Profile。然后启动：
 
 ```bash
 OCR_PLATFORM_PORT=8080 \

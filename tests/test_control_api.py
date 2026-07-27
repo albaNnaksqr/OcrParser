@@ -533,8 +533,11 @@ def test_model_profile_requires_clearing_existing_saved_key_when_db_profile_keys
     assert saved.status_code == 200
     monkeypatch.delenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", raising=False)
     monkeypatch.setenv("OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS", "1")
+    disabled_client = TestClient(
+        create_app(session_factory=session_factory)
+    )
 
-    blocked = client.put(
+    blocked = disabled_client.put(
         "/api/model-profiles/dotsocr_15",
         json={
             "label": "DotsOCR production",

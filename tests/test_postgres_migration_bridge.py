@@ -9,9 +9,10 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ocr_platform.control.database import create_session_factory
+from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.migration import MigrationCatalog, MigrationRunner
 from ocr_platform.control.models import ModelProfile, ModelProfileCertification
+from ocr_platform.control.settings import ControlSettings
 
 
 POSTGRES_URL = os.environ.get("OCR_TEST_POSTGRES_URL")
@@ -104,5 +105,25 @@ def test_postgres_0019_catalog_rejects_0020_as_unexpected():
         assert older_status["unexpected_migrations"] == [
             "0020_model_profile_certification"
         ]
+    finally:
+        engine.dispose()
+
+
+def test_postgres_startup_migration_policy_accepts_explicit_opt_in():
+    _, engine = create_session_factory(POSTGRES_URL)
+    settings = ControlSettings(
+        database_url=POSTGRES_URL,
+        auto_migrate=True,
+        require_current_migrations=True,
+    )
+    try:
+        before = MigrationRunner(engine).status()
+        assert before["is_current"] is True
+
+        init_db(engine, settings=settings)
+
+        after = MigrationRunner(engine).verify()
+        assert after["verified"] is True
+        assert after["applied_migrations"] == before["applied_migrations"]
     finally:
         engine.dispose()
