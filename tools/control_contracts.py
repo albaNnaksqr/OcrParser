@@ -398,6 +398,21 @@ def build_http_behavior_contract() -> dict[str, Any]:
                 )
             )
 
+            response = client.get("/api/system/diagnostics")
+            observations.append(
+                _http_observation(
+                    scenario="system_diagnostics_success",
+                    app=app,
+                    method="get",
+                    path_template="/api/system/diagnostics",
+                    request_condition=(
+                        "database is readable and no operational evidence exists"
+                    ),
+                    response=response,
+                    expected_status=200,
+                )
+            )
+
             response = client.get("/api/system/metrics")
             observations.append(
                 _http_observation(

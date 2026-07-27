@@ -26,6 +26,22 @@ from ocr_platform.control.models import (
 from ocr_platform.control.settings import ControlSettings
 
 
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("sqlite://", True),
+        ("sqlite:///:memory:", True),
+        ("sqlite+pysqlite://", True),
+        ("sqlite+pysqlite:///:memory:", True),
+        ("sqlite:///control.db", False),
+        ("postgresql://user:password@localhost/control", False),
+        ("not a database url", False),
+    ],
+)
+def test_sqlite_memory_url_detection(url, expected):
+    assert database._is_sqlite_memory_url(url) is expected
+
+
 def test_init_db_creates_core_tables(tmp_path):
     db_path = tmp_path / "control.db"
     session_factory, engine = create_session_factory(f"sqlite:///{db_path}")

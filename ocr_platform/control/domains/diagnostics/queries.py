@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Callable
+
 from sqlalchemy.orm import Session
 
 from ocr_platform.legal import agpl_license_text, source_offer
@@ -7,6 +10,7 @@ from ocr_platform.legal import agpl_license_text, source_offer
 from ... import database
 from ...settings import ControlSettings
 from ..common import json_loads_object
+from . import operations
 from ..workers.core import (
     effective_server_status,
     is_server_stale,
@@ -129,4 +133,68 @@ def system_diagnostics(
     return {"ok": ok, "service": "ocr-platform-control", "database": database_status, "api_auth": auth, "workers": workers, "issues": issues}
 
 
-__all__ = ["agpl_license_text", "source_offer", "system_diagnostics"]
+def system_operational_diagnostics(
+    session: Session,
+    *,
+    strict_production: bool = False,
+    settings: ControlSettings | None = None,
+    now: datetime | None = None,
+) -> dict[str, object]:
+    payload = system_diagnostics(
+        session,
+        strict_production=strict_production,
+        settings=settings,
+    )
+
+    def run_section(
+        builder: Callable[[Session], dict[str, object]],
+    ) -> dict[str, object]:
+        bind = session.get_bind()
+        if bind.dialect.name != "postgresql":
+            return builder(session)
+        with Session(bind=bind, autoflush=False) as read_session:
+            return builder(read_session)
+
+    try:
+        capacity = run_section(
+            lambda read_session: operations.capacity_diagnostics(
+                read_session, now=now
+            )
+        )
+    except Exception:
+        capacity = operations.unavailable_section("capacity")
+    try:
+        audit = run_section(
+            lambda read_session: operations.audit_diagnostics(
+                read_session, now=now
+            )
+        )
+    except Exception:
+        audit = operations.unavailable_section("audit")
+    database_status = payload["database"]
+    try:
+        alerts = run_section(
+            lambda read_session: operations.alerts_diagnostics(
+                read_session,
+                database_status=database_status,
+                capacity=capacity,
+                audit=audit,
+                now=now,
+            )
+        )
+    except Exception:
+        alerts = operations.unavailable_alerts(database_status)
+    return {
+        **payload,
+        "capacity": capacity,
+        "audit": audit,
+        "alerts": alerts,
+    }
+
+
+__all__ = [
+    "agpl_license_text",
+    "source_offer",
+    "system_diagnostics",
+    "system_operational_diagnostics",
+]

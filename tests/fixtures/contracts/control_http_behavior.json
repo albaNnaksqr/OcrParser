@@ -504,7 +504,7 @@
         "call_chain": [
           "ocr_platform.control.domains.diagnostics.router.api_readyz"
         ],
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:63",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:68",
         "exception_types": [],
         "kind": "explicit_response_status",
         "status": 503
@@ -915,6 +915,514 @@
     },
     {
       "body_shape": {
+        "alerts": {
+          "active": {
+            "array_items": [
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              }
+            ],
+            "length": 1
+          },
+          "available": "boolean",
+          "templates": {
+            "array_items": [
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              },
+              {
+                "code": "string",
+                "count": "integer",
+                "recommendation_code": "string",
+                "severity": "string"
+              }
+            ],
+            "length": 14
+          }
+        },
+        "api_auth": {
+          "configured": "boolean",
+          "enabled": "boolean",
+          "required": "boolean"
+        },
+        "audit": {
+          "artifacts": {
+            "completed_jobs": "integer",
+            "declared_records": "integer",
+            "missing_declared_records": "integer",
+            "status_counts": {}
+          },
+          "available": "boolean",
+          "execution": {
+            "evidence_truncated": "boolean",
+            "fallback_category_counts": {},
+            "stage_failure_category_counts": {},
+            "stage_status_counts": {}
+          },
+          "manifest_integrity": {
+            "reports_missing": "integer",
+            "reports_present": "integer",
+            "status_counts": {}
+          },
+          "output_audit": {
+            "evidence_available": "boolean",
+            "status": "string"
+          },
+          "shard_attempts": {
+            "failure_category_counts": {},
+            "status_counts": {}
+          }
+        },
+        "capacity": {
+          "available": "boolean",
+          "available_worker_slots": "integer",
+          "confidence": "string",
+          "estimated_drain_seconds": "null",
+          "observed_pages_per_hour": "number",
+          "pending_shard_queue_depth": "integer",
+          "ready_worker_slots": "integer",
+          "recommendation_codes": {
+            "array_items": [],
+            "length": 0
+          },
+          "running_shards": "integer",
+          "sample_pages": "integer",
+          "stale_leases": "integer"
+        },
+        "database": {
+          "applied_migrations": {
+            "array_items": [],
+            "length": 0
+          },
+          "checksum_mismatches": {
+            "array_items": [],
+            "length": 0
+          },
+          "dialect": "string",
+          "is_current": "boolean",
+          "known_migrations": {
+            "array_items": [
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 20
+          },
+          "latest_applied_migration": "null",
+          "migration_checksum_column_exists": "boolean",
+          "missing_checksums": {
+            "array_items": [],
+            "length": 0
+          },
+          "missing_migrations": {
+            "array_items": [
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 20
+          },
+          "schema_migrations_table_exists": "boolean",
+          "unexpected_migrations": {
+            "array_items": [],
+            "length": 0
+          }
+        },
+        "issues": {
+          "array_items": [
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            }
+          ],
+          "length": 4
+        },
+        "ok": "boolean",
+        "service": "string",
+        "workers": {
+          "ready": "integer",
+          "resource_constrained": "integer",
+          "stale": "integer",
+          "total": "integer",
+          "with_shared_roots": "integer"
+        }
+      },
+      "error_code": null,
+      "issue_codes": [
+        "api_auth_disabled",
+        "database_migrations_missing",
+        "database_not_postgres",
+        "no_workers"
+      ],
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_system_diagnostics_api_system_diagnostics_get",
+      "path": "/api/system/diagnostics",
+      "request_condition": "database is readable and no operational evidence exists",
+      "scenario": "system_diagnostics_success",
+      "stable_body": {
+        "alerts": {
+          "active": [
+            {
+              "code": "migration_drift",
+              "count": 20,
+              "recommendation_code": "apply_pending_migrations",
+              "severity": "error"
+            }
+          ],
+          "available": true,
+          "templates": [
+            {
+              "code": "artifact_records_missing",
+              "count": 0,
+              "recommendation_code": "run_output_audit",
+              "severity": "warning"
+            },
+            {
+              "code": "event_spool_backlog",
+              "count": 0,
+              "recommendation_code": "replay_spool_backlog",
+              "severity": "warning"
+            },
+            {
+              "code": "fallback_usage",
+              "count": 0,
+              "recommendation_code": "review_fallback_usage",
+              "severity": "warning"
+            },
+            {
+              "code": "log_spool_backlog",
+              "count": 0,
+              "recommendation_code": "replay_spool_backlog",
+              "severity": "warning"
+            },
+            {
+              "code": "manifest_integrity_attention",
+              "count": 0,
+              "recommendation_code": "rerun_manifest_integrity",
+              "severity": "warning"
+            },
+            {
+              "code": "migration_drift",
+              "count": 0,
+              "recommendation_code": "apply_pending_migrations",
+              "severity": "error"
+            },
+            {
+              "code": "output_audit_not_reported",
+              "count": 0,
+              "recommendation_code": "run_output_audit",
+              "severity": "warning"
+            },
+            {
+              "code": "shard_update_spool_backlog",
+              "count": 0,
+              "recommendation_code": "replay_spool_backlog",
+              "severity": "warning"
+            },
+            {
+              "code": "stage_failures",
+              "count": 0,
+              "recommendation_code": "investigate_stage_failures",
+              "severity": "error"
+            },
+            {
+              "code": "stale_shard_lease",
+              "count": 0,
+              "recommendation_code": "reclaim_stale_leases",
+              "severity": "warning"
+            },
+            {
+              "code": "stale_worker_heartbeat",
+              "count": 0,
+              "recommendation_code": "restore_worker_heartbeat",
+              "severity": "warning"
+            },
+            {
+              "code": "throughput_samples_insufficient",
+              "count": 0,
+              "recommendation_code": "collect_more_throughput_samples",
+              "severity": "warning"
+            },
+            {
+              "code": "worker_capacity_exhausted",
+              "count": 0,
+              "recommendation_code": "add_worker_capacity",
+              "severity": "warning"
+            },
+            {
+              "code": "worker_resource_pressure",
+              "count": 0,
+              "recommendation_code": "relieve_worker_resource_pressure",
+              "severity": "warning"
+            }
+          ]
+        },
+        "api_auth": {
+          "configured": false,
+          "enabled": false,
+          "required": false
+        },
+        "audit": {
+          "artifacts": {
+            "completed_jobs": 0,
+            "declared_records": 0,
+            "missing_declared_records": 0,
+            "status_counts": {}
+          },
+          "available": true,
+          "execution": {
+            "evidence_truncated": false,
+            "fallback_category_counts": {},
+            "stage_failure_category_counts": {},
+            "stage_status_counts": {}
+          },
+          "manifest_integrity": {
+            "reports_missing": 0,
+            "reports_present": 0,
+            "status_counts": {}
+          },
+          "output_audit": {
+            "evidence_available": false,
+            "status": "not_reported"
+          },
+          "shard_attempts": {
+            "failure_category_counts": {},
+            "status_counts": {}
+          }
+        },
+        "capacity": {
+          "available": true,
+          "available_worker_slots": 0,
+          "confidence": "none",
+          "estimated_drain_seconds": null,
+          "observed_pages_per_hour": 0.0,
+          "pending_shard_queue_depth": 0,
+          "ready_worker_slots": 0,
+          "recommendation_codes": [],
+          "running_shards": 0,
+          "sample_pages": 0,
+          "stale_leases": 0
+        },
+        "database": {
+          "applied_migrations": [],
+          "checksum_mismatches": [],
+          "dialect": "sqlite",
+          "is_current": false,
+          "known_migrations": [
+            "0001_control_schema",
+            "0002_enforce_work_shard_job_index",
+            "0003_job_counter_failed_file_samples",
+            "0004_unique_shard_attempt_number",
+            "0005_job_file_failure_category",
+            "0006_job_log_pruning_index",
+            "0007_shard_attempt_execution_control",
+            "0008_detail_pruning_indexes",
+            "0009_compatibility_schema_columns",
+            "0010_shard_inspector_filter_indexes",
+            "0011_unique_scan_unit_path",
+            "0012_jobs_default_list_index",
+            "0013_job_counter_failure_category_counts",
+            "0014_job_event_failure_category",
+            "0015_job_counter_recent_error_samples",
+            "0016_job_file_upsert_path_index",
+            "0017_worker_manifest_integrity",
+            "0018_widen_input_mode_columns",
+            "0019_schema_migration_checksums",
+            "0020_model_profile_certification"
+          ],
+          "latest_applied_migration": null,
+          "migration_checksum_column_exists": false,
+          "missing_checksums": [],
+          "missing_migrations": [
+            "0001_control_schema",
+            "0002_enforce_work_shard_job_index",
+            "0003_job_counter_failed_file_samples",
+            "0004_unique_shard_attempt_number",
+            "0005_job_file_failure_category",
+            "0006_job_log_pruning_index",
+            "0007_shard_attempt_execution_control",
+            "0008_detail_pruning_indexes",
+            "0009_compatibility_schema_columns",
+            "0010_shard_inspector_filter_indexes",
+            "0011_unique_scan_unit_path",
+            "0012_jobs_default_list_index",
+            "0013_job_counter_failure_category_counts",
+            "0014_job_event_failure_category",
+            "0015_job_counter_recent_error_samples",
+            "0016_job_file_upsert_path_index",
+            "0017_worker_manifest_integrity",
+            "0018_widen_input_mode_columns",
+            "0019_schema_migration_checksums",
+            "0020_model_profile_certification"
+          ],
+          "schema_migrations_table_exists": false,
+          "unexpected_migrations": []
+        },
+        "issues": [
+          {
+            "code": "database_not_postgres",
+            "message": "Production control deployments should use PostgreSQL.",
+            "severity": "warning"
+          },
+          {
+            "code": "database_migrations_missing",
+            "message": "schema_migrations table is missing.",
+            "severity": "warning"
+          },
+          {
+            "code": "api_auth_disabled",
+            "message": "Control API auth is disabled.",
+            "severity": "warning"
+          },
+          {
+            "code": "no_workers",
+            "message": "No workers have registered with the control API.",
+            "severity": "warning"
+          }
+        ],
+        "ok": false,
+        "service": "ocr-platform-control",
+        "workers": {
+          "ready": 0,
+          "resource_constrained": 0,
+          "stale": 0,
+          "total": 0,
+          "with_shared_roots": 0
+        }
+      },
+      "status": 200
+    },
+    {
+      "body_shape": {
         "detail": {
           "code": "string",
           "commands": {
@@ -933,7 +1441,7 @@
         "call_chain": [
           "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
         ],
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:97",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:102",
         "exception_types": [
           "Exception"
         ],

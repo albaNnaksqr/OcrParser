@@ -1323,13 +1323,13 @@
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_database_status"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:70",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:75",
           "exception_types": [
             "Exception"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/diagnostics/router.py:70"
+              "ocr_platform/control/domains/diagnostics/router.py:75"
             ],
             "reason": "This distinct status branch is source-reachable but is not executed by the representative behavior set for api_database_status_api_system_database_get."
           },
@@ -4216,13 +4216,13 @@
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_readyz"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:55",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:60",
           "exception_types": [
             "Exception"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/diagnostics/router.py:55"
+              "ocr_platform/control/domains/diagnostics/router.py:60"
             ],
             "reason": "This defensive 503 requires system_diagnostics itself to raise an unexpected exception; the ordinary non-ready 503 branch is executed separately."
           },
@@ -4238,20 +4238,20 @@
               "call_chain": [
                 "ocr_platform.control.domains.diagnostics.router.api_readyz"
               ],
-              "evidence": "ocr_platform/control/domains/diagnostics/router.py:63",
+              "evidence": "ocr_platform/control/domains/diagnostics/router.py:68",
               "exception_types": [],
               "kind": "explicit_response_status",
               "status": 503
             },
             "fixture": "control_http_behavior.json",
             "scenario": "migration_readiness_not_current",
-            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:63"
+            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:68"
           },
           "branch_id": "api_readyz_readyz_get:503:02",
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_readyz"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:63",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:68",
           "exception_types": [],
           "exemption": null,
           "kind": "explicit_response_status",
@@ -6654,7 +6654,9 @@
       ]
     },
     {
-      "behavior_scenario_refs": [],
+      "behavior_scenario_refs": [
+        "system_diagnostics_success"
+      ],
       "declared_statuses": [
         {
           "description": "Successful Response",
@@ -6700,13 +6702,13 @@
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_system_diagnostics"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:84",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:89",
           "exception_types": [
             "Exception"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/diagnostics/router.py:84"
+              "ocr_platform/control/domains/diagnostics/router.py:89"
             ],
             "reason": "This distinct status branch is source-reachable but is not executed by the representative behavior set for api_system_diagnostics_api_system_diagnostics_get."
           },
@@ -6776,7 +6778,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
               ],
-              "evidence": "ocr_platform/control/domains/diagnostics/router.py:97",
+              "evidence": "ocr_platform/control/domains/diagnostics/router.py:102",
               "exception_types": [
                 "Exception"
               ],
@@ -6785,13 +6787,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "system_metrics_database_unavailable",
-            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:97"
+            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:102"
           },
           "branch_id": "api_system_metrics_api_system_metrics_get:503:02",
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:97",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:102",
           "exception_types": [
             "Exception"
           ],
@@ -7555,10 +7557,10 @@
       {
         "call_chain": [
           "ocr_platform/control/domains/diagnostics/router.py:create_router",
-          "ocr_platform/control/domains/diagnostics/router.py:api_readyz"
+          "ocr_platform/control/domains/diagnostics/router.py:api_system_metrics"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:55",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:102",
         "status": 503
       },
       {
@@ -7567,7 +7569,16 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_readyz"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:63",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:60",
+        "status": 503
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/domains/diagnostics/router.py:create_router",
+          "ocr_platform/control/domains/diagnostics/router.py:api_readyz"
+        ],
+        "constructor": "JSONResponse",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:68",
         "status": 503
       },
       {
@@ -7576,7 +7587,7 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_database_status"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:70",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:75",
         "status": 503
       },
       {
@@ -7585,16 +7596,7 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_system_diagnostics"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:84",
-        "status": 503
-      },
-      {
-        "call_chain": [
-          "ocr_platform/control/domains/diagnostics/router.py:create_router",
-          "ocr_platform/control/domains/diagnostics/router.py:api_system_metrics"
-        ],
-        "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:97",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:89",
         "status": 503
       },
       {
@@ -7609,7 +7611,7 @@
     ],
     "forbidden_dependencies": [],
     "scan_root": "ocr_platform/control",
-    "scanned_file_count": 60,
+    "scanned_file_count": 61,
     "unresolved_status_calls": []
   }
 }

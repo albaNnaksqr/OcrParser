@@ -11,8 +11,13 @@ from ...readiness import database_status_unavailable_body
 from ...redaction import diagnostics_unavailable_message
 from ...schemas import DatabaseStatusResponse
 from ...settings import ControlSettings
-from .queries import agpl_license_text, source_offer, system_diagnostics
 from .metrics import PROMETHEUS_CONTENT_TYPE, render_control_metrics
+from .queries import (
+    agpl_license_text,
+    source_offer,
+    system_diagnostics,
+    system_operational_diagnostics,
+)
 
 
 GetDb = Callable[[], Generator[Session, None, None]]
@@ -75,7 +80,7 @@ def create_router(
     @router.get("/api/system/diagnostics")
     def api_system_diagnostics(session: Session = Depends(get_db)):
         try:
-            return system_diagnostics(
+            return system_operational_diagnostics(
                 session,
                 strict_production=True,
                 settings=control_settings,

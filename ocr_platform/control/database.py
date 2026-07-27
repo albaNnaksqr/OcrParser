@@ -7,6 +7,7 @@ from sqlalchemy import BigInteger, Engine, Integer, create_engine, event, inspec
 from sqlalchemy.engine import URL, make_url
 from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from .migration import MIGRATIONS_DIR, MigrationCatalog, MigrationRunner, split_sql_script
 from .models import Base
@@ -145,6 +146,17 @@ def _is_postgresql_url(url: str) -> bool:
     return url.startswith("postgresql://") or url.startswith("postgresql+")
 
 
+def _is_sqlite_memory_url(url: str) -> bool:
+    try:
+        parsed = make_url(url)
+    except (ArgumentError, TypeError, ValueError):
+        return False
+    return (
+        parsed.get_backend_name() == "sqlite"
+        and parsed.database in {None, "", ":memory:"}
+    )
+
+
 def validate_database_url_for_mode(
     url: str,
     *,
@@ -181,8 +193,14 @@ def create_session_factory(
         if url.startswith("sqlite")
         else {}
     )
+    engine_options: dict[str, object] = {
+        "connect_args": connect_args,
+        "future": True,
+    }
+    if _is_sqlite_memory_url(url):
+        engine_options["poolclass"] = StaticPool
     try:
-        db_engine = create_engine(url, connect_args=connect_args, future=True)
+        db_engine = create_engine(url, **engine_options)
     except (ArgumentError, TypeError, ValueError):
         safe_url = redact_database_url(url)
         raise RuntimeError(
