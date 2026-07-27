@@ -20,8 +20,9 @@ import sys
 import tempfile
 import textwrap
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, get_args
+from typing import Any, Iterable, Iterator, Sequence, get_args
 
 from sqlalchemy import create_engine
 
@@ -124,6 +125,102 @@ def _test_client():
 
 def _operation_id(app: Any, method: str, path: str) -> str:
     return str(app.openapi()["paths"][path][method.lower()]["operationId"])
+
+
+@dataclass(frozen=True)
+class _ApiRouteView:
+    route: Any
+    endpoint: Any
+    path: str
+    methods: frozenset[str]
+    unique_id: str
+    include_in_schema: bool
+
+
+def _api_route_view(candidate: Any) -> _ApiRouteView | None:
+    from fastapi.routing import APIRoute
+
+    route = getattr(
+        candidate,
+        "route",
+        getattr(candidate, "original_route", candidate),
+    )
+    if not isinstance(route, APIRoute):
+        return None
+    return _ApiRouteView(
+        route=route,
+        endpoint=getattr(candidate, "endpoint", route.endpoint),
+        path=str(getattr(candidate, "path", route.path)),
+        methods=frozenset(
+            getattr(candidate, "methods", route.methods) or ()
+        ),
+        unique_id=str(
+            getattr(candidate, "unique_id", route.unique_id)
+        ),
+        include_in_schema=bool(
+            getattr(
+                candidate,
+                "include_in_schema",
+                route.include_in_schema,
+            )
+        ),
+    )
+
+
+def _iter_api_routes_fallback(
+    routes: Iterable[Any],
+    *,
+    _seen: set[int] | None = None,
+) -> Iterator[_ApiRouteView]:
+    """Recursively expand legacy or duck-typed nested route collections."""
+
+    seen = _seen if _seen is not None else set()
+    routes_id = id(routes)
+    if routes_id in seen:
+        return
+    seen.add(routes_id)
+
+    for candidate in routes:
+        route = _api_route_view(candidate)
+        if route is not None:
+            yield route
+            continue
+        effective_contexts = getattr(
+            candidate,
+            "effective_route_contexts",
+            None,
+        )
+        if callable(effective_contexts):
+            yielded_context = False
+            for context in effective_contexts():
+                route = _api_route_view(context)
+                if route is not None:
+                    yielded_context = True
+                    yield route
+            if yielded_context:
+                continue
+        nested_routes = getattr(candidate, "routes", None)
+        if nested_routes is not None:
+            yield from _iter_api_routes_fallback(
+                nested_routes,
+                _seen=seen,
+            )
+
+
+def _iter_api_routes(routes: Sequence[Any]) -> Iterator[_ApiRouteView]:
+    """Yield effective API routes across FastAPI's old and new layouts."""
+
+    import fastapi.routing
+
+    iterator = getattr(fastapi.routing, "iter_route_contexts", None)
+    if iterator is None:
+        yield from _iter_api_routes_fallback(routes)
+        return
+
+    for context in iterator(routes):
+        route = _api_route_view(context)
+        if route is not None:
+            yield route
 
 
 def _shape(value: Any) -> Any:
@@ -968,27 +1065,22 @@ def _bind_http_behavior_branches(
 ) -> list[dict[str, Any]]:
     """Bind captured non-2xx behavior to a unique source branch."""
 
-    from fastapi.routing import APIRoute
-
     from ocr_platform.control.app import create_app
 
     with _temporary_environment(remove=CONTROL_CONTRACT_ENV_VARS):
         app = create_app()
         openapi = app.openapi()
-    endpoints_by_operation: dict[str, Any] = {}
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        for method in route.methods:
-            operation = (
-                openapi.get("paths", {})
-                .get(route.path, {})
-                .get(method.lower())
-            )
-            if operation is not None:
-                endpoints_by_operation[str(operation["operationId"])] = (
-                    route.endpoint
-                )
+    operation_ids = {
+        str(operation["operationId"])
+        for path_item in openapi.get("paths", {}).values()
+        for method, operation in path_item.items()
+        if method in {"get", "post", "put", "patch", "delete"}
+    }
+    endpoints_by_operation = {
+        route.unique_id: route.endpoint
+        for route in _iter_api_routes(app.routes)
+        if route.include_in_schema and route.unique_id in operation_ids
+    }
 
     auth_identity = _branch_identity(_global_auth_branch())
     bound = copy.deepcopy(observations)
@@ -1296,17 +1388,13 @@ def validate_http_operation_matrix(
 def build_http_operation_matrix() -> dict[str, Any]:
     """Inventory every canonical operation and every reachable status branch."""
 
-    from fastapi.routing import APIRoute
-
     from ocr_platform.control.app import create_app
 
     with _temporary_environment(remove=CONTROL_CONTRACT_ENV_VARS):
         app = create_app()
         openapi = app.openapi()
         behavior = build_http_behavior_contract()
-    routes = [
-        route for route in app.routes if isinstance(route, APIRoute)
-    ]
+    routes = list(_iter_api_routes(app.routes))
     route_index = {
         (route.path, method.lower()): route
         for route in routes

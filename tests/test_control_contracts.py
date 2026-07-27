@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -93,6 +94,100 @@ def test_complete_canonical_openapi_baseline_is_locked() -> None:
     assert hashlib.sha256(path.read_bytes()).hexdigest() == (
         "2217e4551be81570540c406d501a2c1d23aba15fca31f9d933c6434abc0b76ad"
     )
+
+
+def test_api_route_traversal_covers_every_canonical_operation() -> None:
+    from ocr_platform.control.app import create_app
+
+    app = create_app()
+    openapi = app.openapi()
+    expected = {
+        (path, method)
+        for path, path_item in openapi["paths"].items()
+        for method in path_item
+        if method in {"get", "post", "put", "patch", "delete"}
+    }
+    expected_ids = {
+        path_item[method]["operationId"]
+        for path_item in openapi["paths"].values()
+        for method in path_item
+        if method in {"get", "post", "put", "patch", "delete"}
+    }
+    routes = list(control_contracts._iter_api_routes(app.routes))
+    actual = {
+        (route.path, method.lower())
+        for route in routes
+        for method in route.methods
+    }
+    actual_ids = {
+        route.unique_id
+        for route in routes
+        if route.include_in_schema
+    }
+
+    assert len(openapi["paths"]) == 47
+    assert len(expected) == 49
+    assert expected <= actual
+    assert expected_ids == actual_ids
+    assert "api_list_jobs_api_jobs_get" in actual_ids
+
+
+def test_api_route_traversal_fallback_handles_nested_cycles() -> None:
+    from fastapi import APIRouter
+
+    router = APIRouter()
+
+    @router.get("/nested")
+    def nested_endpoint() -> dict[str, bool]:
+        return {"ok": True}
+
+    nested = SimpleNamespace(routes=list(router.routes))
+    root = SimpleNamespace(routes=[nested])
+    root.routes.append(root)
+
+    routes = list(
+        control_contracts._iter_api_routes_fallback([root])
+    )
+
+    assert len(routes) == 1
+    assert routes[0].route is router.routes[0]
+    assert routes[0].endpoint is nested_endpoint
+    assert routes[0].path == "/nested"
+    assert routes[0].methods == frozenset({"GET"})
+    assert routes[0].unique_id == router.routes[0].unique_id
+    assert routes[0].include_in_schema is True
+
+
+def test_api_route_traversal_fallback_handles_effective_contexts() -> None:
+    from fastapi import APIRouter
+
+    router = APIRouter()
+
+    @router.get("/effective")
+    def effective_endpoint() -> dict[str, bool]:
+        return {"ok": True}
+
+    route = router.routes[0]
+    context = SimpleNamespace(
+        original_route=route,
+        endpoint=route.endpoint,
+        path=route.path,
+        methods=route.methods,
+        unique_id=route.unique_id,
+        include_in_schema=route.include_in_schema,
+    )
+    nested = SimpleNamespace(
+        effective_route_contexts=lambda: iter([context])
+    )
+
+    routes = list(
+        control_contracts._iter_api_routes_fallback([nested])
+    )
+
+    assert len(routes) == 1
+    assert routes[0].route is route
+    assert routes[0].endpoint is effective_endpoint
+    assert routes[0].unique_id == route.unique_id
 
 
 def test_http_behavior_contract_is_built_from_real_testclient_calls() -> None:
