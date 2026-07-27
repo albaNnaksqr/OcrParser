@@ -215,9 +215,9 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
     assert imports["strongly_connected_components"] == [
         ["jobs", "manifests", "workers"]
     ]
-    assert transactions["total"] == 48
+    assert transactions["total"] == 45
     assert transactions["operations"] == {
-        "commit": 27,
+        "commit": 24,
         "flush": 14,
         "rollback": 7,
     }
@@ -432,7 +432,7 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
         transaction_actual,
         baseline,
     )
-    assert transaction_actual["transactions"]["total"] == 47
+    assert transaction_actual["transactions"]["total"] == 44
 
     policy_root = _copy_domains(tmp_path / "policy")
     worker_core = (
@@ -701,7 +701,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
     alias_actual = control_architecture_debt.build_architecture_debt(
         alias_root
     )
-    assert alias_actual["transactions"]["total"] == 49
+    assert alias_actual["transactions"]["total"] == 46
     with pytest.raises(ValueError, match="transactions.sites"):
         control_architecture_debt.validate_decreasing(
             alias_actual,
@@ -902,7 +902,7 @@ def test_alias_dynamic_import_and_closure_escape_hatches_are_blocked(
     closure_actual = control_architecture_debt.build_architecture_debt(
         closure_root
     )
-    assert closure_actual["transactions"]["total"] == 49
+    assert closure_actual["transactions"]["total"] == 46
 
     for actual in (
         sql_alias_actual,

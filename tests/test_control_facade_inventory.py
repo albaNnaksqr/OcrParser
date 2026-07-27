@@ -72,6 +72,18 @@ def test_facade_inventory_counts_match_independent_audit() -> None:
         "ocr_platform.control.domains.model_profiles.commands."
         "upsert_model_profile"
     )
+    assert exports["record_event"]["defining_module"] == (
+        "ocr_platform.control.domains.jobs.commands"
+    )
+    assert exports["record_event"]["target"] == (
+        "ocr_platform.control.domains.jobs.commands.record_event"
+    )
+    assert exports["record_log"]["defining_module"] == (
+        "ocr_platform.control.domains.jobs.commands"
+    )
+    assert exports["record_log"]["target"] == (
+        "ocr_platform.control.domains.jobs.commands.record_log"
+    )
     assert inventory["imports"]["ast_count"] == 19
     assert inventory["imports"]["dynamic_count"] == 0
     assert inventory["imports"]["embedded_count"] == 1

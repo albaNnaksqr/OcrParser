@@ -21,6 +21,18 @@ from ..domains.workers.core import *
 from ..domains.model_profiles.commands import (
     upsert_model_profile as upsert_model_profile,
 )
+__jobs_core_command_leaves = {
+    "record_event": _jobs.record_event,
+    "record_log": _jobs.record_log,
+}
+from ..domains.jobs.commands import (
+    record_event as record_event,
+    record_log as record_log,
+)
+__job_command_wrappers = {
+    "record_event": record_event,
+    "record_log": record_log,
+}
 
 
 class _CompatibilityModule(ModuleType):
@@ -42,7 +54,19 @@ class _CompatibilityModule(ModuleType):
             _workers,
         ):
             if hasattr(target, name):
-                setattr(target, name, value)
+                if (
+                    target is _jobs
+                    and name in globals()["__job_command_wrappers"]
+                    and value
+                    is globals()["__job_command_wrappers"][name]
+                ):
+                    setattr(
+                        target,
+                        name,
+                        globals()["__jobs_core_command_leaves"][name],
+                    )
+                else:
+                    setattr(target, name, value)
 
 
 sys.modules[__name__].__class__ = _CompatibilityModule

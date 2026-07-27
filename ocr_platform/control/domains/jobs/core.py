@@ -1723,8 +1723,6 @@ def record_event(
                 job.error_message = payload.get("error") or payload.get("error_message")
             job.finished_at = utcnow()
 
-    session.commit()
-    session.refresh(job)
     return job
 
 def record_log(
@@ -1740,7 +1738,6 @@ def record_log(
     log_limit = control_limits.job_log_detail_limit
     get_job_or_raise(session, job_id)
     if log_limit == 0:
-        session.commit()
         return JobLog(
             job_id=job_id,
             server_id=request.server_id,
@@ -1767,8 +1764,6 @@ def record_log(
         stale_log_ids = recent_log_ids[log_limit:]
         if stale_log_ids:
             session.execute(delete(JobLog).where(JobLog.id.in_(stale_log_ids)))
-    session.commit()
-    session.refresh(row)
     return row
 
 def job_log_to_response(row: JobLog) -> JobLogResponse:

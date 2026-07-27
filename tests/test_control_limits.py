@@ -1410,13 +1410,26 @@ def test_job_detail_hot_paths_keep_direct_session_call_baseline() -> None:
 
     assert session_calls("record_event") == {
         "flush": 2,
-        "commit": 1,
-        "refresh": 1,
     }
     assert session_calls("record_log") == {
         "execute": 2,
         "flush": 1,
-        "commit": 2,
+    }
+    assert session_calls("create_job") == {
+        "commit": 1,
+        "flush": 1,
+        "refresh": 1,
+        "rollback": 1,
+    }
+    assert session_calls("request_stop") == {
+        "commit": 1,
+        "refresh": 1,
+    }
+    assert session_calls("delete_job") == {
+        "commit": 1,
+    }
+    assert session_calls("archive_job") == {
+        "commit": 1,
         "refresh": 1,
     }
 

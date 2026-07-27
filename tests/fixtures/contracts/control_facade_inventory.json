@@ -310,28 +310,28 @@
         "fingerprint": "4e1f00a2d21388861ea86f5b79e72e3d7cbbc2dd1cebd26065be5c7d9fd57205",
         "id": "tests/test_control_api.py:test_create_job_rejects_postgres_with_unapplied_schema_migrations:facade-symbol-use[database]@4e1f00a2d213:1",
         "kind": "attribute",
-        "source": "tests/test_control_api.py:1056",
+        "source": "tests/test_control_api.py:1065",
         "symbol": "database"
       },
       {
         "fingerprint": "4e1f00a2d21388861ea86f5b79e72e3d7cbbc2dd1cebd26065be5c7d9fd57205",
         "id": "tests/test_control_api.py:test_job_preflight_blocks_postgres_when_schema_migrations_table_is_missing:facade-symbol-use[database]@4e1f00a2d213:1",
         "kind": "attribute",
-        "source": "tests/test_control_api.py:995",
+        "source": "tests/test_control_api.py:1004",
         "symbol": "database"
       },
       {
         "fingerprint": "32a069499481860ed04d0594dad261403ad0065ed48e689a7844ae61fb8e286f",
         "id": "tests/test_control_api.py:test_manifest_scan_progress_survives_when_raw_event_details_are_disabled:facade-symbol-use[json_loads_object]@32a069499481:1",
         "kind": "attribute",
-        "source": "tests/test_control_api.py:3057",
+        "source": "tests/test_control_api.py:3066",
         "symbol": "json_loads_object"
       },
       {
         "fingerprint": "51277834370fc067a7d4bbb80f9ee4740865af8c014babc3ac2c768fc13cbb93",
         "id": "tests/test_control_api.py:test_postgres_migration_preflight_issue_reports_latest_unapplied_migration:facade-symbol-use[_database_migration_preflight_issue]@51277834370f:1",
         "kind": "attribute",
-        "source": "tests/test_control_api.py:1027",
+        "source": "tests/test_control_api.py:1036",
         "symbol": "_database_migration_preflight_issue"
       },
       {
@@ -576,112 +576,112 @@
         "fingerprint": "9f0ac71074d766c573a6cf2d31ec7e69402d02612d2321de2c3c807eb5d25ac9",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[POOL_SERVER_ID]@9f0ac71074d7:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "ccccb9030f06fea452d776450cb12a85ca82d4098533260f6267ce5c3df4a6b3",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[ShardAttemptConflictError]@ccccb9030f06:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "ShardAttemptConflictError"
       },
       {
         "fingerprint": "a38d37ee954304e6f7da008238577448eaa01c52ae22db32e55fdadf28934615",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[claim_next_pending_shard]@a38d37ee9543:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "claim_next_pending_shard"
       },
       {
         "fingerprint": "d6cb3cb6537ac2dc47c85b1c7d1595681345f6e1b7ddb8be445f756f45fb4a84",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[claim_next_scan_unit]@d6cb3cb6537a:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "claim_next_scan_unit"
       },
       {
         "fingerprint": "659121cfcfe2f149b650a7d12b7ce92ae53c5cc2cf0d7f62cb3605070a5dddbc",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[complete_scan_unit]@659121cfcfe2:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "complete_scan_unit"
       },
       {
         "fingerprint": "fdddd19fb11cd3c54b8d7b6e3fcd40ade2409a99dff8c49240af442441dd0cab",
         "id": "tools/pg_claim_stress.py:<module>:facade-symbol-import[update_work_shard]@fdddd19fb11c:1",
         "kind": "direct_import",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbol": "update_work_shard"
       },
       {
         "fingerprint": "1c2e861c9070fb0370d7ea7ae5d310185a0cedfc1f78751a992516fe9bb7a74a",
         "id": "tools/pg_claim_stress.py:_claim_scan_unit_worker:facade-symbol-use[claim_next_scan_unit]@1c2e861c9070:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:288",
+        "source": "tools/pg_claim_stress.py:296",
         "symbol": "claim_next_scan_unit"
       },
       {
         "fingerprint": "60deaad782cfd0507546d31915795853fec202f2bff6245734f7dfbc7bb37477",
         "id": "tools/pg_claim_stress.py:_claim_worker:facade-symbol-use[claim_next_pending_shard]@60deaad782cf:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:268",
+        "source": "tools/pg_claim_stress.py:276",
         "symbol": "claim_next_pending_shard"
       },
       {
         "fingerprint": "2f80caa9d67c01d3bf534d321bbe0499c740c58ff0ee80ce3ac535cd80bb95aa",
         "id": "tools/pg_claim_stress.py:_claim_worker:facade-symbol-use[update_work_shard]@2f80caa9d67c:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:272",
+        "source": "tools/pg_claim_stress.py:280",
         "symbol": "update_work_shard"
       },
       {
         "fingerprint": "1c2e861c9070fb0370d7ea7ae5d310185a0cedfc1f78751a992516fe9bb7a74a",
         "id": "tools/pg_claim_stress.py:_complete_scan_unit_worker:facade-symbol-use[claim_next_scan_unit]@1c2e861c9070:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:303",
+        "source": "tools/pg_claim_stress.py:311",
         "symbol": "claim_next_scan_unit"
       },
       {
         "fingerprint": "71ce482d8988e27c82f8964941ac4e5f4368ba186a107a9f46c62bef3bf6ca7c",
         "id": "tools/pg_claim_stress.py:_complete_scan_unit_worker:facade-symbol-use[complete_scan_unit]@71ce482d8988:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:307",
+        "source": "tools/pg_claim_stress.py:315",
         "symbol": "complete_scan_unit"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tools/pg_claim_stress.py:_seed_scan_unit_job:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:218",
+        "source": "tools/pg_claim_stress.py:226",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tools/pg_claim_stress.py:_seed_scan_unit_job:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:2",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:222",
+        "source": "tools/pg_claim_stress.py:230",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tools/pg_claim_stress.py:_seed_scan_unit_job:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:3",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:236",
+        "source": "tools/pg_claim_stress.py:244",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "52b57e74921cf81d3479ccf2fd13c09294926291395778be58b932028630d134",
         "id": "tools/pg_claim_stress.py:_verify_attempt_conflict:facade-symbol-use[ShardAttemptConflictError]@52b57e74921c:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:346",
+        "source": "tools/pg_claim_stress.py:354",
         "symbol": "ShardAttemptConflictError"
       },
       {
         "fingerprint": "2f80caa9d67c01d3bf534d321bbe0499c740c58ff0ee80ce3ac535cd80bb95aa",
         "id": "tools/pg_claim_stress.py:_verify_attempt_conflict:facade-symbol-use[update_work_shard]@2f80caa9d67c:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:336",
+        "source": "tools/pg_claim_stress.py:344",
         "symbol": "update_work_shard"
       }
     ],
@@ -4480,11 +4480,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "record_event",
         "target": "ocr_platform.control.domains.jobs.commands.record_event",
@@ -4493,11 +4491,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "record_log",
         "target": "ocr_platform.control.domains.jobs.commands.record_log",
@@ -4899,7 +4895,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_archive_stale_server_stops_assigned_queued_jobs:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:2544",
+        "source": "tests/test_control_api.py:2553",
         "symbols": [],
         "wildcard": false
       },
@@ -4907,7 +4903,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_detail_rows_are_capped:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:2314",
+        "source": "tests/test_control_api.py:2323",
         "symbols": [],
         "wildcard": false
       },
@@ -4915,7 +4911,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_event_detail_pruning_prioritizes_failure_and_terminal_events:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:2407",
+        "source": "tests/test_control_api.py:2416",
         "symbols": [],
         "wildcard": false
       },
@@ -4923,7 +4919,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_file_detail_pruning_prioritizes_failed_files:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:2351",
+        "source": "tests/test_control_api.py:2360",
         "symbols": [],
         "wildcard": false
       },
@@ -4931,7 +4927,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_log_detail_rows_can_be_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3925",
+        "source": "tests/test_control_api.py:3934",
         "symbols": [],
         "wildcard": false
       },
@@ -4939,7 +4935,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_log_rows_are_capped:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3889",
+        "source": "tests/test_control_api.py:3898",
         "symbols": [],
         "wildcard": false
       },
@@ -4947,7 +4943,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_summary_uses_counter_failure_category_counts_when_detail_rows_are_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3301",
+        "source": "tests/test_control_api.py:3310",
         "symbols": [],
         "wildcard": false
       },
@@ -4955,7 +4951,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_job_summary_uses_counters_when_detail_rows_are_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:2916",
+        "source": "tests/test_control_api.py:2925",
         "symbols": [],
         "wildcard": false
       },
@@ -4963,7 +4959,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_manifest_scan_progress_survives_when_raw_event_details_are_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3000",
+        "source": "tests/test_control_api.py:3009",
         "symbols": [],
         "wildcard": false
       },
@@ -4971,7 +4967,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_event_samples_for_job_failures_when_events_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3176",
+        "source": "tests/test_control_api.py:3185",
         "symbols": [],
         "wildcard": false
       },
@@ -4979,7 +4975,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_samples_when_detail_rows_are_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3115",
+        "source": "tests/test_control_api.py:3124",
         "symbols": [],
         "wildcard": false
       },
@@ -4987,7 +4983,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_api.py:test_recent_failed_files_uses_counter_samples_when_detail_rows_are_disabled:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_api.py:3062",
+        "source": "tests/test_control_api.py:3071",
         "symbols": [],
         "wildcard": false
       },
@@ -5025,7 +5021,7 @@
         "fingerprint": "76b8a8e81623b3304d951cd0760daac75a9383b18ef94fa5ad9ce740c6772072",
         "id": "tools/pg_claim_stress.py:<module>:facade-import@76b8a8e81623:1",
         "kind": "from_service",
-        "source": "tools/pg_claim_stress.py:29",
+        "source": "tools/pg_claim_stress.py:30",
         "symbols": [
           "POOL_SERVER_ID",
           "ShardAttemptConflictError",
@@ -5065,140 +5061,140 @@
         "fingerprint": "8c43bc8a196e23c6c75d30ba50274a4c77b51d10aea2563b3385a1c5974fbc95",
         "form": "object",
         "id": "tests/test_control_api.py:test_archive_stale_server_stops_assigned_queued_jobs:facade-monkeypatch[SERVER_STALE_AFTER_SECONDS]@8c43bc8a196e:1",
-        "source": "tests/test_control_api.py:2546",
+        "source": "tests/test_control_api.py:2555",
         "symbol": "SERVER_STALE_AFTER_SECONDS"
       },
       {
         "fingerprint": "8281849575306105a36e0f1ada08f3fba162877629d906374cded5e5eee32d82",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_detail_rows_are_capped:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@828184957530:1",
-        "source": "tests/test_control_api.py:2317",
+        "source": "tests/test_control_api.py:2326",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "49ffd2379df42ecb843b5e1a9833dcab76b1a0b7ce4b4c3e5147a29d80618725",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_detail_rows_are_capped:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@49ffd2379df4:1",
-        "source": "tests/test_control_api.py:2316",
+        "source": "tests/test_control_api.py:2325",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "8281849575306105a36e0f1ada08f3fba162877629d906374cded5e5eee32d82",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_event_detail_pruning_prioritizes_failure_and_terminal_events:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@828184957530:1",
-        "source": "tests/test_control_api.py:2410",
+        "source": "tests/test_control_api.py:2419",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "92954791eb5a8f0b3a031c7c75a5f0f98cef34f0ad2ffa094b7af5cb0697aa17",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_event_detail_pruning_prioritizes_failure_and_terminal_events:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@92954791eb5a:1",
-        "source": "tests/test_control_api.py:2409",
+        "source": "tests/test_control_api.py:2418",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "4661b15e065a2f34e44d8b9fea0bf82843a09705f1951f8677419eb803162fab",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_file_detail_pruning_prioritizes_failed_files:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@4661b15e065a:1",
-        "source": "tests/test_control_api.py:2354",
+        "source": "tests/test_control_api.py:2363",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "49ffd2379df42ecb843b5e1a9833dcab76b1a0b7ce4b4c3e5147a29d80618725",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_file_detail_pruning_prioritizes_failed_files:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@49ffd2379df4:1",
-        "source": "tests/test_control_api.py:2353",
+        "source": "tests/test_control_api.py:2362",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "3c6d6e2f6e69b7a508b3cb6b02c4e83383d72c68690bea7313316d8e78f8a576",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_log_detail_rows_can_be_disabled:facade-monkeypatch[JOB_LOG_DETAIL_LIMIT]@3c6d6e2f6e69:1",
-        "source": "tests/test_control_api.py:3927",
+        "source": "tests/test_control_api.py:3936",
         "symbol": "JOB_LOG_DETAIL_LIMIT"
       },
       {
         "fingerprint": "85c53322e432f7a1fbd794be24ff388bced5f38e4140418d0db9855593fb05c2",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_log_rows_are_capped:facade-monkeypatch[JOB_LOG_DETAIL_LIMIT]@85c53322e432:1",
-        "source": "tests/test_control_api.py:3891",
+        "source": "tests/test_control_api.py:3900",
         "symbol": "JOB_LOG_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_summary_uses_counter_failure_category_counts_when_detail_rows_are_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:3304",
+        "source": "tests/test_control_api.py:3313",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "483ce193371d8975997c1ace9935f1a7c750960ba614026cce572a3fc232cbf1",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_summary_uses_counter_failure_category_counts_when_detail_rows_are_disabled:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@483ce193371d:1",
-        "source": "tests/test_control_api.py:3303",
+        "source": "tests/test_control_api.py:3312",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_summary_uses_counters_when_detail_rows_are_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:2919",
+        "source": "tests/test_control_api.py:2928",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "483ce193371d8975997c1ace9935f1a7c750960ba614026cce572a3fc232cbf1",
         "form": "object",
         "id": "tests/test_control_api.py:test_job_summary_uses_counters_when_detail_rows_are_disabled:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@483ce193371d:1",
-        "source": "tests/test_control_api.py:2918",
+        "source": "tests/test_control_api.py:2927",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_manifest_scan_progress_survives_when_raw_event_details_are_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:3002",
+        "source": "tests/test_control_api.py:3011",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_event_samples_for_job_failures_when_events_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:3179",
+        "source": "tests/test_control_api.py:3188",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "483ce193371d8975997c1ace9935f1a7c750960ba614026cce572a3fc232cbf1",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_event_samples_for_job_failures_when_events_disabled:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@483ce193371d:1",
-        "source": "tests/test_control_api.py:3178",
+        "source": "tests/test_control_api.py:3187",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_samples_when_detail_rows_are_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:3118",
+        "source": "tests/test_control_api.py:3127",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "483ce193371d8975997c1ace9935f1a7c750960ba614026cce572a3fc232cbf1",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_errors_page_uses_counter_samples_when_detail_rows_are_disabled:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@483ce193371d:1",
-        "source": "tests/test_control_api.py:3117",
+        "source": "tests/test_control_api.py:3126",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
         "fingerprint": "2191b11a5392192f0b9ddff3825981f59cc17776a051174821b9f3bbef47fe00",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_failed_files_uses_counter_samples_when_detail_rows_are_disabled:facade-monkeypatch[JOB_EVENT_DETAIL_LIMIT]@2191b11a5392:1",
-        "source": "tests/test_control_api.py:3065",
+        "source": "tests/test_control_api.py:3074",
         "symbol": "JOB_EVENT_DETAIL_LIMIT"
       },
       {
         "fingerprint": "483ce193371d8975997c1ace9935f1a7c750960ba614026cce572a3fc232cbf1",
         "form": "object",
         "id": "tests/test_control_api.py:test_recent_failed_files_uses_counter_samples_when_detail_rows_are_disabled:facade-monkeypatch[JOB_FILE_DETAIL_LIMIT]@483ce193371d:1",
-        "source": "tests/test_control_api.py:3064",
+        "source": "tests/test_control_api.py:3073",
         "symbol": "JOB_FILE_DETAIL_LIMIT"
       },
       {
