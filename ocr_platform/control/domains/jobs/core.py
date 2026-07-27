@@ -108,7 +108,11 @@ def create_job(
     request: JobCreateRequest,
     *,
     settings: __control_settings.ControlSettings | None = None,
+    limits: __ControlLimits | None = None,
 ) -> Job:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     if request.input_mode not in ALLOWED_INPUT_MODES:
         raise ValueError(f"unknown input_mode: {request.input_mode}")
     migration_issue = _database_migration_preflight_issue(
@@ -173,7 +177,12 @@ def create_job(
     session.add(job)
     try:
         session.flush()
-        _create_static_shards_for_job(session, job, request)
+        _create_static_shards_for_job(
+            session,
+            job,
+            request,
+            limits=control_limits,
+        )
         _create_distributed_scan_for_job(session, job)
         session.commit()
     except Exception:
@@ -514,12 +523,25 @@ def _manifest_snapshot_status(manifest: Manifest | None) -> str:
         return "ready"
     return manifest.status or "unknown"
 
-def _manifest_freeze_integrity_summary(manifest: Manifest | None) -> dict[str, Any]:
+def _manifest_freeze_integrity_summary(
+    manifest: Manifest | None,
+    *,
+    limits: __ControlLimits | None = None,
+) -> dict[str, Any]:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     if manifest is None or manifest.frozen_at is None:
         if manifest is not None:
-            worker_report = _load_worker_integrity_report(manifest)
+            worker_report = _load_worker_integrity_report(
+                manifest,
+                limits=control_limits,
+            )
             if worker_report is not None:
-                worker_summary = _manifest_integrity_freeze_summary(worker_report)
+                worker_summary = _manifest_integrity_freeze_summary(
+                    worker_report,
+                    limits=control_limits,
+                )
                 return {
                     "manifest_integrity_status": worker_report.status,
                     "manifest_integrity_ok": worker_report.ok,
@@ -530,9 +552,15 @@ def _manifest_freeze_integrity_summary(manifest: Manifest | None) -> dict[str, A
             "manifest_integrity_ok": None,
             "manifest_integrity_issue_count": 0,
         }
-    worker_report = _load_worker_integrity_report(manifest)
+    worker_report = _load_worker_integrity_report(
+        manifest,
+        limits=control_limits,
+    )
     if worker_report is not None:
-        worker_summary = _manifest_integrity_freeze_summary(worker_report)
+        worker_summary = _manifest_integrity_freeze_summary(
+            worker_report,
+            limits=control_limits,
+        )
         return {
             "manifest_integrity_status": worker_report.status,
             "manifest_integrity_ok": worker_report.ok,
@@ -982,7 +1010,10 @@ def get_job_summary(
                 completed_units=completed_scan_units,
                 total_units=total_scan_units,
             )
-    manifest_integrity_summary = _manifest_freeze_integrity_summary(manifest)
+    manifest_integrity_summary = _manifest_freeze_integrity_summary(
+        manifest,
+        limits=control_limits,
+    )
     worker_version_summary = _job_worker_version_summary(session, job)
 
     return JobSummaryResponse(

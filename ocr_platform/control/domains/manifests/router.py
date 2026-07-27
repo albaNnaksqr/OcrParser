@@ -5,6 +5,7 @@ from typing import Callable, Generator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from ...limits import ControlLimits, legacy_control_limits
 from ...schemas import (
     ManifestFreezeReportResponse,
     ManifestIntegrityResponse,
@@ -29,13 +30,24 @@ from .schemas import manifest_to_response, scan_unit_to_response, work_shard_to_
 GetDb = Callable[[], Generator[Session, None, None]]
 
 
-def create_router(get_db: GetDb) -> APIRouter:
+def create_router(
+    get_db: GetDb,
+    *,
+    limits: ControlLimits | None = None,
+) -> APIRouter:
+    control_limits = (
+        limits if limits is not None else legacy_control_limits()
+    )
     router = APIRouter()
 
     @router.get("/api/jobs/{job_id}/manifest/integrity", response_model=ManifestIntegrityResponse)
     def api_get_manifest_integrity(job_id: str, session: Session = Depends(get_db)):
         try:
-            return queries.get_manifest_integrity_report(session, job_id)
+            return queries.get_manifest_integrity_report(
+                session,
+                job_id,
+                limits=control_limits,
+            )
         except queries.UnknownJobError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -49,7 +61,11 @@ def create_router(get_db: GetDb) -> APIRouter:
     @router.get("/api/jobs/{job_id}/manifest/freeze-report", response_model=ManifestFreezeReportResponse)
     def api_get_manifest_freeze_report(job_id: str, session: Session = Depends(get_db)):
         try:
-            return queries.get_manifest_freeze_report(session, job_id)
+            return queries.get_manifest_freeze_report(
+                session,
+                job_id,
+                limits=control_limits,
+            )
         except queries.UnknownJobError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -157,14 +173,27 @@ def create_router(get_db: GetDb) -> APIRouter:
         session: Session = Depends(get_db),
     ):
         try:
-            return commands.complete_worker_manifest_integrity_check(session, manifest_id, server_id, request)
+            return commands.complete_worker_manifest_integrity_check(
+                session,
+                manifest_id,
+                server_id,
+                request,
+                limits=control_limits,
+            )
         except ValueError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     @router.post("/api/scan-units/{scan_unit_id}/complete", response_model=ScanUnitResponse)
     def api_complete_scan_unit(scan_unit_id: int, request: ScanUnitCompleteRequest, session: Session = Depends(get_db)):
         try:
-            return scan_unit_to_response(commands.complete_scan_unit(session, scan_unit_id, request))
+            return scan_unit_to_response(
+                commands.complete_scan_unit(
+                    session,
+                    scan_unit_id,
+                    request,
+                    limits=control_limits,
+                )
+            )
         except commands.ScanUnitAttemptConflictError as exc:
             raise HTTPException(status_code=409, detail=str(exc)) from exc
         except ValueError as exc:

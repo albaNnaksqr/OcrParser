@@ -17,6 +17,8 @@ from sqlalchemy import Integer, case, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
 
 from ... import database
+from ...limits import ControlLimits as __ControlLimits
+from ...limits import legacy_control_limits as __legacy_control_limits
 from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
 from ...schemas import (
     JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
@@ -180,7 +182,16 @@ def _read_manifest_items(manifest_path: Path) -> list[ManifestItem]:
         items.append(item)
     return items
 
-def _create_static_shards_for_job(session: Session, job: Job, request: JobCreateRequest) -> None:
+def _create_static_shards_for_job(
+    session: Session,
+    job: Job,
+    request: JobCreateRequest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> None:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     if request.input_mode not in ALLOWED_INPUT_MODES:
         raise ValueError(f"unknown input_mode: {request.input_mode}")
     if request.input_mode not in CONTROL_STATIC_INPUT_MODES:
@@ -242,7 +253,12 @@ def _create_static_shards_for_job(session: Session, job: Job, request: JobCreate
             )
         )
     session.flush()
-    freeze_manifest_if_scan_complete(session, job, manifest)
+    freeze_manifest_if_scan_complete(
+        session,
+        job,
+        manifest,
+        limits=control_limits,
+    )
 
 def _create_distributed_scan_for_job(session: Session, job: Job) -> None:
     if job.input_mode not in REMOTE_DISTRIBUTED_SCAN_INPUT_MODES:
@@ -431,7 +447,12 @@ def complete_scan_unit(
     session: Session,
     scan_unit_id: int,
     request: ScanUnitCompleteRequest,
+    *,
+    limits: __ControlLimits | None = None,
 ) -> ScanUnit:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     unit = session.execute(
         select(ScanUnit)
         .where(ScanUnit.id == scan_unit_id)
@@ -486,7 +507,12 @@ def complete_scan_unit(
     manifest.file_count = int(manifest.file_count or 0) + request.file_count
     manifest.total_bytes = int(manifest.total_bytes or 0) + request.total_bytes
     session.flush()
-    freeze_manifest_if_scan_complete(session, job, manifest)
+    freeze_manifest_if_scan_complete(
+        session,
+        job,
+        manifest,
+        limits=control_limits,
+    )
     session.commit()
     session.refresh(unit)
     return unit
@@ -624,10 +650,20 @@ def _validate_json_file(path: Path) -> str | None:
         return "malformed_json"
     return None
 
-def _append_manifest_integrity_issue_sample(samples: list[Any], issue: Any) -> None:
-    if MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT == 0:
+def _append_manifest_integrity_issue_sample(
+    samples: list[Any],
+    issue: Any,
+    *,
+    sample_limit: int | None = None,
+) -> None:
+    resolved_limit = (
+        sample_limit
+        if sample_limit is not None
+        else __legacy_control_limits().manifest_integrity_issue_sample_limit
+    )
+    if resolved_limit <= 0:
         return
-    if len(samples) < MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT:
+    if len(samples) < resolved_limit:
         samples.append(issue)
 
 def _scan_unit_status_counts(session: Session, job_id: str) -> dict[str, int]:
@@ -651,6 +687,8 @@ def _manifest_integrity_issue_samples(
     *,
     limit: int = 5,
 ) -> list[dict[str, Any]]:
+    if limit <= 0:
+        return []
     samples: list[dict[str, Any]] = []
     for issue in report.bad_scan_units:
         samples.append(
@@ -682,7 +720,18 @@ def _manifest_integrity_issue_samples(
             return samples
     return samples
 
-def _manifest_integrity_freeze_summary(report: ManifestIntegrityResponse) -> dict[str, Any]:
+def _manifest_integrity_freeze_summary(
+    report: ManifestIntegrityResponse,
+    *,
+    limits: __ControlLimits | None = None,
+) -> dict[str, Any]:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    issue_sample_limit = min(
+        max(control_limits.manifest_integrity_issue_sample_limit, 0),
+        5,
+    )
     issue_count = report.bad_scan_unit_count + report.bad_shard_count
     if not report.ok:
         if report.scan_unit_count > 0:
@@ -729,10 +778,22 @@ def _manifest_integrity_freeze_summary(report: ManifestIntegrityResponse) -> dic
         "integrity_bad_scan_unit_count": report.bad_scan_unit_count,
         "integrity_bad_shard_count": report.bad_shard_count,
         "integrity_issue_count": issue_count,
-        "integrity_issue_samples": _manifest_integrity_issue_samples(report),
+        "integrity_issue_samples": _manifest_integrity_issue_samples(
+            report,
+            limit=issue_sample_limit,
+        ),
     }
 
-def _build_manifest_freeze_report(session: Session, job: Job, manifest: Manifest) -> dict[str, Any]:
+def _build_manifest_freeze_report(
+    session: Session,
+    job: Job,
+    manifest: Manifest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> dict[str, Any]:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     scan_unit_counts = _scan_unit_status_counts(session, job.id)
     shard_counts = _shard_status_counts(session, job.id)
     scan_progress = _latest_manifest_scan_progress(session, job.id)
@@ -769,7 +830,12 @@ def _build_manifest_freeze_report(session: Session, job: Job, manifest: Manifest
         len(scan_error_samples),
     )
     integrity_summary = _manifest_integrity_freeze_summary(
-        get_manifest_integrity_report(session, job.id)
+        get_manifest_integrity_report(
+            session,
+            job.id,
+            limits=control_limits,
+        ),
+        limits=control_limits,
     )
     return {
         "frozen": manifest.frozen_at is not None,
@@ -807,7 +873,16 @@ def _build_manifest_freeze_report(session: Session, job: Job, manifest: Manifest
         **integrity_summary,
     }
 
-def freeze_manifest_if_scan_complete(session: Session, job: Job, manifest: Manifest) -> None:
+def freeze_manifest_if_scan_complete(
+    session: Session,
+    job: Job,
+    manifest: Manifest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> None:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     active_units = session.execute(
         select(func.count(ScanUnit.id))
         .where(ScanUnit.job_id == job.id)
@@ -823,12 +898,25 @@ def freeze_manifest_if_scan_complete(session: Session, job: Job, manifest: Manif
     manifest.status = "ready"
     if manifest.frozen_at is None:
         manifest.frozen_at = utcnow()
-        report = _build_manifest_freeze_report(session, job, manifest)
+        report = _build_manifest_freeze_report(
+            session,
+            job,
+            manifest,
+            limits=control_limits,
+        )
         report["frozen"] = True
         report["frozen_at"] = manifest.frozen_at.isoformat()
         manifest.freeze_report_json = json_dumps(report)
 
-def get_manifest_freeze_report(session: Session, job_id: str) -> ManifestFreezeReportResponse:
+def get_manifest_freeze_report(
+    session: Session,
+    job_id: str,
+    *,
+    limits: __ControlLimits | None = None,
+) -> ManifestFreezeReportResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     job = get_job_or_raise(session, job_id)
     manifest = session.execute(
         select(Manifest)
@@ -845,19 +933,46 @@ def get_manifest_freeze_report(session: Session, job_id: str) -> ManifestFreezeR
             report={"frozen": False},
         )
     if manifest.frozen_at is not None:
+        report = dict(
+            json_loads_object(manifest.freeze_report_json)
+        )
+        if "integrity_issue_samples" in report:
+            report["integrity_issue_samples"] = (
+                __bounded_manifest_integrity_issues(
+                    report.get("integrity_issue_samples"),
+                    limit=min(
+                        max(
+                            control_limits.manifest_integrity_issue_sample_limit,
+                            0,
+                        ),
+                        5,
+                    ),
+                )
+                if isinstance(
+                    report.get("integrity_issue_samples"),
+                    list,
+                )
+                else []
+            )
         return ManifestFreezeReportResponse(
             job_id=job_id,
             manifest_id=manifest.id,
             status=manifest.status,
             frozen_at=manifest.frozen_at,
-            report=json_loads_object(manifest.freeze_report_json),
+            report=report,
         )
     return ManifestFreezeReportResponse(
         job_id=job_id,
         manifest_id=manifest.id,
         status=manifest.status,
         frozen_at=None,
-        report=_build_manifest_freeze_report(session, job, manifest) | {"frozen": False},
+        report=_build_manifest_freeze_report(
+            session,
+            job,
+            manifest,
+            limits=control_limits,
+        )
+        | {"frozen": False},
     )
 
 def path_is_under_worker_shared_root(session: Session, path: str | None) -> bool:
@@ -885,12 +1000,53 @@ def _server_can_read_path(server: Server, path: str | None) -> bool:
     access = evaluate_server_path_access(server, path)
     return bool(access.get("can_access"))
 
-def _manifest_worker_report_payload(report: ManifestIntegrityResponse) -> dict[str, Any]:
-    if hasattr(report, "model_dump"):
-        return report.model_dump(mode="json")
-    return report.dict()
+def __bounded_manifest_integrity_issues(
+    value: Any,
+    *,
+    limit: int,
+) -> Any:
+    if isinstance(value, list):
+        return value[:limit]
+    return value
 
-def _load_worker_integrity_report(manifest: Manifest) -> ManifestIntegrityResponse | None:
+def _manifest_worker_report_payload(
+    report: ManifestIntegrityResponse,
+    *,
+    limits: __ControlLimits | None = None,
+) -> dict[str, Any]:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    issue_sample_limit = max(
+        control_limits.manifest_integrity_issue_sample_limit,
+        0,
+    )
+    if hasattr(report, "model_dump"):
+        payload = report.model_dump(mode="json")
+    else:
+        payload = report.dict()
+    payload["bad_scan_units"] = __bounded_manifest_integrity_issues(
+        payload.get("bad_scan_units", []),
+        limit=issue_sample_limit,
+    )
+    payload["bad_shards"] = __bounded_manifest_integrity_issues(
+        payload.get("bad_shards", []),
+        limit=issue_sample_limit,
+    )
+    return payload
+
+def _load_worker_integrity_report(
+    manifest: Manifest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> ManifestIntegrityResponse | None:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    issue_sample_limit = max(
+        control_limits.manifest_integrity_issue_sample_limit,
+        0,
+    )
     if not manifest.worker_integrity_report_json:
         return None
     try:
@@ -900,6 +1056,14 @@ def _load_worker_integrity_report(manifest: Manifest) -> ManifestIntegrityRespon
     if not payload:
         return None
     payload = dict(payload)
+    payload["bad_scan_units"] = __bounded_manifest_integrity_issues(
+        payload.get("bad_scan_units", []),
+        limit=issue_sample_limit,
+    )
+    payload["bad_shards"] = __bounded_manifest_integrity_issues(
+        payload.get("bad_shards", []),
+        limit=issue_sample_limit,
+    )
     payload["source"] = "worker"
     payload["checked_by_server_id"] = manifest.worker_integrity_server_id
     payload["checked_at"] = manifest.worker_integrity_finished_at
@@ -991,7 +1155,12 @@ def complete_worker_manifest_integrity_check(
     manifest_id: int,
     server_id: str,
     request: ManifestIntegrityWorkerCompleteRequest,
+    *,
+    limits: __ControlLimits | None = None,
 ) -> ManifestIntegrityWorkerRequestResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     manifest = session.get(Manifest, manifest_id)
     if manifest is None:
         raise ValueError(f"Unknown manifest {manifest_id}")
@@ -1007,7 +1176,10 @@ def complete_worker_manifest_integrity_check(
     manifest.worker_integrity_finished_at = now
     manifest.worker_integrity_server_id = server_id
     manifest.worker_integrity_report_json = json.dumps(
-        _manifest_worker_report_payload(report),
+        _manifest_worker_report_payload(
+            report,
+            limits=control_limits,
+        ),
         ensure_ascii=False,
         default=str,
     )
@@ -1019,7 +1191,27 @@ def complete_worker_manifest_integrity_check(
         requested_at=manifest.worker_integrity_requested_at,
     )
 
-def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestIntegrityResponse:
+def get_manifest_integrity_report(
+    session: Session,
+    job_id: str,
+    *,
+    limits: __ControlLimits | None = None,
+) -> ManifestIntegrityResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    issue_sample_limit = max(
+        control_limits.manifest_integrity_issue_sample_limit,
+        0,
+    )
+
+    def append_issue_sample(samples: list[Any], issue: Any) -> None:
+        _append_manifest_integrity_issue_sample(
+            samples,
+            issue,
+            sample_limit=issue_sample_limit,
+        )
+
     get_job_or_raise(session, job_id)
     manifest = session.execute(
         select(Manifest)
@@ -1129,7 +1321,10 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
         ).scalar_one()
         or 0
     ) == 0:
-        worker_report = _load_worker_integrity_report(manifest)
+        worker_report = _load_worker_integrity_report(
+            manifest,
+            limits=control_limits,
+        )
         if worker_report is not None:
             return worker_report
         shard_count = int(
@@ -1187,7 +1382,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
     for unit in scan_units:
         if not unit.manifest_path:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1203,7 +1398,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
         unit_manifest_path = Path(unit.manifest_path)
         if not unit_manifest_path.exists():
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1226,7 +1421,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             )
         except OSError:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1241,7 +1436,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except json.JSONDecodeError:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1256,7 +1451,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except InvalidManifestRowError:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1271,7 +1466,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except InvalidManifestRelativePathError:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1286,7 +1481,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except DuplicateManifestRelativePathError:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1301,7 +1496,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         if scan_unit_relative_paths.intersection(unit_relative_paths):
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1318,7 +1513,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
         scan_unit_actual_file_count += unit_actual_file_count
         if unit_actual_file_count != unit.file_count:
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1331,7 +1526,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             )
         if unit_actual_total_bytes != int(unit.total_bytes or 0):
             bad_scan_unit_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_scan_units,
                 ManifestIntegrityScanUnitIssue(
                     scan_unit_id=unit.id,
@@ -1349,7 +1544,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             unit_meta_path = Path(unit.meta_path)
             if not unit_meta_path.exists():
                 bad_scan_unit_count += 1
-                _append_manifest_integrity_issue_sample(
+                append_issue_sample(
                     bad_scan_units,
                     ManifestIntegrityScanUnitIssue(
                         scan_unit_id=unit.id,
@@ -1378,7 +1573,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
                         else "meta_file_unreadable"
                     )
                     bad_scan_unit_count += 1
-                    _append_manifest_integrity_issue_sample(
+                    append_issue_sample(
                         bad_scan_units,
                         ManifestIntegrityScanUnitIssue(
                             scan_unit_id=unit.id,
@@ -1394,7 +1589,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
                         unit_meta_file_count = int(unit_meta_payload["file_count"])
                     except (TypeError, ValueError):
                         bad_scan_unit_count += 1
-                        _append_manifest_integrity_issue_sample(
+                        append_issue_sample(
                             bad_scan_units,
                             ManifestIntegrityScanUnitIssue(
                                 scan_unit_id=unit.id,
@@ -1408,7 +1603,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
                     else:
                         if unit_meta_file_count != int(unit.file_count or 0):
                             bad_scan_unit_count += 1
-                            _append_manifest_integrity_issue_sample(
+                            append_issue_sample(
                                 bad_scan_units,
                                 ManifestIntegrityScanUnitIssue(
                                     scan_unit_id=unit.id,
@@ -1424,7 +1619,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
                         unit_meta_total_bytes = int(unit_meta_payload["total_bytes"])
                     except (TypeError, ValueError):
                         bad_scan_unit_count += 1
-                        _append_manifest_integrity_issue_sample(
+                        append_issue_sample(
                             bad_scan_units,
                             ManifestIntegrityScanUnitIssue(
                                 scan_unit_id=unit.id,
@@ -1438,7 +1633,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
                     else:
                         if unit_meta_total_bytes != int(unit.total_bytes or 0):
                             bad_scan_unit_count += 1
-                            _append_manifest_integrity_issue_sample(
+                            append_issue_sample(
                                 bad_scan_units,
                                 ManifestIntegrityScanUnitIssue(
                                     scan_unit_id=unit.id,
@@ -1485,7 +1680,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
         shard_path = Path(shard.shard_path)
         if not shard_path.exists():
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1507,7 +1702,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             )
         except OSError:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1521,7 +1716,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except json.JSONDecodeError:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1535,7 +1730,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except InvalidManifestRowError:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1549,7 +1744,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except InvalidManifestRelativePathError:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1563,7 +1758,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         except DuplicateManifestRelativePathError:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1577,7 +1772,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             continue
         if shard_relative_paths.intersection(shard_file_relative_paths):
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1597,7 +1792,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
             and shard_file_relative_paths.difference(shard_reference_relative_paths)
         ):
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,
@@ -1612,7 +1807,7 @@ def get_manifest_integrity_report(session: Session, job_id: str) -> ManifestInte
         shard_relative_paths.update(shard_file_relative_paths)
         if actual_file_count != shard.file_count:
             bad_shard_count += 1
-            _append_manifest_integrity_issue_sample(
+            append_issue_sample(
                 bad_shards,
                 ManifestIntegrityShardIssue(
                     shard_id=shard.id,

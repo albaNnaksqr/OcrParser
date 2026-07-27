@@ -14,6 +14,7 @@ DEFAULT_JOB_SUMMARY_ATTENTION_SHARD_LIMIT = 50
 DEFAULT_RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = 1
 DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT = 10_000
 DEFAULT_METRICS_TRACE_EVENT_LIMIT = 10_000
+DEFAULT_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT = 50
 
 
 def _non_negative_int(value: Any, default: int) -> int:
@@ -61,6 +62,9 @@ class ControlLimits:
         DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
     )
     metrics_trace_event_limit: int = DEFAULT_METRICS_TRACE_EVENT_LIMIT
+    manifest_integrity_issue_sample_limit: int = (
+        DEFAULT_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT
+    )
 
     @property
     def persist_job_file_details(self) -> bool:
@@ -115,6 +119,11 @@ class ControlLimits:
                 DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
             ),
             metrics_trace_event_limit=DEFAULT_METRICS_TRACE_EVENT_LIMIT,
+            manifest_integrity_issue_sample_limit=_environment_limit(
+                values,
+                "OCR_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
+                DEFAULT_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT,
+            ),
         )
 
 
@@ -129,6 +138,9 @@ JOB_SUMMARY_ATTENTION_SHARD_LIMIT = (
 )
 RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = (
     _IMPORTED_LIMITS.retained_control_event_limit_when_details_disabled
+)
+MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT = (
+    _IMPORTED_LIMITS.manifest_integrity_issue_sample_limit
 )
 
 
@@ -169,6 +181,10 @@ def legacy_control_limits() -> ControlLimits:
             DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
         ),
         metrics_trace_event_limit=DEFAULT_METRICS_TRACE_EVENT_LIMIT,
+        manifest_integrity_issue_sample_limit=_legacy_int(
+            MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT,
+            DEFAULT_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT,
+        ),
     )
 
 

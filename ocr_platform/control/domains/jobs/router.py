@@ -60,6 +60,7 @@ def create_router(
                     session,
                     request,
                     settings=control_settings,
+                    limits=control_limits,
                 ),
                 session,
             )

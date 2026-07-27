@@ -12,6 +12,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 import ocr_platform.control.domains.jobs.core as jobs_core
+import ocr_platform.control.domains.manifests.core as manifests_core
+import ocr_platform.control.domains.manifests.queries as manifest_queries
 import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
 import ocr_platform.control.domains.diagnostics.operations as diagnostics_operations
 import ocr_platform.control.domains.workers.core as workers_core
@@ -26,11 +28,16 @@ from ocr_platform.control.models import (
     JobFile,
     JobLog,
     Manifest,
+    ScanUnit,
+    Server,
     WorkShard,
 )
 from ocr_platform.control.schemas import (
     JobCreateRequest,
     JobEventRequest,
+    ManifestIntegrityResponse,
+    ManifestIntegrityShardIssue,
+    ScanUnitCompleteRequest,
 )
 from ocr_platform.control.settings import ControlSettings
 
@@ -80,6 +87,58 @@ def _create_job(client: TestClient) -> str:
     return response.json()["id"]
 
 
+def _create_missing_shard_manifest(
+    client: TestClient,
+    session_factory,
+    tmp_path,
+    *,
+    shard_count: int,
+) -> tuple[str, int]:
+    response = client.post(
+        "/api/jobs",
+        json={
+            "input_dir": str(tmp_path / "input"),
+            "output_dir": str(tmp_path / "output"),
+            "engine": "dotsocr",
+            "input_mode": "remote_folder_snapshot",
+        },
+    )
+    assert response.status_code == 200
+    job_id = response.json()["id"]
+    with session_factory() as session:
+        manifest = Manifest(
+            job_id=job_id,
+            input_mode="remote_folder_snapshot",
+            input_root=str(tmp_path / "input"),
+            manifest_path=str(
+                tmp_path / "missing" / job_id / "manifest.jsonl"
+            ),
+            file_count=shard_count,
+            total_bytes=shard_count,
+            status="ready",
+        )
+        session.add(manifest)
+        session.flush()
+        for index in range(1, shard_count + 1):
+            session.add(
+                WorkShard(
+                    job_id=job_id,
+                    manifest_id=manifest.id,
+                    shard_index=index,
+                    shard_path=str(
+                        tmp_path
+                        / "missing"
+                        / job_id
+                        / f"shard-{index:06d}.jsonl"
+                    ),
+                    status="pending",
+                    file_count=1,
+                )
+            )
+        session.commit()
+        return job_id, manifest.id
+
+
 def _compatibility_service():
     module_name = ".".join(("ocr_platform", "control", "service"))
     return importlib.import_module(module_name)
@@ -107,7 +166,7 @@ def test_control_limits_parse_existing_environment_and_are_frozen() -> None:
     assert limits.job_recent_error_sample_limit == 7
     assert limits.job_summary_attention_shard_limit == 2
     assert limits.retained_control_event_limit_when_details_disabled == 1
-    assert not hasattr(limits, "manifest_integrity_issue_sample_limit")
+    assert limits.manifest_integrity_issue_sample_limit == 0
     assert limits.diagnostics_evidence_row_limit == 10_000
     assert limits.metrics_trace_event_limit == 10_000
     assert limits.persist_job_file_details is False
@@ -130,6 +189,7 @@ def test_control_limits_only_contain_nonscheduling_numeric_policy() -> None:
         "retained_control_event_limit_when_details_disabled",
         "diagnostics_evidence_row_limit",
         "metrics_trace_event_limit",
+        "manifest_integrity_issue_sample_limit",
     }
     assert not {
         "stale_seconds",
@@ -156,6 +216,11 @@ def test_legacy_control_limits_preserve_monkeypatched_negative_integers(
         "JOB_RECENT_ERROR_SAMPLE_LIMIT",
         -4,
     )
+    monkeypatch.setattr(
+        limits_module,
+        "MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
+        -5,
+    )
 
     limits = legacy_control_limits()
 
@@ -164,6 +229,7 @@ def test_legacy_control_limits_preserve_monkeypatched_negative_integers(
     assert limits.job_log_detail_limit == 10_000
     assert limits.job_failed_file_sample_limit == -3
     assert limits.job_recent_error_sample_limit == -4
+    assert limits.manifest_integrity_issue_sample_limit == -5
     assert limits.persist_job_file_details is True
     assert limits.persist_job_event_details is False
 
@@ -495,6 +561,542 @@ def test_two_apps_isolate_evidence_and_trace_limits_from_global_drift(
     two_engine.dispose()
 
 
+@pytest.mark.parametrize(
+    ("sample_limit", "expected_samples"),
+    [(0, 0), (2, 2), (-1, 0)],
+)
+def test_manifest_integrity_runtime_limit_bounds_samples_not_counts(
+    tmp_path,
+    sample_limit,
+    expected_samples,
+) -> None:
+    app, session_factory, engine = _app_with_limits(
+        tmp_path,
+        f"manifest-{sample_limit}.db",
+        ControlLimits(
+            manifest_integrity_issue_sample_limit=sample_limit,
+        ),
+    )
+    client = TestClient(app)
+    job_id, _ = _create_missing_shard_manifest(
+        client,
+        session_factory,
+        tmp_path / str(sample_limit),
+        shard_count=3,
+    )
+
+    response = client.get(
+        f"/api/jobs/{job_id}/manifest/integrity"
+    )
+    freeze = client.get(
+        f"/api/jobs/{job_id}/manifest/freeze-report"
+    )
+
+    assert response.status_code == 200
+    report = response.json()
+    assert report["bad_shard_count"] == 3
+    assert len(report["bad_shards"]) == expected_samples
+    assert freeze.status_code == 200
+    assert freeze.json()["report"]["integrity_bad_shard_count"] == 3
+    assert len(
+        freeze.json()["report"]["integrity_issue_samples"]
+    ) == expected_samples
+    engine.dispose()
+
+
+def test_manifest_integrity_freeze_summary_caps_runtime_limit_at_five() -> None:
+    report = ManifestIntegrityResponse(
+        job_id="job-a",
+        ok=False,
+        status="failed",
+        bad_shard_count=7,
+        bad_shards=[
+            ManifestIntegrityShardIssue(
+                shard_id=index,
+                shard_index=index,
+                shard_path=f"/missing/{index}.jsonl",
+                expected_file_count=1,
+                reason="file_missing",
+            )
+            for index in range(1, 8)
+        ],
+    )
+
+    two = manifests_core._manifest_integrity_freeze_summary(
+        report,
+        limits=ControlLimits(
+            manifest_integrity_issue_sample_limit=2,
+        ),
+    )
+    fifty = manifests_core._manifest_integrity_freeze_summary(
+        report,
+        limits=ControlLimits(),
+    )
+
+    assert two["integrity_issue_count"] == 9
+    assert len(two["integrity_issue_samples"]) == 2
+    assert fifty["integrity_issue_count"] == 9
+    assert len(fifty["integrity_issue_samples"]) == 5
+
+
+@pytest.mark.parametrize(
+    ("sample_limit", "expected_samples"),
+    [(0, 0), (2, 2), (50, 5), (-1, 0)],
+)
+def test_frozen_manifest_report_reapplies_runtime_sample_limit(
+    tmp_path,
+    sample_limit,
+    expected_samples,
+) -> None:
+    app, session_factory, engine = _app_with_limits(
+        tmp_path,
+        f"frozen-{sample_limit}.db",
+        ControlLimits(
+            manifest_integrity_issue_sample_limit=sample_limit,
+        ),
+    )
+    client = TestClient(app)
+    job_id, manifest_id = _create_missing_shard_manifest(
+        client,
+        session_factory,
+        tmp_path / str(sample_limit),
+        shard_count=0,
+    )
+    samples = [
+        {
+            "kind": "shard",
+            "shard_id": index,
+            "shard_path": f"/historical/{index}.jsonl",
+        }
+        for index in range(1, 6)
+    ]
+    with session_factory() as session:
+        manifest = session.get(Manifest, manifest_id)
+        manifest.frozen_at = datetime.now(timezone.utc)
+        manifest.freeze_report_json = json.dumps(
+            {
+                "frozen": True,
+                "integrity_status": "failed",
+                "integrity_issue_count": 9,
+                "integrity_issue_samples": samples,
+                "unrelated": {"preserved": True},
+            }
+        )
+        session.commit()
+
+    response = client.get(
+        f"/api/jobs/{job_id}/manifest/freeze-report"
+    )
+
+    assert response.status_code == 200
+    report = response.json()["report"]
+    assert report["integrity_status"] == "failed"
+    assert report["integrity_issue_count"] == 9
+    assert len(report["integrity_issue_samples"]) == expected_samples
+    assert report["unrelated"] == {"preserved": True}
+    summary = client.get(f"/api/jobs/{job_id}/summary")
+    assert summary.status_code == 200
+    assert "integrity_issue_samples" not in summary.json()
+    assert "/historical/" not in summary.text
+    engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "malformed_samples",
+    [
+        None,
+        "/historical/private/path.jsonl",
+        {"path": "/historical/private/path.jsonl"},
+    ],
+)
+def test_frozen_manifest_report_redacts_nonlist_historical_samples(
+    tmp_path,
+    malformed_samples,
+) -> None:
+    app, session_factory, engine = _app_with_limits(
+        tmp_path,
+        "frozen-malformed.db",
+        ControlLimits(manifest_integrity_issue_sample_limit=2),
+    )
+    client = TestClient(app)
+    job_id, manifest_id = _create_missing_shard_manifest(
+        client,
+        session_factory,
+        tmp_path,
+        shard_count=0,
+    )
+    with session_factory() as session:
+        manifest = session.get(Manifest, manifest_id)
+        manifest.frozen_at = datetime.now(timezone.utc)
+        manifest.freeze_report_json = json.dumps(
+            {
+                "frozen": True,
+                "integrity_status": "failed",
+                "integrity_issue_count": 7,
+                "integrity_issue_samples": malformed_samples,
+            }
+        )
+        session.commit()
+
+    response = client.get(
+        f"/api/jobs/{job_id}/manifest/freeze-report"
+    )
+
+    assert response.status_code == 200
+    report = response.json()["report"]
+    assert report["integrity_issue_count"] == 7
+    assert report["integrity_issue_samples"] == []
+    assert "/historical/private/path.jsonl" not in response.text
+    engine.dispose()
+
+
+def test_manifest_integrity_legacy_fallback_and_explicit_override(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine, settings = _session_factory(
+        tmp_path,
+        "manifest-direct.db",
+    )
+    app = create_app(
+        runtime=build_control_runtime(
+            settings=settings,
+            session_factory=session_factory,
+            limits=ControlLimits(),
+        )
+    )
+    job_id, _ = _create_missing_shard_manifest(
+        TestClient(app),
+        session_factory,
+        tmp_path,
+        shard_count=3,
+    )
+    service = _compatibility_service()
+    monkeypatch.setattr(
+        service,
+        "MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
+        1,
+    )
+
+    with session_factory() as session:
+        legacy = manifests_core.get_manifest_integrity_report(
+            session,
+            job_id,
+        )
+        explicit = manifests_core.get_manifest_integrity_report(
+            session,
+            job_id,
+            limits=ControlLimits(
+                manifest_integrity_issue_sample_limit=2,
+            ),
+        )
+
+    assert legacy.bad_shard_count == 3
+    assert len(legacy.bad_shards) == 1
+    assert explicit.bad_shard_count == 3
+    assert len(explicit.bad_shards) == 2
+    assert ControlLimits.from_environment(
+        {"OCR_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT": "-1"}
+    ).manifest_integrity_issue_sample_limit == 50
+    engine.dispose()
+
+
+def test_two_apps_isolate_manifest_integrity_limit_from_global_drift(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    zero_app, zero_factory, zero_engine = _app_with_limits(
+        tmp_path,
+        "manifest-zero.db",
+        ControlLimits(manifest_integrity_issue_sample_limit=0),
+    )
+    two_app, two_factory, two_engine = _app_with_limits(
+        tmp_path,
+        "manifest-two.db",
+        ControlLimits(manifest_integrity_issue_sample_limit=2),
+    )
+    zero_client = TestClient(zero_app)
+    two_client = TestClient(two_app)
+    zero_job_id, _ = _create_missing_shard_manifest(
+        zero_client,
+        zero_factory,
+        tmp_path / "zero",
+        shard_count=3,
+    )
+    two_job_id, _ = _create_missing_shard_manifest(
+        two_client,
+        two_factory,
+        tmp_path / "two",
+        shard_count=3,
+    )
+    monkeypatch.setattr(
+        _compatibility_service(),
+        "MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
+        99,
+    )
+
+    zero_report = zero_client.get(
+        f"/api/jobs/{zero_job_id}/manifest/integrity"
+    ).json()
+    two_report = two_client.get(
+        f"/api/jobs/{two_job_id}/manifest/integrity"
+    ).json()
+
+    assert zero_report["bad_shard_count"] == 3
+    assert zero_report["bad_shards"] == []
+    assert two_report["bad_shard_count"] == 3
+    assert len(two_report["bad_shards"]) == 2
+    zero_engine.dispose()
+    two_engine.dispose()
+
+
+def test_worker_manifest_integrity_write_and_historical_read_are_bounded(
+    tmp_path,
+) -> None:
+    limits = ControlLimits(manifest_integrity_issue_sample_limit=2)
+    app, session_factory, engine = _app_with_limits(
+        tmp_path,
+        "manifest-worker.db",
+        limits,
+    )
+    client = TestClient(app)
+    heartbeat = client.post(
+        "/api/servers/server-a/heartbeat",
+        json={
+            "status": "idle",
+            "capabilities": {
+                "shared_paths": [
+                    {
+                        "path": "/shared",
+                        "exists": True,
+                        "is_dir": True,
+                        "readable": True,
+                        "writable": True,
+                    }
+                ]
+            },
+        },
+    )
+    assert heartbeat.status_code == 200
+    job_id, manifest_id = _create_missing_shard_manifest(
+        client,
+        session_factory,
+        tmp_path,
+        shard_count=0,
+    )
+    issues = [
+        {
+            "shard_id": index,
+            "shard_index": index,
+            "shard_path": f"/shared/missing/{index}.jsonl",
+            "expected_file_count": 1,
+            "reason": "file_missing",
+        }
+        for index in range(1, 4)
+    ]
+    with session_factory() as session:
+        manifest = session.get(Manifest, manifest_id)
+        manifest.manifest_path = (
+            f"/shared/manifests/{job_id}/manifest.jsonl"
+        )
+        manifest.worker_integrity_status = "running"
+        manifest.worker_integrity_server_id = "server-a"
+        session.commit()
+
+    complete = client.post(
+        (
+            f"/api/manifest-integrity/{manifest_id}/complete"
+            "?server_id=server-a"
+        ),
+        json={
+            "report": {
+                "job_id": job_id,
+                "manifest_id": manifest_id,
+                "ok": False,
+                "status": "failed",
+                "bad_shard_count": 3,
+                "bad_shards": issues,
+            }
+        },
+    )
+
+    assert complete.status_code == 200
+    with session_factory() as session:
+        manifest = session.get(Manifest, manifest_id)
+        stored = json.loads(manifest.worker_integrity_report_json)
+        assert stored["bad_shard_count"] == 3
+        assert len(stored["bad_shards"]) == 2
+        stored["bad_shards"] = issues
+        manifest.worker_integrity_report_json = json.dumps(stored)
+        session.commit()
+
+    historical = client.get(
+        f"/api/jobs/{job_id}/manifest/integrity"
+    ).json()
+    assert historical["source"] == "worker"
+    assert historical["bad_shard_count"] == 3
+    assert len(historical["bad_shards"]) == 2
+    with session_factory() as session:
+        manifest = session.get(Manifest, manifest_id)
+        malformed = json.loads(
+            manifest.worker_integrity_report_json
+        )
+        malformed["bad_shards"] = None
+        manifest.worker_integrity_report_json = json.dumps(malformed)
+        session.commit()
+
+    fallback = client.get(
+        f"/api/jobs/{job_id}/manifest/integrity"
+    )
+    assert fallback.status_code == 200
+    assert fallback.json()["status"] == "not_accessible_from_control"
+    engine.dispose()
+
+
+def test_manifest_router_and_nested_freeze_use_one_runtime_snapshot(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    limits = ControlLimits(manifest_integrity_issue_sample_limit=2)
+    app, session_factory, engine = _app_with_limits(
+        tmp_path,
+        "manifest-identity.db",
+        limits,
+    )
+    captured: list[ControlLimits] = []
+
+    def fake_report(session, job_id, *, limits=None):
+        captured.append(limits)
+        return ManifestIntegrityResponse(
+            job_id=job_id,
+            ok=False,
+            status="missing_manifest",
+        )
+
+    monkeypatch.setattr(
+        manifest_queries,
+        "get_manifest_integrity_report",
+        fake_report,
+    )
+    response = TestClient(app).get(
+        "/api/jobs/missing/manifest/integrity"
+    )
+    assert response.status_code == 200
+    assert captured == [limits]
+
+    job_id, _ = _create_missing_shard_manifest(
+        TestClient(app),
+        session_factory,
+        tmp_path,
+        shard_count=1,
+    )
+    legacy_calls = 0
+
+    def legacy_limits():
+        nonlocal legacy_calls
+        legacy_calls += 1
+        return limits
+
+    monkeypatch.setattr(
+        manifests_core,
+        "__legacy_control_limits",
+        legacy_limits,
+    )
+    with session_factory() as session:
+        manifests_core.get_manifest_freeze_report(session, job_id)
+
+    assert legacy_calls == 1
+    engine.dispose()
+
+
+def test_static_create_and_scan_completion_propagate_runtime_snapshot(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine, _ = _session_factory(
+        tmp_path,
+        "manifest-paths.db",
+    )
+    limits = ControlLimits(manifest_integrity_issue_sample_limit=2)
+    captured: list[ControlLimits] = []
+    original_report = manifests_core.get_manifest_integrity_report
+
+    def observed_report(session, job_id, *, limits=None):
+        captured.append(limits)
+        return original_report(
+            session,
+            job_id,
+            limits=limits,
+        )
+
+    def fail_legacy_read():
+        raise AssertionError("nested manifest path reread legacy limits")
+
+    monkeypatch.setattr(
+        manifests_core,
+        "get_manifest_integrity_report",
+        observed_report,
+    )
+    monkeypatch.setattr(
+        manifests_core,
+        "__legacy_control_limits",
+        fail_legacy_read,
+    )
+    input_dir = tmp_path / "static-input"
+    input_dir.mkdir()
+    (input_dir / "a.pdf").write_bytes(b"%PDF-1.4\n")
+    with session_factory() as session:
+        session.add(
+            Server(
+                id="server-a",
+                name="Server A",
+                host="localhost",
+            )
+        )
+        session.commit()
+        jobs_core.create_job(
+            session,
+            JobCreateRequest(
+                input_dir=str(input_dir),
+                output_dir=str(tmp_path / "static-output"),
+                engine="dotsocr",
+                assigned_server_id="server-a",
+                input_mode="folder_snapshot",
+                manifest_root=str(tmp_path / "static-manifests"),
+            ),
+            limits=limits,
+        )
+        distributed = jobs_core.create_job(
+            session,
+            JobCreateRequest(
+                input_dir=str(tmp_path / "distributed-input"),
+                output_dir=str(tmp_path / "distributed-output"),
+                engine="dotsocr",
+                input_mode="distributed_remote_folder_snapshot",
+                manifest_root=str(
+                    tmp_path / "distributed-manifests"
+                ),
+            ),
+            limits=limits,
+        )
+        unit = (
+            session.query(ScanUnit)
+            .filter_by(job_id=distributed.id)
+            .one()
+        )
+        unit.status = "running"
+        session.commit()
+        manifests_core.complete_scan_unit(
+            session,
+            unit.id,
+            ScanUnitCompleteRequest(),
+            limits=limits,
+        )
+
+    assert captured == [limits, limits]
+    engine.dispose()
+
+
 def test_direct_audit_operations_preserve_local_global_compatibility(
     tmp_path,
     monkeypatch,
@@ -816,6 +1418,86 @@ def test_job_detail_hot_paths_keep_direct_session_call_baseline() -> None:
         "flush": 1,
         "commit": 2,
         "refresh": 1,
+    }
+
+
+def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
+    def session_calls(module, function_names):
+        tree = ast.parse(inspect.getsource(module))
+        functions = {
+            node.name: node
+            for node in tree.body
+            if isinstance(
+                node,
+                (ast.FunctionDef, ast.AsyncFunctionDef),
+            )
+            and node.name in function_names
+        }
+        return {
+            name: dict(
+                Counter(
+                    call.func.attr
+                    for call in ast.walk(function)
+                    if isinstance(call, ast.Call)
+                    and isinstance(call.func, ast.Attribute)
+                    and isinstance(call.func.value, ast.Name)
+                    and call.func.value.id == "session"
+                    and call.func.attr
+                    in {
+                        "execute",
+                        "flush",
+                        "commit",
+                        "rollback",
+                        "refresh",
+                        "get",
+                        "add",
+                    }
+                )
+            )
+            for name, function in functions.items()
+        }
+
+    assert session_calls(jobs_core, {"create_job"}) == {
+        "create_job": {
+            "add": 1,
+            "refresh": 1,
+            "get": 3,
+            "flush": 1,
+            "commit": 1,
+            "rollback": 1,
+        }
+    }
+    assert session_calls(
+        manifests_core,
+        {
+            "_create_static_shards_for_job",
+            "complete_scan_unit",
+            "_build_manifest_freeze_report",
+            "freeze_manifest_if_scan_complete",
+            "get_manifest_freeze_report",
+            "complete_worker_manifest_integrity_check",
+            "get_manifest_integrity_report",
+        },
+    ) == {
+        "_create_static_shards_for_job": {
+            "add": 2,
+            "flush": 2,
+        },
+        "complete_scan_unit": {
+            "flush": 1,
+            "commit": 2,
+            "refresh": 2,
+            "add": 2,
+            "execute": 2,
+        },
+        "_build_manifest_freeze_report": {"execute": 1},
+        "freeze_manifest_if_scan_complete": {"execute": 2},
+        "get_manifest_freeze_report": {"execute": 1},
+        "complete_worker_manifest_integrity_check": {
+            "get": 1,
+            "commit": 1,
+        },
+        "get_manifest_integrity_report": {"execute": 6},
     }
 
 

@@ -128,7 +128,12 @@ def _assemble_control_app(control_runtime: ControlRuntime) -> FastAPI:
             settings=control_settings,
         )
     )
-    app.include_router(create_manifests_router(get_db))
+    app.include_router(
+        create_manifests_router(
+            get_db,
+            limits=control_runtime.limits,
+        )
+    )
     _register_static_ui(app)
     return app
 
