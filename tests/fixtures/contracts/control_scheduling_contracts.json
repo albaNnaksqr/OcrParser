@@ -1,0 +1,218 @@
+{
+  "builder": "tools.control_contracts.build_scheduling_contract",
+  "invariants": [
+    {
+      "contract": "retrying and stale work is reclaimed before pending work; equal-priority pending work uses shard_index order",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "claim_ordering",
+      "observed_claim_sequence": [
+        {
+          "attempt_count": 1,
+          "from_status": "pending",
+          "shard_index": 1
+        },
+        {
+          "attempt_count": 2,
+          "from_status": "retrying",
+          "shard_index": 1
+        },
+        {
+          "attempt_count": 1,
+          "from_status": "pending",
+          "shard_index": 2
+        },
+        {
+          "attempt_count": 2,
+          "from_status": "stale",
+          "shard_index": 2
+        },
+        {
+          "attempt_count": 1,
+          "from_status": "pending",
+          "shard_index": 3
+        }
+      ]
+    },
+    {
+      "attempt_numbers_by_shard_index": {
+        "1": [
+          1,
+          2
+        ],
+        "2": [
+          1,
+          2
+        ],
+        "3": [
+          1
+        ]
+      },
+      "attempt_statuses_by_shard_index": {
+        "1": [
+          "retrying",
+          "succeeded"
+        ],
+        "2": [
+          "stale",
+          "succeeded"
+        ],
+        "3": [
+          "running"
+        ]
+      },
+      "contract": "each successful reclaim increments attempt_count and (shard_id, attempt_number) remains unique",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "attempt_number_increment_and_uniqueness",
+      "unique_attempt_pairs": true
+    },
+    {
+      "contract": "updates from a different server or stale attempt are rejected before state mutation",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "server_and_attempt_fencing",
+      "old_terminal_attempt_status": 409,
+      "stale_attempt_status": 409,
+      "wrong_server_status": 409
+    },
+    {
+      "contract": "busy heartbeat renews a live lease; expiry makes the shard stale and reclaim creates a new attempt",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "expired_status": "stale",
+      "heartbeat_extended_lease": true,
+      "id": "work_shard_lease_lifecycle",
+      "reclaimed_attempt_count": 2,
+      "reclaimed_server_id": "worker-b",
+      "reclaimed_status": "running"
+    },
+    {
+      "contract": "a current terminal update is idempotent and later nonterminal replay cannot regress state or counters",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "terminal_monotonicity_and_replay",
+      "late_nonterminal_replay": {
+        "processed_files": 1,
+        "status": "succeeded"
+      },
+      "persisted_state": {
+        "assigned_server_id": "worker-b",
+        "attempt_count": 2,
+        "processed_files": 1,
+        "status": "succeeded"
+      },
+      "same_terminal_replay": {
+        "processed_files": 1,
+        "status": "succeeded"
+      },
+      "terminal_response": {
+        "processed_files": 1,
+        "status": "succeeded"
+      }
+    },
+    {
+      "contract": "scan units use id ordering, stale-first recovery, lease renewal, attempt increments, and server/attempt fencing",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "first_claim": {
+        "attempt_count": 1,
+        "from_status": "pending",
+        "server_id": "worker-a"
+      },
+      "heartbeat_extended_lease": true,
+      "id": "scan_unit_claim_lease_and_fencing",
+      "old_terminal_attempt_status": 409,
+      "reclaim": {
+        "attempt_count": 2,
+        "from_status": "stale",
+        "same_unit": true,
+        "server_id": "worker-b"
+      },
+      "stale_attempt_status": 409,
+      "wrong_server_status": 409
+    },
+    {
+      "contract": "same success/failure terminal replay is idempotent; opposite terminal replay is rejected",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "failure_replay_status": "failed",
+      "failure_status": "failed",
+      "id": "scan_unit_terminal_replay",
+      "late_completion_status": 409,
+      "late_failure_status": 409,
+      "success_replay_status": "succeeded",
+      "success_status": "succeeded"
+    },
+    {
+      "contract": "stop immediately closes reclaimable work, preserves running work until its attempt stops or lease expires, and prevents late updates from regressing terminal state",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "stop_state_results",
+      "scan_units": {
+        "after_request_stop": {
+          "pending": "stopped",
+          "scan-stop-scans": "running",
+          "stale": "stopped"
+        },
+        "after_running_lease_expiry": {
+          "pending": "stopped",
+          "scan-stop-scans": "stale",
+          "stale": "stopped"
+        },
+        "after_second_stop_sweep": {
+          "pending": "stopped",
+          "scan-stop-scans": "stopped",
+          "stale": "stopped"
+        },
+        "before": {
+          "pending": "pending",
+          "scan-stop-scans": "running",
+          "stale": "stale"
+        },
+        "request_job_status": "stopping",
+        "window_one_job_status": "stopping",
+        "window_two_job_status": "stopped"
+      },
+      "shards": {
+        "after_request_stop": {
+          "1": "running",
+          "2": "stopped",
+          "3": "stopped",
+          "4": "stopped"
+        },
+        "before": {
+          "1": "running",
+          "2": "retrying",
+          "3": "stale",
+          "4": "pending"
+        },
+        "final_job_status": "stopped",
+        "late_current_attempt_status": "stopped",
+        "old_attempt_http_status": 409,
+        "request_job_status": "stopping",
+        "running_terminal_status": "stopped"
+      }
+    },
+    {
+      "contract": "after stop, current behavior reaches a terminal job within at most two lease/recovery sweeps",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "recovery_finalization_bound",
+      "scan_unit_windows_to_terminal": 2,
+      "terminal_status": "stopped",
+      "timing_note": "deterministic controlled-expiry contract; production wall-clock validation remains an external gate",
+      "work_shard_windows_to_terminal": 1
+    }
+  ],
+  "postgresql_concurrency_validation": {
+    "disclaimer": "SQLite service scenarios and PostgreSQL SQL compilation do not prove concurrent SKIP LOCKED behavior",
+    "executed_by_fixture_builder": false,
+    "operator": "validation_operator",
+    "required_command": "python3 tools/pg_claim_stress.py --database-url $OCR_PLATFORM_TEST_POSTGRES_URL",
+    "status": "external_required",
+    "supporting_non_runtime_checks": [
+      "tests/test_control_recovery.py::test_claimable_shard_select_uses_postgresql_skip_locked",
+      "tests/test_control_recovery.py::test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit",
+      "tests/test_pg_claim_stress_tool.py"
+    ]
+  },
+  "schema_version": 2,
+  "scope": [
+    "work_shard_claim_attempt_lease_and_fencing",
+    "scan_unit_claim_attempt_lease_and_fencing",
+    "terminal_replay",
+    "stop_and_recovery_finalization"
+  ]
+}

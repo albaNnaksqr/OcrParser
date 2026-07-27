@@ -1,0 +1,3768 @@
+{
+  "migration_history_reference": {
+    "count": 20,
+    "latest": "0020_model_profile_certification",
+    "path": "tests/fixtures/contracts/control_migration_checksums.json",
+    "sha256": "93ff1f7af8b9a33284894554c2990c2f23f2f704030ef31bf049af2b8309b945"
+  },
+  "orm_metadata": {
+    "column_count": 187,
+    "foreign_key_count": 12,
+    "index_count": 15,
+    "table_count": 12,
+    "tables": [
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "started_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "completed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "failed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "skipped_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "total_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "completed_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "degraded_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "[]"
+            },
+            "foreign_keys": [],
+            "name": "recent_failed_files_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "[]"
+            },
+            "foreign_keys": [],
+            "name": "recent_errors_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "failure_category_counts_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "first_event_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "last_event_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [],
+        "name": "job_counters",
+        "primary_key": [
+          "job_id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "event_type",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "file_path",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "page_no",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "payload_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "job_events.job_id",
+              "job_events.created_at"
+            ],
+            "name": "ix_job_events_job_created",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "job_events.job_id",
+              "job_events.failure_category",
+              "job_events.created_at",
+              "job_events.id"
+            ],
+            "name": "ix_job_events_job_failure_created",
+            "unique": false
+          }
+        ],
+        "name": "job_events",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "file_path",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "filename",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 512
+              },
+              "rendered": "VARCHAR(512)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "pending"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "total_pages",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "done_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "output_path",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "error",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "job_files.job_id",
+              "job_files.file_path"
+            ],
+            "name": "ix_job_files_job_path",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "job_files.job_id",
+              "job_files.status"
+            ],
+            "name": "ix_job_files_job_status",
+            "unique": false
+          }
+        ],
+        "name": "job_files",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "server_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "stream",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 16
+              },
+              "rendered": "VARCHAR(16)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "line",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [],
+        "name": "job_logs",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.Job.<lambda>"
+            },
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "input_dir",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "output_dir",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "engine",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "directory"
+            },
+            "foreign_keys": [],
+            "name": "input_mode",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "model_profile_id",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "manifest_root",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "1000"
+            },
+            "foreign_keys": [],
+            "name": "target_files_per_shard",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "3"
+            },
+            "foreign_keys": [],
+            "name": "max_shard_attempts",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "engine_config",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": null,
+                "onupdate": null,
+                "target": "servers.id"
+              }
+            ],
+            "name": "assigned_server_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "[]"
+            },
+            "foreign_keys": [],
+            "name": "allowed_server_ids_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "queued"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "error_message",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "ip",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "port",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "model_name",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "page_concurrency",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "extra_args_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "[]"
+            },
+            "foreign_keys": [],
+            "name": "command_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "force_reprocess",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "stop_requested",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "archived_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "started_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "finished_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "assigned_server_id"
+            ],
+            "ondelete": null,
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "servers"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "jobs.archived_at",
+              "jobs.created_at"
+            ],
+            "name": "ix_jobs_archived_created",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "jobs.archived_at",
+              "jobs.status",
+              "jobs.created_at"
+            ],
+            "name": "ix_jobs_archived_status_created",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "jobs.status",
+              "jobs.created_at"
+            ],
+            "name": "ix_jobs_status_created",
+            "unique": false
+          }
+        ],
+        "name": "jobs",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "input_mode",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "input_root",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "manifest_path",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "meta_path",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "file_count",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "total_bytes",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.BigInteger",
+              "options": {},
+              "rendered": "BIGINT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "1"
+            },
+            "foreign_keys": [],
+            "name": "next_shard_index",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "1"
+            },
+            "foreign_keys": [],
+            "name": "scanner_version",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "ready"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "frozen_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "freeze_report_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "worker_integrity_status",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "worker_integrity_requested_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "worker_integrity_started_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "worker_integrity_finished_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "worker_integrity_server_id",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "worker_integrity_report_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [],
+        "name": "manifests",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [
+          {
+            "name": "ck_model_profile_certifications_enforcement",
+            "sqltext": "enforcement IN ('off', 'verified', 'certified')"
+          },
+          {
+            "name": "ck_model_profile_certifications_status",
+            "sqltext": "status IN ('contract_only', 'verified', 'certified', 'blocked')"
+          }
+        ],
+        "columns": [
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "model_profiles.id"
+              }
+            ],
+            "name": "profile_id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "off"
+            },
+            "foreign_keys": [],
+            "name": "enforcement",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": "off",
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "contract_only"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": "contract_only",
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "parser_revision",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "parser_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "model_revision",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "model_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "runtime_revision",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "runtime_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "layout_revision",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "layout_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "fixture_set_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "evidence_digest",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "certified_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.DateTime",
+              "options": {
+                "timezone": true
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "risk_acceptance_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": "{}",
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": "CURRENT_TIMESTAMP",
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.DateTime",
+              "options": {
+                "timezone": true
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "profile_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "model_profiles"
+          }
+        ],
+        "indexes": [],
+        "name": "model_profile_certifications",
+        "primary_key": [
+          "profile_id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "label",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "engine",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "ip",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "port",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "model_name",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "page_concurrency",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "extra_args_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "api_key",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "api_key_env_var",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "requires_api_key",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "is_default",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [],
+        "indexes": [],
+        "name": "model_profiles",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "path",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "pending"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "assigned_server_id",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "attempt_count",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "manifest_path",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "meta_path",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "file_count",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "total_bytes",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.BigInteger",
+              "options": {},
+              "rendered": "BIGINT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "error_message",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "started_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "finished_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "lease_expires_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "scan_units.job_id",
+              "scan_units.status"
+            ],
+            "name": "ix_scan_units_job_status",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "scan_units.job_id",
+              "scan_units.path"
+            ],
+            "name": "ux_scan_units_job_path",
+            "unique": true
+          }
+        ],
+        "name": "scan_units",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "name",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "host",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 255
+              },
+              "rendered": "VARCHAR(255)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "offline"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "1"
+            },
+            "foreign_keys": [],
+            "name": "capacity_slots",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "{}"
+            },
+            "foreign_keys": [],
+            "name": "capabilities_json",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "last_heartbeat_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "archived_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "created_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [],
+        "indexes": [],
+        "name": "servers",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "work_shards.id"
+              }
+            ],
+            "name": "shard_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "attempt_number",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "server_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "running"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "processed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "failed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "skipped_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "completed_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "execution_paused",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "api_concurrency_limit",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "execution_control_reason",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "error_message",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "started_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "finished_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          },
+          {
+            "columns": [
+              "shard_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "work_shards"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "shard_attempts.job_id",
+              "shard_attempts.status"
+            ],
+            "name": "ix_shard_attempts_job_status",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "shard_attempts.shard_id",
+              "shard_attempts.attempt_number"
+            ],
+            "name": "ux_shard_attempts_shard_attempt",
+            "unique": true
+          }
+        ],
+        "name": "shard_attempts",
+        "primary_key": [
+          "id"
+        ]
+      },
+      {
+        "checks": [],
+        "columns": [
+          {
+            "autoincrement": true,
+            "default": null,
+            "foreign_keys": [],
+            "name": "id",
+            "nullable": false,
+            "primary_key": true,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "jobs.id"
+              }
+            ],
+            "name": "job_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 36
+              },
+              "rendered": "VARCHAR(36)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [
+              {
+                "ondelete": "CASCADE",
+                "onupdate": null,
+                "target": "manifests.id"
+              }
+            ],
+            "name": "manifest_id",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "shard_index",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "shard_path",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "pending"
+            },
+            "foreign_keys": [],
+            "name": "status",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 32
+              },
+              "rendered": "VARCHAR(32)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "assigned_server_id",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 128
+              },
+              "rendered": "VARCHAR(128)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "attempt_count",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "file_count",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "processed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "failed_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "skipped_files",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "completed_pages",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "api_inflight",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "api_inflight_peak",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0"
+            },
+            "foreign_keys": [],
+            "name": "api_waiting",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "0.0"
+            },
+            "foreign_keys": [],
+            "name": "oldest_api_inflight",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Float",
+              "options": {},
+              "rendered": "FLOAT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "scalar",
+              "value": "False"
+            },
+            "foreign_keys": [],
+            "name": "execution_paused",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Boolean",
+              "options": {},
+              "rendered": "BOOLEAN"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "api_concurrency_limit",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Integer",
+              "options": {},
+              "rendered": "INTEGER"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "execution_control_reason",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "failure_category",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.String",
+              "options": {
+                "length": 64
+              },
+              "rendered": "VARCHAR(64)"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "error_message",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "sqlalchemy.sql.sqltypes.Text",
+              "options": {},
+              "rendered": "TEXT"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "started_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "finished_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": null,
+            "foreign_keys": [],
+            "name": "lease_expires_at",
+            "nullable": true,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          },
+          {
+            "autoincrement": "auto",
+            "default": {
+              "kind": "callable",
+              "value": "ocr_platform.control.models.utcnow"
+            },
+            "foreign_keys": [],
+            "name": "updated_at",
+            "nullable": false,
+            "primary_key": false,
+            "server_default": null,
+            "type": {
+              "class": "ocr_platform.control.models.UTCDateTime",
+              "options": {
+                "timezone": false
+              },
+              "rendered": "DATETIME"
+            }
+          }
+        ],
+        "foreign_keys": [
+          {
+            "columns": [
+              "job_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "jobs"
+          },
+          {
+            "columns": [
+              "manifest_id"
+            ],
+            "ondelete": "CASCADE",
+            "onupdate": null,
+            "referred_columns": [
+              "id"
+            ],
+            "referred_table": "manifests"
+          }
+        ],
+        "indexes": [
+          {
+            "expressions": [
+              "work_shards.job_id",
+              "work_shards.assigned_server_id",
+              "work_shards.status"
+            ],
+            "name": "ix_work_shards_job_server_status",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "work_shards.job_id",
+              "work_shards.status",
+              "work_shards.shard_index"
+            ],
+            "name": "ix_work_shards_job_status_index",
+            "unique": false
+          },
+          {
+            "expressions": [
+              "work_shards.job_id",
+              "work_shards.shard_index"
+            ],
+            "name": "ux_work_shards_job_index",
+            "unique": true
+          },
+          {
+            "expressions": [
+              "work_shards.manifest_id",
+              "work_shards.shard_index"
+            ],
+            "name": "ux_work_shards_manifest_index",
+            "unique": true
+          }
+        ],
+        "name": "work_shards",
+        "primary_key": [
+          "id"
+        ]
+      }
+    ]
+  },
+  "schema_version": 1,
+  "sqlite_effective_indexes": {
+    "index_count": 20,
+    "tables": {
+      "job_counters": [
+        {
+          "column_names": [
+            "job_id"
+          ],
+          "name": "sqlite_autoindex_job_counters_1",
+          "origin": "pk",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "job_events": [
+        {
+          "column_names": [
+            "job_id",
+            "created_at"
+          ],
+          "name": "ix_job_events_job_created",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "job_id",
+            "failure_category",
+            "created_at",
+            "id"
+          ],
+          "name": "ix_job_events_job_failure_created",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        }
+      ],
+      "job_files": [
+        {
+          "column_names": [
+            "job_id",
+            "file_path"
+          ],
+          "name": "ix_job_files_job_path",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "job_id",
+            "status"
+          ],
+          "name": "ix_job_files_job_status",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        }
+      ],
+      "job_logs": [],
+      "jobs": [
+        {
+          "column_names": [
+            "archived_at",
+            "created_at"
+          ],
+          "name": "ix_jobs_archived_created",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "archived_at",
+            "status",
+            "created_at"
+          ],
+          "name": "ix_jobs_archived_status_created",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "status",
+            "created_at"
+          ],
+          "name": "ix_jobs_status_created",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "id"
+          ],
+          "name": "sqlite_autoindex_jobs_1",
+          "origin": "pk",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "manifests": [],
+      "model_profile_certifications": [
+        {
+          "column_names": [
+            "profile_id"
+          ],
+          "name": "sqlite_autoindex_model_profile_certifications_1",
+          "origin": "pk",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "model_profiles": [
+        {
+          "column_names": [
+            "id"
+          ],
+          "name": "sqlite_autoindex_model_profiles_1",
+          "origin": "pk",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "scan_units": [
+        {
+          "column_names": [
+            "job_id",
+            "status"
+          ],
+          "name": "ix_scan_units_job_status",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "job_id",
+            "path"
+          ],
+          "name": "ux_scan_units_job_path",
+          "origin": "c",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "servers": [
+        {
+          "column_names": [
+            "id"
+          ],
+          "name": "sqlite_autoindex_servers_1",
+          "origin": "pk",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "shard_attempts": [
+        {
+          "column_names": [
+            "job_id",
+            "status"
+          ],
+          "name": "ix_shard_attempts_job_status",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "shard_id",
+            "attempt_number"
+          ],
+          "name": "ux_shard_attempts_shard_attempt",
+          "origin": "c",
+          "partial": false,
+          "unique": true
+        }
+      ],
+      "work_shards": [
+        {
+          "column_names": [
+            "job_id",
+            "assigned_server_id",
+            "status"
+          ],
+          "name": "ix_work_shards_job_server_status",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "job_id",
+            "status",
+            "shard_index"
+          ],
+          "name": "ix_work_shards_job_status_index",
+          "origin": "c",
+          "partial": false,
+          "unique": false
+        },
+        {
+          "column_names": [
+            "job_id",
+            "shard_index"
+          ],
+          "name": "ux_work_shards_job_index",
+          "origin": "c",
+          "partial": false,
+          "unique": true
+        },
+        {
+          "column_names": [
+            "manifest_id",
+            "shard_index"
+          ],
+          "name": "ux_work_shards_manifest_index",
+          "origin": "c",
+          "partial": false,
+          "unique": true
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,786 @@
+{
+  "entities": {
+    "Job": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "queued",
+          "running",
+          "stopped",
+          "stopping",
+          "succeeded"
+        ],
+        "sources": [
+          "ocr_platform/control/domains/common.py:14"
+        ],
+        "type": "domain_constant",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ],
+          "queued": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ],
+          "running": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ],
+          "stopped": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ],
+          "stopping": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ],
+          "succeeded": [
+            {
+              "kind": "domain_constant",
+              "source": "ocr_platform/control/domains/common.py:14",
+              "symbol": "JOB_STATUS_FILTERS"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_domain_set",
+      "storage": "string",
+      "values": [
+        "failed",
+        "queued",
+        "running",
+        "stopped",
+        "stopping",
+        "succeeded"
+      ]
+    },
+    "JobEvent": {
+      "authority": {
+        "sources": [
+          "ocr_platform/control/schemas.py:78",
+          "ocr_platform/control/domains/jobs/core.py:1559",
+          "ocr_parser/domain/metadata.py:7"
+        ],
+        "type": "event_payload_string"
+      },
+      "known_values": [
+        "skipped_blank",
+        "success",
+        "success_fallback_image",
+        "success_fallback_text"
+      ],
+      "open_reason": "JobEvent.status is copied from an arbitrary event payload; known parser statuses are examples, not an exhaustive set.",
+      "openness": "open_event_string",
+      "storage": "nullable_string"
+    },
+    "JobFile": {
+      "authority": {
+        "sources": [
+          "ocr_platform/control/schemas.py:78",
+          "ocr_platform/control/domains/jobs/core.py:1242"
+        ],
+        "type": "event_payload_string"
+      },
+      "known_values": [
+        "completed",
+        "done",
+        "error",
+        "failed",
+        "pending",
+        "running",
+        "skipped",
+        "succeeded",
+        "success"
+      ],
+      "open_reason": "JobFile.status is assigned from JobEventRequest.payload, whose status member has no schema enum.",
+      "openness": "open_event_string",
+      "storage": "string"
+    },
+    "Manifest": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "ready",
+          "scanning"
+        ],
+        "sources": [
+          "ocr_platform/control/domains/manifests/core.py"
+        ],
+        "type": "ast_domain_transitions",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:544",
+              "symbol": "manifest.status"
+            }
+          ],
+          "ready": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:219",
+              "symbol": "Manifest(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:285",
+              "symbol": "Manifest(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:823",
+              "symbol": "manifest.status"
+            }
+          ],
+          "scanning": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:252",
+              "symbol": "Manifest(status=...)"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_domain_set",
+      "storage": "string",
+      "values": [
+        "failed",
+        "ready",
+        "scanning"
+      ]
+    },
+    "Manifest.worker_integrity_status": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "ok",
+          "pending",
+          "running"
+        ],
+        "sources": [
+          "ocr_platform/control/domains/manifests/core.py"
+        ],
+        "type": "ast_domain_transitions",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1006",
+              "symbol": "manifest.worker_integrity_status"
+            }
+          ],
+          "ok": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1006",
+              "symbol": "manifest.worker_integrity_status"
+            }
+          ],
+          "pending": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:931",
+              "symbol": "manifest.worker_integrity_status"
+            }
+          ],
+          "running": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:966",
+              "symbol": "manifest.worker_integrity_status"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_domain_set",
+      "storage": "nullable_string",
+      "values": [
+        "failed",
+        "ok",
+        "pending",
+        "running"
+      ]
+    },
+    "ManifestFreezeReport.status": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "missing_manifest",
+          "ready",
+          "scanning"
+        ],
+        "projection_relationship": {
+          "constructor": "ManifestFreezeReportResponse",
+          "expected_count": 2,
+          "keyword": "status",
+          "kind": "ast_constructor_keyword",
+          "matches": [
+            "ocr_platform/control/domains/manifests/core.py:851",
+            "ocr_platform/control/domains/manifests/core.py:858"
+          ],
+          "projected_values": [
+            "failed",
+            "ready",
+            "scanning"
+          ],
+          "source": "manifest.status"
+        },
+        "sources": [
+          "ocr_platform/control/domains/manifests/core.py",
+          "ocr_platform/control/domains/manifests/core.py:851",
+          "ocr_platform/control/domains/manifests/core.py:858"
+        ],
+        "type": "derived_response_projection",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:544",
+              "symbol": "manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:851",
+              "symbol": "status=manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:858",
+              "symbol": "status=manifest.status"
+            }
+          ],
+          "missing_manifest": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:840",
+              "symbol": "ManifestFreezeReportResponse(status=...)"
+            }
+          ],
+          "ready": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:219",
+              "symbol": "Manifest(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:285",
+              "symbol": "Manifest(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:823",
+              "symbol": "manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:851",
+              "symbol": "status=manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:858",
+              "symbol": "status=manifest.status"
+            }
+          ],
+          "scanning": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:252",
+              "symbol": "Manifest(status=...)"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:851",
+              "symbol": "status=manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:858",
+              "symbol": "status=manifest.status"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_response_set",
+      "storage": "response_string",
+      "values": [
+        "failed",
+        "missing_manifest",
+        "ready",
+        "scanning"
+      ]
+    },
+    "ManifestIntegrityResponse.status": {
+      "authority": {
+        "sources": [
+          "ocr_platform/control/schemas.py:522",
+          "ocr_platform/control/domains/manifests/core.py:888",
+          "ocr_platform/control/domains/manifests/core.py:893"
+        ],
+        "type": "worker_report_string"
+      },
+      "known_value_evidence": {
+        "failed": [
+          {
+            "kind": "domain_transition",
+            "source": "ocr_platform/control/domains/manifests/core.py:1659",
+            "symbol": "ManifestIntegrityResponse(status=...)"
+          }
+        ],
+        "missing_manifest": [
+          {
+            "kind": "domain_transition",
+            "source": "ocr_platform/control/domains/manifests/core.py:1031",
+            "symbol": "ManifestIntegrityResponse(status=...)"
+          }
+        ],
+        "not_accessible_from_control": [
+          {
+            "kind": "domain_transition",
+            "source": "ocr_platform/control/domains/manifests/core.py:1149",
+            "symbol": "ManifestIntegrityResponse(status=...)"
+          }
+        ],
+        "ok": [
+          {
+            "kind": "domain_transition",
+            "source": "ocr_platform/control/domains/manifests/core.py:1659",
+            "symbol": "ManifestIntegrityResponse(status=...)"
+          }
+        ]
+      },
+      "known_values": [
+        "failed",
+        "missing_manifest",
+        "not_accessible_from_control",
+        "ok"
+      ],
+      "open_reason": "ManifestIntegrityWorkerCompleteRequest accepts a worker ManifestIntegrityResponse whose status field is str; the payload is persisted and can be projected back unchanged.",
+      "openness": "open_external_string",
+      "storage": "response_string"
+    },
+    "ModelProfileCertification.enforcement": {
+      "authority": {
+        "authoritative_values": [
+          "certified",
+          "off",
+          "verified"
+        ],
+        "sources": [
+          "ocr_platform/control/models.py:95"
+        ],
+        "type": "database_check",
+        "value_evidence": {
+          "certified": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_enforcement"
+            }
+          ],
+          "off": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_enforcement"
+            }
+          ],
+          "verified": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_enforcement"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_database_check",
+      "storage": "string",
+      "values": [
+        "certified",
+        "off",
+        "verified"
+      ]
+    },
+    "ModelProfileCertification.status": {
+      "authority": {
+        "authoritative_values": [
+          "blocked",
+          "certified",
+          "contract_only",
+          "verified"
+        ],
+        "sources": [
+          "ocr_platform/control/models.py:95"
+        ],
+        "type": "database_check",
+        "value_evidence": {
+          "blocked": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_status"
+            }
+          ],
+          "certified": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_status"
+            }
+          ],
+          "contract_only": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_status"
+            }
+          ],
+          "verified": [
+            {
+              "kind": "database_check",
+              "source": "ocr_platform/control/models.py:95",
+              "symbol": "ck_model_profile_certifications_status"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_database_check",
+      "storage": "string",
+      "values": [
+        "blocked",
+        "certified",
+        "contract_only",
+        "verified"
+      ]
+    },
+    "ScanUnit": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "pending",
+          "running",
+          "stale",
+          "stopped",
+          "succeeded"
+        ],
+        "sources": [
+          "ocr_platform/control/domains/manifests/core.py",
+          "ocr_platform/control/domains/workers/core.py"
+        ],
+        "type": "ast_domain_transitions",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:524",
+              "symbol": "unit.status"
+            }
+          ],
+          "pending": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:263",
+              "symbol": "ScanUnit(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:472",
+              "symbol": "ScanUnit(status=...)"
+            }
+          ],
+          "running": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:364",
+              "symbol": "update(ScanUnit).values(status=...)"
+            }
+          ],
+          "stale": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/workers/core.py:139",
+              "symbol": "update(ScanUnit).values(status=...)"
+            },
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/workers/core.py:305",
+              "symbol": "update(ScanUnit).values(status=...)"
+            }
+          ],
+          "stopped": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1765",
+              "symbol": "update(ScanUnit).values(status=...)"
+            }
+          ],
+          "succeeded": [
+            {
+              "kind": "domain_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:460",
+              "symbol": "unit.status"
+            }
+          ]
+        }
+      },
+      "behavior_observed_values": [],
+      "openness": "closed_domain_set",
+      "storage": "string",
+      "values": [
+        "failed",
+        "pending",
+        "running",
+        "stale",
+        "stopped",
+        "succeeded"
+      ]
+    },
+    "Server": {
+      "authority": {
+        "sources": [
+          "ocr_platform/control/schemas.py:18"
+        ],
+        "type": "unconstrained_pydantic_string"
+      },
+      "known_values": [
+        "busy",
+        "idle",
+        "offline",
+        "online"
+      ],
+      "open_reason": "ServerHeartbeatRequest.status is a non-empty str supplied by the Agent; no Literal or database CHECK limits its values.",
+      "openness": "open_external_string",
+      "storage": "string"
+    },
+    "ShardAttempt": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "retrying",
+          "running",
+          "stale",
+          "stopped",
+          "succeeded"
+        ],
+        "projection_relationship": {
+          "expected_count": 1,
+          "kind": "ast_attribute_assignment",
+          "matches": [
+            "ocr_platform/control/domains/manifests/core.py:1995"
+          ],
+          "source": "shard.status",
+          "target": "attempt.status"
+        },
+        "sources": [
+          "ocr_platform/control/domains/manifests/core.py:1995",
+          "ocr_platform/control/schemas.py:126"
+        ],
+        "type": "derived_domain_transition",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ],
+          "retrying": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ],
+          "running": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ],
+          "stale": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ],
+          "stopped": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ],
+          "succeeded": [
+            {
+              "kind": "derived_input",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status excluding pre-claim pending"
+            },
+            {
+              "kind": "derived_transition",
+              "source": "ocr_platform/control/domains/manifests/core.py:1995",
+              "symbol": "attempt.status = shard.status"
+            }
+          ]
+        }
+      },
+      "behavior_evidence": "tools.control_contracts.build_scheduling_contract",
+      "behavior_observed_values": [
+        "retrying",
+        "running",
+        "stale",
+        "succeeded"
+      ],
+      "openness": "closed_derived_set",
+      "storage": "string",
+      "values": [
+        "failed",
+        "retrying",
+        "running",
+        "stale",
+        "stopped",
+        "succeeded"
+      ]
+    },
+    "WorkShard": {
+      "authority": {
+        "authoritative_values": [
+          "failed",
+          "pending",
+          "retrying",
+          "running",
+          "stale",
+          "stopped",
+          "succeeded"
+        ],
+        "sources": [
+          "ocr_platform/control/schemas.py:126"
+        ],
+        "type": "pydantic_literal",
+        "value_evidence": {
+          "failed": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "pending": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "retrying": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "running": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "stale": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "stopped": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ],
+          "succeeded": [
+            {
+              "kind": "pydantic_literal",
+              "source": "ocr_platform/control/schemas.py:126",
+              "symbol": "WorkShardUpdateRequest.status"
+            }
+          ]
+        }
+      },
+      "behavior_evidence": "tools.control_contracts.build_scheduling_contract",
+      "behavior_observed_values": [
+        "pending",
+        "retrying",
+        "running",
+        "stale",
+        "succeeded"
+      ],
+      "openness": "closed_wire_enum",
+      "storage": "string",
+      "values": [
+        "failed",
+        "pending",
+        "retrying",
+        "running",
+        "stale",
+        "stopped",
+        "succeeded"
+      ]
+    }
+  },
+  "schema_version": 2,
+  "surface_count": 13
+}

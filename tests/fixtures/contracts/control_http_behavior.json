@@ -1,0 +1,785 @@
+{
+  "body_capture_policy": {
+    "normalization": "scalar-leaf only; every scalar replacement requires an explicit path, replacement, and reason",
+    "source": "response.json() from the recorded TestClient call"
+  },
+  "builder": "tools.control_contracts.build_http_behavior_contract",
+  "covered_statuses": [
+    200,
+    400,
+    401,
+    403,
+    404,
+    409,
+    422,
+    503
+  ],
+  "error_envelope": {
+    "application_error_code": null,
+    "http_exception": {
+      "detail": "string"
+    },
+    "validation": {
+      "detail": "array[validation-error]"
+    }
+  },
+  "scenarios": [
+    {
+      "body_shape": {
+        "array_items": [],
+        "length": 0
+      },
+      "error_code": null,
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_list_servers_api_servers_get",
+      "path": "/api/servers",
+      "request_condition": "API token is not configured",
+      "scenario": "api_auth_disabled_success",
+      "stable_body": [],
+      "status": 200
+    },
+    {
+      "body_shape": {
+        "array_items": [],
+        "length": 0
+      },
+      "error_code": null,
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_list_servers_api_servers_get",
+      "path": "/api/servers",
+      "request_condition": "Bearer token matches configured API token",
+      "scenario": "authorized_bearer_success",
+      "stable_body": [],
+      "status": 200
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_list_jobs"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:60",
+        "exception_types": [
+          "ValueError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_list_jobs_api_jobs_get",
+      "path": "/api/jobs",
+      "request_condition": "status filter is outside JOB_STATUS_FILTERS",
+      "scenario": "bad_request_invalid_job_status",
+      "stable_body": {
+        "detail": "unknown job status filter: definitely-invalid; allowed values: all, failed, queued, running, stopped, stopping, succeeded"
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_archive_job"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:221",
+        "exception_types": [
+          "commands.JobNotTerminalError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 409
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_archive_job_api_jobs__job_id__archive_post",
+      "path": "/api/jobs/{job_id}/archive",
+      "request_condition": "job is queued and nonterminal",
+      "scenario": "conflict_archive_nonterminal_job",
+      "stable_body": {
+        "detail": "Only succeeded, failed, or stopped jobs can be archived."
+      },
+      "status": 409
+    },
+    {
+      "body_shape": {
+        "ok": "boolean",
+        "service": "string"
+      },
+      "error_code": null,
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_healthz_healthz_get",
+      "path": "/healthz",
+      "request_condition": "process is serving requests",
+      "scenario": "healthz_success",
+      "stable_body": {
+        "ok": true,
+        "service": "ocr-platform-control"
+      },
+      "status": 200
+    },
+    {
+      "body_shape": {
+        "api_auth": {
+          "configured": "boolean",
+          "enabled": "boolean",
+          "required": "boolean"
+        },
+        "database": {
+          "applied_migrations": {
+            "array_items": [],
+            "length": 0
+          },
+          "checksum_mismatches": {
+            "array_items": [],
+            "length": 0
+          },
+          "dialect": "string",
+          "is_current": "boolean",
+          "known_migrations": {
+            "array_items": [
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 20
+          },
+          "latest_applied_migration": "null",
+          "migration_checksum_column_exists": "boolean",
+          "missing_checksums": {
+            "array_items": [],
+            "length": 0
+          },
+          "missing_migrations": {
+            "array_items": [
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 20
+          },
+          "schema_migrations_table_exists": "boolean",
+          "unexpected_migrations": {
+            "array_items": [],
+            "length": 0
+          }
+        },
+        "issues": {
+          "array_items": [
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "message": "string",
+              "severity": "string"
+            }
+          ],
+          "length": 4
+        },
+        "ok": "boolean",
+        "service": "string",
+        "workers": {
+          "ready": "integer",
+          "resource_constrained": "integer",
+          "stale": "integer",
+          "total": "integer",
+          "with_shared_roots": "integer"
+        }
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.diagnostics.router.api_readyz"
+        ],
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:42",
+        "exception_types": [],
+        "kind": "explicit_response_status",
+        "status": 503
+      },
+      "issue_codes": [
+        "api_auth_disabled",
+        "database_migrations_missing",
+        "database_not_postgres",
+        "no_ready_workers"
+      ],
+      "method": "GET",
+      "normalization_rules": [],
+      "note": "Strict production startup normally rejects this state before serving; this scenario locks the existing readiness response.",
+      "operation_id": "api_readyz_readyz_get",
+      "path": "/readyz",
+      "request_condition": "strict current-migration policy observes a noncurrent SQLite development schema after app construction",
+      "scenario": "migration_readiness_not_current",
+      "stable_body": {
+        "api_auth": {
+          "configured": false,
+          "enabled": false,
+          "required": false
+        },
+        "database": {
+          "applied_migrations": [],
+          "checksum_mismatches": [],
+          "dialect": "sqlite",
+          "is_current": false,
+          "known_migrations": [
+            "0001_control_schema",
+            "0002_enforce_work_shard_job_index",
+            "0003_job_counter_failed_file_samples",
+            "0004_unique_shard_attempt_number",
+            "0005_job_file_failure_category",
+            "0006_job_log_pruning_index",
+            "0007_shard_attempt_execution_control",
+            "0008_detail_pruning_indexes",
+            "0009_compatibility_schema_columns",
+            "0010_shard_inspector_filter_indexes",
+            "0011_unique_scan_unit_path",
+            "0012_jobs_default_list_index",
+            "0013_job_counter_failure_category_counts",
+            "0014_job_event_failure_category",
+            "0015_job_counter_recent_error_samples",
+            "0016_job_file_upsert_path_index",
+            "0017_worker_manifest_integrity",
+            "0018_widen_input_mode_columns",
+            "0019_schema_migration_checksums",
+            "0020_model_profile_certification"
+          ],
+          "latest_applied_migration": null,
+          "migration_checksum_column_exists": false,
+          "missing_checksums": [],
+          "missing_migrations": [
+            "0001_control_schema",
+            "0002_enforce_work_shard_job_index",
+            "0003_job_counter_failed_file_samples",
+            "0004_unique_shard_attempt_number",
+            "0005_job_file_failure_category",
+            "0006_job_log_pruning_index",
+            "0007_shard_attempt_execution_control",
+            "0008_detail_pruning_indexes",
+            "0009_compatibility_schema_columns",
+            "0010_shard_inspector_filter_indexes",
+            "0011_unique_scan_unit_path",
+            "0012_jobs_default_list_index",
+            "0013_job_counter_failure_category_counts",
+            "0014_job_event_failure_category",
+            "0015_job_counter_recent_error_samples",
+            "0016_job_file_upsert_path_index",
+            "0017_worker_manifest_integrity",
+            "0018_widen_input_mode_columns",
+            "0019_schema_migration_checksums",
+            "0020_model_profile_certification"
+          ],
+          "schema_migrations_table_exists": false,
+          "unexpected_migrations": []
+        },
+        "issues": [
+          {
+            "code": "database_not_postgres",
+            "message": "Production control deployments should use PostgreSQL.",
+            "severity": "warning"
+          },
+          {
+            "code": "database_migrations_missing",
+            "message": "schema_migrations table is missing.",
+            "severity": "warning"
+          },
+          {
+            "code": "api_auth_disabled",
+            "message": "Control API auth is disabled.",
+            "severity": "warning"
+          },
+          {
+            "code": "no_ready_workers",
+            "message": "No ready workers are reporting writable shared roots.",
+            "severity": "error"
+          }
+        ],
+        "ok": false,
+        "service": "ocr-platform-control",
+        "workers": {
+          "ready": 0,
+          "resource_constrained": 0,
+          "stale": 0,
+          "total": 2,
+          "with_shared_roots": 0
+        }
+      },
+      "status": 503
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_get_job"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:125",
+        "exception_types": [
+          "commands.UnknownJobError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 404
+      },
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_get_job_api_jobs__job_id__get",
+      "path": "/api/jobs/{job_id}",
+      "request_condition": "job id does not exist",
+      "scenario": "not_found_unknown_job",
+      "stable_body": {
+        "detail": "unknown job: missing-job"
+      },
+      "status": 404
+    },
+    {
+      "body_shape": {
+        "database_dialect": "string",
+        "eligible_workers": "integer",
+        "issues": {
+          "array_items": [
+            {
+              "code": "string",
+              "details": {
+                "dialect": "string",
+                "require_postgres": "boolean"
+              },
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "details": {
+                "require_api_token": "boolean"
+              },
+              "message": "string",
+              "severity": "string"
+            },
+            {
+              "code": "string",
+              "details": {
+                "input_dir": "string"
+              },
+              "message": "string",
+              "severity": "string"
+            }
+          ],
+          "length": 3
+        },
+        "ok": "boolean",
+        "ready_workers": "integer",
+        "total_workers": "integer"
+      },
+      "error_code": null,
+      "issue_codes": [
+        "control_api_auth_disabled",
+        "database_not_postgres",
+        "no_eligible_workers"
+      ],
+      "method": "POST",
+      "normalization_rules": [],
+      "note": "At v0.3.2 preflight uses an ok/issues report and does not return HTTP 503.",
+      "operation_id": "api_preflight_job_api_jobs_preflight_post",
+      "path": "/api/jobs/preflight",
+      "request_condition": "preflight may report issues in a 200 response body",
+      "scenario": "preflight_is_report_not_transport_error",
+      "stable_body": {
+        "database_dialect": "sqlite",
+        "eligible_workers": 0,
+        "issues": [
+          {
+            "code": "database_not_postgres",
+            "details": {
+              "dialect": "sqlite",
+              "require_postgres": false
+            },
+            "message": "Production jobs should use PostgreSQL; SQLite is for local development.",
+            "severity": "warning"
+          },
+          {
+            "code": "control_api_auth_disabled",
+            "details": {
+              "require_api_token": false
+            },
+            "message": "Control API token authentication is not configured; set OCR_PLATFORM_API_TOKEN before exposing production endpoints.",
+            "severity": "warning"
+          },
+          {
+            "code": "no_eligible_workers",
+            "details": {
+              "input_dir": "/shared/input"
+            },
+            "message": "No selected worker can read the input shared path.",
+            "severity": "error"
+          }
+        ],
+        "ok": false,
+        "ready_workers": 0,
+        "total_workers": 1
+      },
+      "status": 200
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_preflight",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_preflight_api_remote_workers_preflight_post",
+      "path": "/api/remote-workers/preflight",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_apply",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_install_apply_api_remote_workers_install_apply_post",
+      "path": "/api/remote-workers/install-apply",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_install_apply_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_install_dry_run",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_install_dry_run_api_remote_workers_install_dry_run_post",
+      "path": "/api/remote-workers/install-dry-run",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_install_dry_run_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_apply",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_scale_apply_api_remote_workers_scale_apply_post",
+      "path": "/api/remote-workers/scale-apply",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_scale_apply_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_scale_plan",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_scale_plan_api_remote_workers_scale_plan_post",
+      "path": "/api/remote-workers/scale-plan",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_scale_plan_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_service_action",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_service_action_api_remote_workers_service_post",
+      "path": "/api/remote-workers/service",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_service_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.remote_admin.router.api_remote_worker_targets",
+          "ocr_platform.control.domains.remote_admin.service.require_enabled"
+        ],
+        "evidence": "ocr_platform/control/domains/remote_admin/service.py:18",
+        "exception_types": [],
+        "kind": "called_service_http_exception",
+        "status": 403
+      },
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_remote_worker_targets_api_remote_workers_targets_get",
+      "path": "/api/remote-workers/targets",
+      "request_condition": "OCR_PLATFORM_ENABLE_REMOTE_ADMIN is not enabled",
+      "scenario": "remote_admin_targets_disabled",
+      "stable_body": {
+        "detail": "Remote worker administration is disabled; set OCR_PLATFORM_ENABLE_REMOTE_ADMIN=1 on the control server to enable it."
+      },
+      "status": 403
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_list_servers_api_servers_get",
+      "path": "/api/servers",
+      "request_condition": "API token is configured but request has no credential",
+      "scenario": "unauthorized_missing_api_token",
+      "shared_branch_authority": {
+        "authority": {
+          "call_chain": [
+            "ocr_platform.control.app.api_token_auth"
+          ],
+          "evidence": "ocr_platform/control/app.py:121",
+          "exception_types": [],
+          "kind": "global_api_token_middleware",
+          "status": 401
+        },
+        "mechanism": "global_api_token_middleware"
+      },
+      "stable_body": {
+        "detail": "Missing or invalid API token"
+      },
+      "status": 401
+    },
+    {
+      "body_shape": {
+        "detail": {
+          "array_items": [
+            {
+              "input": {},
+              "loc": {
+                "array_items": [
+                  "string",
+                  "string"
+                ],
+                "length": 2
+              },
+              "msg": "string",
+              "type": "string"
+            },
+            {
+              "input": {},
+              "loc": {
+                "array_items": [
+                  "string",
+                  "string"
+                ],
+                "length": 2
+              },
+              "msg": "string",
+              "type": "string"
+            },
+            {
+              "input": {},
+              "loc": {
+                "array_items": [
+                  "string",
+                  "string"
+                ],
+                "length": 2
+              },
+              "msg": "string",
+              "type": "string"
+            }
+          ],
+          "length": 3
+        }
+      },
+      "error_code": null,
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_register_server_api_servers_register_post",
+      "path": "/api/servers/register",
+      "request_condition": "required id, name, and host fields are missing",
+      "scenario": "validation_missing_server_fields",
+      "shared_branch_authority": {
+        "authority": {
+          "call_chain": [
+            "fastapi.request_validation_exception_handler"
+          ],
+          "exception_types": [
+            "RequestValidationError"
+          ],
+          "kind": "framework_request_validation",
+          "status": 422
+        },
+        "mechanism": "fastapi_request_validation"
+      },
+      "stable_body": {
+        "detail": [
+          {
+            "input": {},
+            "loc": [
+              "body",
+              "id"
+            ],
+            "msg": "Field required",
+            "type": "missing"
+          },
+          {
+            "input": {},
+            "loc": [
+              "body",
+              "name"
+            ],
+            "msg": "Field required",
+            "type": "missing"
+          },
+          {
+            "input": {},
+            "loc": [
+              "body",
+              "host"
+            ],
+            "msg": "Field required",
+            "type": "missing"
+          }
+        ]
+      },
+      "status": 422
+    }
+  ],
+  "schema_version": 2
+}

@@ -36,6 +36,12 @@ jobs:
       - name: Check documentation links
         run: python tools/check_docs_links.py
 
+      - name: Check Control architecture debt
+        run: python tools/control_architecture_debt.py check
+
+      - name: Check Control service facade inventory
+        run: python tools/control_facade_inventory.py check
+
       - name: Validate engine certification records
         run: python tools/check_engine_certifications.py
 

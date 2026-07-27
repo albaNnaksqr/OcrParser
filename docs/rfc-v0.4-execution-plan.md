@@ -10,7 +10,8 @@ single-writer, compatibility, review, and acceptance gates remain mandatory.
 This document turns the [v0.4 Operational Maturity RFC](rfc-v0.4.md) and the
 [Control Internals RFC](rfc-v0.4-control-internals.md) into an ordered delivery
 plan. The module boundaries and current audit snapshot are recorded in the
-[Control Module Map](control-module-map.md).
+[Control Module Map](control-module-map.md). The checked-in fixture workflow is
+documented in [Control Contract Baselines](control-contract-baselines.md).
 
 ## Outcome
 

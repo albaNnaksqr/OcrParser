@@ -8,7 +8,8 @@
 
 本文将 [v0.4 运维成熟度 RFC](rfc-v0.4.zh-CN.md) 和
 [Control 内部重构 RFC](rfc-v0.4-control-internals.zh-CN.md) 转化为有序交付计划。
-当前审计快照和模块边界见 [Control 模块地图](control-module-map.zh-CN.md)。
+当前审计快照和模块边界见 [Control 模块地图](control-module-map.zh-CN.md)，已提交
+fixture 的审查流程见 [Control 契约基线](control-contract-baselines.zh-CN.md)。
 
 ## 目标形态
 
