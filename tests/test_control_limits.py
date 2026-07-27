@@ -12,6 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 import ocr_platform.control.domains.jobs.core as jobs_core
+import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
 import ocr_platform.control.domains.diagnostics.operations as diagnostics_operations
 import ocr_platform.control.domains.workers.core as workers_core
 import ocr_platform.control.limits as limits_module
@@ -107,8 +108,8 @@ def test_control_limits_parse_existing_environment_and_are_frozen() -> None:
     assert limits.job_summary_attention_shard_limit == 2
     assert limits.retained_control_event_limit_when_details_disabled == 1
     assert not hasattr(limits, "manifest_integrity_issue_sample_limit")
-    assert not hasattr(limits, "diagnostics_evidence_row_limit")
-    assert not hasattr(limits, "metrics_trace_event_limit")
+    assert limits.diagnostics_evidence_row_limit == 10_000
+    assert limits.metrics_trace_event_limit == 10_000
     assert limits.persist_job_file_details is False
     assert limits.persist_job_event_details is True
     assert not hasattr(limits, "__dict__")
@@ -127,6 +128,8 @@ def test_control_limits_only_contain_nonscheduling_numeric_policy() -> None:
         "job_recent_error_sample_limit",
         "job_summary_attention_shard_limit",
         "retained_control_event_limit_when_details_disabled",
+        "diagnostics_evidence_row_limit",
+        "metrics_trace_event_limit",
     }
     assert not {
         "stale_seconds",
@@ -409,6 +412,89 @@ def test_diagnostics_audit_uses_runtime_event_retention_snapshot(
     unlimited_engine.dispose()
 
 
+def test_two_apps_isolate_evidence_and_trace_limits_from_global_drift(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    zero_app, _, zero_engine = _app_with_limits(
+        tmp_path,
+        "observability-zero.db",
+        ControlLimits(
+            job_event_detail_limit=-1,
+            diagnostics_evidence_row_limit=0,
+            metrics_trace_event_limit=0,
+        ),
+    )
+    two_app, _, two_engine = _app_with_limits(
+        tmp_path,
+        "observability-two.db",
+        ControlLimits(
+            job_event_detail_limit=-1,
+            diagnostics_evidence_row_limit=2,
+            metrics_trace_event_limit=2,
+        ),
+    )
+    zero_client = TestClient(zero_app)
+    two_client = TestClient(two_app)
+    for client in (zero_client, two_client):
+        job_id = _create_job(client)
+        assert client.post(
+            f"/api/jobs/{job_id}/events",
+            json={
+                "type": "page_done",
+                "payload": {
+                    "file_path": "/shared/input/a.pdf",
+                    "filename": "a.pdf",
+                    "page_no": 1,
+                    "status": "success",
+                    "stages": [
+                        {
+                            "stage": "recognition",
+                            "status": "success",
+                        }
+                    ],
+                },
+            },
+        ).status_code == 200
+
+    monkeypatch.setattr(
+        diagnostics_operations,
+        "EVIDENCE_ROW_LIMIT",
+        99,
+    )
+    monkeypatch.setattr(
+        diagnostics_metrics,
+        "TRACE_EVENT_LIMIT",
+        99,
+    )
+    zero_diagnostics = zero_client.get(
+        "/api/system/diagnostics"
+    ).json()
+    two_diagnostics = two_client.get(
+        "/api/system/diagnostics"
+    ).json()
+    zero_metrics = zero_client.get("/api/system/metrics").text
+    two_metrics = two_client.get("/api/system/metrics").text
+
+    assert zero_diagnostics["capacity"] == {
+        "available": False,
+        "code": "capacity_diagnostics_unavailable",
+    }
+    assert two_diagnostics["capacity"]["available"] is True
+    assert zero_diagnostics["audit"]["execution"][
+        "evidence_truncated"
+    ] is True
+    assert two_diagnostics["audit"]["execution"][
+        "evidence_truncated"
+    ] is False
+    assert "\nocr_platform_trace_window_truncated 1\n" in zero_metrics
+    assert "ocr_platform_stage_outcomes{" not in zero_metrics
+    assert "\nocr_platform_trace_window_truncated 0\n" in two_metrics
+    assert "ocr_platform_stage_outcomes{" in two_metrics
+    zero_engine.dispose()
+    two_engine.dispose()
+
+
 def test_direct_audit_operations_preserve_local_global_compatibility(
     tmp_path,
     monkeypatch,
@@ -433,24 +519,16 @@ def test_direct_audit_operations_preserve_local_global_compatibility(
             session,
             limits=ControlLimits(job_event_detail_limit=-1),
         )
-        _, legacy_capacity_complete = (
-            diagnostics_operations._throughput_evidence(
-                session,
-                now=datetime.now(timezone.utc),
-            )
-        )
-        _, explicit_capacity_complete = (
-            diagnostics_operations._throughput_evidence(
-                session,
-                now=datetime.now(timezone.utc),
-                limits=ControlLimits(job_event_detail_limit=-1),
-            )
-        )
 
     assert legacy["execution"]["evidence_truncated"] is True
     assert explicit["execution"]["evidence_truncated"] is False
-    assert legacy_capacity_complete is False
-    assert explicit_capacity_complete is True
+    assert diagnostics_operations._resolve_event_retention(None) == (
+        False,
+        -1,
+    )
+    assert diagnostics_operations._resolve_event_retention(
+        ControlLimits(job_event_detail_limit=-1)
+    ) == (True, -1)
     engine.dispose()
 
 
@@ -659,6 +737,50 @@ def test_limits_module_only_exports_snapshot_api() -> None:
     assert limits_module.ControlLimits is ControlLimits
 
 
+def test_evidence_and_trace_limits_keep_fixed_runtime_defaults_and_fallbacks(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        diagnostics_operations,
+        "EVIDENCE_ROW_LIMIT",
+        7,
+    )
+    monkeypatch.setattr(
+        diagnostics_metrics,
+        "TRACE_EVENT_LIMIT",
+        9,
+    )
+
+    legacy = legacy_control_limits()
+
+    assert legacy.diagnostics_evidence_row_limit == 10_000
+    assert legacy.metrics_trace_event_limit == 10_000
+    assert diagnostics_operations._resolve_evidence_limit(None) == 7
+    assert diagnostics_metrics._resolve_trace_limit(None) == 9
+    explicit = ControlLimits(
+        diagnostics_evidence_row_limit=-1,
+        metrics_trace_event_limit=-1,
+    )
+    assert diagnostics_operations._resolve_evidence_limit(explicit) == 0
+    assert diagnostics_metrics._resolve_trace_limit(explicit) == 0
+
+
+def test_evidence_row_boundary_is_zero_n_and_n_plus_one() -> None:
+    assert diagnostics_operations._bounded_rows(
+        [],
+        evidence_limit=0,
+    ) == []
+    assert diagnostics_operations._bounded_rows(
+        [1, 2],
+        evidence_limit=2,
+    ) == [1, 2]
+    with pytest.raises(diagnostics_operations.EvidenceLimitExceeded):
+        diagnostics_operations._bounded_rows(
+            [1, 2, 3],
+            evidence_limit=2,
+        )
+
+
 def test_job_detail_hot_paths_keep_direct_session_call_baseline() -> None:
     module = ast.parse(inspect.getsource(jobs_core))
     functions = {
@@ -713,12 +835,84 @@ def test_diagnostics_event_retention_globals_are_fallback_only() -> None:
                 consumers[name.id].add(function.name)
 
     assert consumers == {
-        "JOB_EVENT_DETAIL_LIMIT": {
-            "_throughput_evidence",
-            "_trace_audit",
-        },
-        "PERSIST_JOB_EVENT_DETAILS": {
-            "_throughput_evidence",
-            "_trace_audit",
-        },
+        "JOB_EVENT_DETAIL_LIMIT": {"_resolve_event_retention"},
+        "PERSIST_JOB_EVENT_DETAILS": {"_resolve_event_retention"},
+    }
+
+
+def test_diagnostics_and_metrics_limit_globals_are_fallback_only() -> None:
+    expected = (
+        (
+            diagnostics_operations,
+            "EVIDENCE_ROW_LIMIT",
+            {"_resolve_evidence_limit"},
+        ),
+        (
+            diagnostics_metrics,
+            "TRACE_EVENT_LIMIT",
+            {"_resolve_trace_limit"},
+        ),
+    )
+    for module, global_name, expected_consumers in expected:
+        tree = ast.parse(inspect.getsource(module))
+        consumers = {
+            function.name
+            for function in tree.body
+            if isinstance(
+                function,
+                (ast.FunctionDef, ast.AsyncFunctionDef),
+            )
+            if any(
+                isinstance(name, ast.Name)
+                and name.id == global_name
+                for name in ast.walk(function)
+            )
+        }
+        assert consumers == expected_consumers
+
+
+def test_diagnostics_and_metrics_keep_select_call_baseline() -> None:
+    def session_calls(module) -> dict[str, dict[str, int]]:
+        tree = ast.parse(inspect.getsource(module))
+        result: dict[str, dict[str, int]] = {}
+        for function in tree.body:
+            if not isinstance(
+                function,
+                (ast.FunctionDef, ast.AsyncFunctionDef),
+            ):
+                continue
+            calls = Counter(
+                call.func.attr
+                for call in ast.walk(function)
+                if isinstance(call, ast.Call)
+                and isinstance(call.func, ast.Attribute)
+                and isinstance(call.func.value, ast.Name)
+                and call.func.value.id == "session"
+                and call.func.attr in {
+                    "execute",
+                    "flush",
+                    "commit",
+                    "rollback",
+                    "refresh",
+                }
+            )
+            if calls:
+                result[function.name] = dict(calls)
+        return result
+
+    assert session_calls(diagnostics_operations) == {
+        "_worker_rows": {"execute": 1},
+        "_running_shards_by_server": {"execute": 1},
+        "_queue_and_lease_counts": {"execute": 2},
+        "_throughput_evidence": {"execute": 1},
+        "_remaining_pages": {"execute": 1},
+        "_trace_audit": {"execute": 1},
+        "audit_diagnostics": {"execute": 5},
+    }
+    assert session_calls(diagnostics_metrics) == {
+        "_worker_samples": {"execute": 1},
+        "_shard_queue_samples": {"execute": 1},
+        "_failure_samples": {"execute": 1},
+        "_trace_samples": {"execute": 1},
+        "_artifact_samples": {"execute": 1},
     }

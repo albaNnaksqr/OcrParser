@@ -6778,7 +6778,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
               ],
-              "evidence": "ocr_platform/control/domains/diagnostics/router.py:108",
+              "evidence": "ocr_platform/control/domains/diagnostics/router.py:111",
               "exception_types": [
                 "Exception"
               ],
@@ -6787,13 +6787,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "system_metrics_database_unavailable",
-            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:108"
+            "source_evidence": "ocr_platform/control/domains/diagnostics/router.py:111"
           },
           "branch_id": "api_system_metrics_api_system_metrics_get:503:02",
           "call_chain": [
             "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
           ],
-          "evidence": "ocr_platform/control/domains/diagnostics/router.py:108",
+          "evidence": "ocr_platform/control/domains/diagnostics/router.py:111",
           "exception_types": [
             "Exception"
           ],
@@ -7560,7 +7560,7 @@
           "ocr_platform/control/domains/diagnostics/router.py:api_system_metrics"
         ],
         "constructor": "JSONResponse",
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:108",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:111",
         "status": 503
       },
       {

@@ -27,6 +27,7 @@ from ocr_platform.control.domains.diagnostics.metrics import (
     encode_prometheus,
     metrics_snapshot,
 )
+from ocr_platform.control.limits import ControlLimits
 from ocr_platform.control.models import (
     Job,
     JobEvent,
@@ -365,6 +366,120 @@ def test_trace_window_uses_newest_hard_limit_and_reports_truncation(
     assert 'status="skipped"' not in rendered
 
 
+def test_explicit_trace_limit_covers_zero_n_and_n_plus_one(
+    tmp_path,
+    monkeypatch,
+):
+    _, _, session_factory, _ = _client(tmp_path)
+    now = datetime(2026, 7, 28, 3, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr(control_metrics, "TRACE_EVENT_LIMIT", 0)
+    with session_factory() as session:
+        session.add(
+            Server(
+                id="runtime-trace-worker",
+                name="Runtime Trace Worker",
+                host="runtime-trace-worker",
+            )
+        )
+        _seed_job(
+            session,
+            job_id="runtime-trace-job",
+            server_id="runtime-trace-worker",
+        )
+        session.add_all(
+            [
+                _page_done_event(
+                    job_id="runtime-trace-job",
+                    created_at=now - timedelta(seconds=3),
+                    stage_status="skipped",
+                ),
+                _page_done_event(
+                    job_id="runtime-trace-job",
+                    created_at=now - timedelta(seconds=2),
+                    stage_status="failed",
+                ),
+                _page_done_event(
+                    job_id="runtime-trace-job",
+                    created_at=now - timedelta(seconds=1),
+                    stage_status="success",
+                ),
+            ]
+        )
+        session.commit()
+
+        fallback = encode_prometheus(
+            metrics_snapshot(session, now=now)
+        )
+        zero = encode_prometheus(
+            metrics_snapshot(
+                session,
+                now=now,
+                limits=ControlLimits(metrics_trace_event_limit=-1),
+            )
+        )
+        two = encode_prometheus(
+            metrics_snapshot(
+                session,
+                now=now,
+                limits=ControlLimits(metrics_trace_event_limit=2),
+            )
+        )
+        three = encode_prometheus(
+            metrics_snapshot(
+                session,
+                now=now,
+                limits=ControlLimits(metrics_trace_event_limit=3),
+            )
+        )
+
+    for rendered in (fallback, zero):
+        assert "\nocr_platform_trace_window_truncated 1\n" in rendered
+        assert "ocr_platform_stage_outcomes{" not in rendered
+    assert "\nocr_platform_trace_window_truncated 1\n" in two
+    assert 'status="success",failure_category="none"} 1' in two
+    assert 'status="failed",failure_category="none"} 1' in two
+    assert 'status="skipped"' not in two
+    assert "\nocr_platform_trace_window_truncated 0\n" in three
+    assert 'status="skipped",failure_category="none"} 1' in three
+
+
+def test_metrics_snapshot_freezes_direct_trace_limit_before_helpers(
+    tmp_path,
+    monkeypatch,
+):
+    _, _, session_factory, _ = _client(tmp_path)
+    seen: list[int] = []
+    original = control_metrics._trace_samples
+    monkeypatch.setattr(control_metrics, "TRACE_EVENT_LIMIT", 2)
+
+    def drift_global_after_entry(
+        session,
+        samples,
+        *,
+        now,
+        trace_limit,
+    ):
+        seen.append(trace_limit)
+        monkeypatch.setattr(control_metrics, "TRACE_EVENT_LIMIT", 0)
+        return original(
+            session,
+            samples,
+            now=now,
+            trace_limit=trace_limit,
+        )
+
+    monkeypatch.setattr(
+        control_metrics,
+        "_trace_samples",
+        drift_global_after_entry,
+    )
+    with session_factory() as session:
+        metrics_snapshot(session)
+
+    assert seen == [2]
+    assert control_metrics.TRACE_EVENT_LIMIT == 0
+
+
 def test_negative_worker_slots_do_not_cancel_positive_slots(tmp_path):
     client, _, session_factory, _ = _client(tmp_path)
     with session_factory() as session:
@@ -570,7 +685,7 @@ def test_metrics_database_failure_is_fixed_and_redacted(
     client, _, _, _ = _client(tmp_path)
     monkeypatch.setattr(
         "ocr_platform.control.domains.diagnostics.router.render_control_metrics",
-        lambda _session: (_ for _ in ()).throw(
+        lambda _session, **_kwargs: (_ for _ in ()).throw(
             RuntimeError("private database customer detail")
         ),
     )

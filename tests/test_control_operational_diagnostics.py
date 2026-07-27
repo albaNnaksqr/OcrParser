@@ -23,6 +23,7 @@ from ocr_platform.control.domains.diagnostics.queries import (
     system_diagnostics,
     system_operational_diagnostics,
 )
+from ocr_platform.control.limits import ControlLimits
 from ocr_platform.control.models import (
     Job,
     JobCounter,
@@ -545,6 +546,107 @@ def test_capacity_disables_eta_when_retention_limit_cannot_cover_window_limit(
     assert capacity["sample_pages"] == 10
     assert capacity["confidence"] == "none"
     assert capacity["estimated_drain_seconds"] is None
+
+
+def test_capacity_evidence_limit_covers_zero_n_and_n_plus_one(
+    tmp_path,
+    monkeypatch,
+):
+    _, session_factory, _, _ = _runtime(tmp_path)
+    monkeypatch.setattr(operations, "EVIDENCE_ROW_LIMIT", 2)
+    with session_factory() as session:
+        session.add_all(
+            [
+                _server(f"bounded-worker-{index}")
+                for index in range(3)
+            ]
+        )
+        session.commit()
+
+        with pytest.raises(operations.EvidenceLimitExceeded):
+            capacity_diagnostics(session, now=NOW)
+        with pytest.raises(operations.EvidenceLimitExceeded):
+            capacity_diagnostics(
+                session,
+                now=NOW,
+                limits=ControlLimits(
+                    diagnostics_evidence_row_limit=-1,
+                ),
+            )
+        with pytest.raises(operations.EvidenceLimitExceeded):
+            capacity_diagnostics(
+                session,
+                now=NOW,
+                limits=ControlLimits(
+                    diagnostics_evidence_row_limit=2,
+                ),
+            )
+        capacity = capacity_diagnostics(
+            session,
+            now=NOW,
+            limits=ControlLimits(
+                diagnostics_evidence_row_limit=3,
+            ),
+        )
+
+    assert capacity["ready_worker_slots"] == 3
+
+
+def test_audit_explicit_evidence_limit_overrides_direct_global(
+    tmp_path,
+    monkeypatch,
+):
+    _, session_factory, _, _ = _runtime(tmp_path)
+    monkeypatch.setattr(operations, "EVIDENCE_ROW_LIMIT", 0)
+    with session_factory() as session:
+        session.add(_server("audit-evidence-worker"))
+        _job_manifest(
+            session,
+            job_id="audit-evidence-job",
+            server_id="audit-evidence-worker",
+        )
+        session.commit()
+
+        with pytest.raises(operations.EvidenceLimitExceeded):
+            audit_diagnostics(session, now=NOW)
+        audit = audit_diagnostics(
+            session,
+            now=NOW,
+            limits=ControlLimits(
+                diagnostics_evidence_row_limit=1,
+            ),
+        )
+
+    assert audit["available"] is True
+
+
+def test_capacity_freezes_direct_evidence_limit_before_helpers(
+    tmp_path,
+    monkeypatch,
+):
+    _, session_factory, _, _ = _runtime(tmp_path)
+    seen: list[int] = []
+    original = operations._worker_rows
+    monkeypatch.setattr(operations, "EVIDENCE_ROW_LIMIT", 3)
+
+    def drift_global_after_entry(session, *, evidence_limit):
+        seen.append(evidence_limit)
+        monkeypatch.setattr(operations, "EVIDENCE_ROW_LIMIT", 0)
+        return original(
+            session,
+            evidence_limit=evidence_limit,
+        )
+
+    monkeypatch.setattr(
+        operations,
+        "_worker_rows",
+        drift_global_after_entry,
+    )
+    with session_factory() as session:
+        capacity_diagnostics(session, now=NOW)
+
+    assert seen == [3]
+    assert operations.EVIDENCE_ROW_LIMIT == 0
 
 
 def test_capacity_rate_deduplicates_page_identity(tmp_path):

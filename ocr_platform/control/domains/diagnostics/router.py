@@ -103,7 +103,10 @@ def create_router(
     )
     def api_system_metrics(session: Session = Depends(get_db)):
         try:
-            payload = render_control_metrics(session)
+            payload = render_control_metrics(
+                session,
+                limits=control_limits,
+            )
         except Exception:
             return JSONResponse(
                 status_code=503,

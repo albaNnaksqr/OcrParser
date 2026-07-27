@@ -186,6 +186,7 @@ def system_operational_diagnostics(
                 capacity=capacity,
                 audit=audit,
                 now=now,
+                limits=limits,
             )
         )
     except Exception:

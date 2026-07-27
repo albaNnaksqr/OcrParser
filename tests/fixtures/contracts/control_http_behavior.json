@@ -1441,7 +1441,7 @@
         "call_chain": [
           "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
         ],
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:108",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:111",
         "exception_types": [
           "Exception"
         ],

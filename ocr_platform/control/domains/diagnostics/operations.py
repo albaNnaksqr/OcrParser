@@ -117,9 +117,28 @@ def _nonnegative_int(value: object) -> int:
         return 0
 
 
-def _bounded_rows(rows):
+def _resolve_evidence_limit(
+    limits: __ControlLimits | None,
+) -> int:
+    if limits is None:
+        return EVIDENCE_ROW_LIMIT
+    return max(0, limits.diagnostics_evidence_row_limit)
+
+
+def _resolve_event_retention(
+    limits: __ControlLimits | None,
+) -> tuple[bool, int]:
+    if limits is None:
+        return PERSIST_JOB_EVENT_DETAILS, JOB_EVENT_DETAIL_LIMIT
+    return (
+        limits.persist_job_event_details,
+        limits.job_event_detail_limit,
+    )
+
+
+def _bounded_rows(rows, *, evidence_limit: int):
     values = list(rows)
-    if len(values) > EVIDENCE_ROW_LIMIT:
+    if len(values) > evidence_limit:
         raise EvidenceLimitExceeded("operational evidence row limit exceeded")
     return values
 
@@ -165,19 +184,28 @@ def _heartbeat_is_stale(server: Server, now: datetime) -> bool:
     )
 
 
-def _worker_rows(session: Session):
+def _worker_rows(
+    session: Session,
+    *,
+    evidence_limit: int,
+):
     return _bounded_rows(
         session.execute(
             select(Server)
             .where(Server.archived_at.is_(None))
             .where(Server.id != POOL_SERVER_ID)
             .order_by(Server.id.asc())
-            .limit(EVIDENCE_ROW_LIMIT + 1)
-        ).scalars()
+            .limit(evidence_limit + 1)
+        ).scalars(),
+        evidence_limit=evidence_limit,
     )
 
 
-def _running_shards_by_server(session: Session) -> tuple[dict[str, int], int]:
+def _running_shards_by_server(
+    session: Session,
+    *,
+    evidence_limit: int,
+) -> tuple[dict[str, int], int]:
     rows = _bounded_rows(
         session.execute(
             select(
@@ -189,8 +217,9 @@ def _running_shards_by_server(session: Session) -> tuple[dict[str, int], int]:
             .where(WorkShard.status == "running")
             .group_by(WorkShard.assigned_server_id)
             .order_by(WorkShard.assigned_server_id.asc())
-            .limit(EVIDENCE_ROW_LIMIT + 1)
-        )
+            .limit(evidence_limit + 1)
+        ),
+        evidence_limit=evidence_limit,
     )
     by_server = {
         str(server_id): _nonnegative_int(count)
@@ -226,14 +255,10 @@ def _throughput_evidence(
     session: Session,
     *,
     now: datetime,
-    limits: __ControlLimits | None = None,
+    evidence_limit: int,
+    persist_event_details: bool,
+    event_detail_limit: int,
 ) -> tuple[int, bool]:
-    if limits is None:
-        persist_event_details = PERSIST_JOB_EVENT_DETAILS
-        event_detail_limit = JOB_EVENT_DETAIL_LIMIT
-    else:
-        persist_event_details = limits.persist_job_event_details
-        event_detail_limit = limits.job_event_detail_limit
     rows = list(
         session.execute(
             select(
@@ -245,13 +270,13 @@ def _throughput_evidence(
             .where(JobEvent.created_at >= now - THROUGHPUT_WINDOW)
             .where(JobEvent.created_at <= now)
             .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-            .limit(EVIDENCE_ROW_LIMIT + 1)
+            .limit(evidence_limit + 1)
         )
     )
-    truncated = len(rows) > EVIDENCE_ROW_LIMIT
+    truncated = len(rows) > evidence_limit
     keys: set[tuple[str, str, int]] = set()
     missing_key = False
-    for job_id, file_path, page_no in rows[:EVIDENCE_ROW_LIMIT]:
+    for job_id, file_path, page_no in rows[:evidence_limit]:
         if (
             not isinstance(job_id, str)
             or not job_id
@@ -265,7 +290,7 @@ def _throughput_evidence(
     complete = (
         persist_event_details
         and not (
-            0 < event_detail_limit <= EVIDENCE_ROW_LIMIT
+            0 < event_detail_limit <= evidence_limit
         )
         and not truncated
         and not missing_key
@@ -275,6 +300,8 @@ def _throughput_evidence(
 
 def _remaining_pages(
     session: Session,
+    *,
+    evidence_limit: int,
 ) -> tuple[int | None, bool]:
     rows = _bounded_rows(
         session.execute(
@@ -296,8 +323,9 @@ def _remaining_pages(
                 JobCounter.started_files,
             )
             .order_by(Job.id.asc())
-            .limit(EVIDENCE_ROW_LIMIT + 1)
-        )
+            .limit(evidence_limit + 1)
+        ),
+        evidence_limit=evidence_limit,
     )
     if not rows:
         return None, False
@@ -320,9 +348,19 @@ def capacity_diagnostics(
     limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
     current_time = _utc(now)
+    evidence_limit = _resolve_evidence_limit(limits)
+    persist_event_details, event_detail_limit = (
+        _resolve_event_retention(limits)
+    )
     with session.no_autoflush:
-        workers = _worker_rows(session)
-        running_by_server, running_shards = _running_shards_by_server(session)
+        workers = _worker_rows(
+            session,
+            evidence_limit=evidence_limit,
+        )
+        running_by_server, running_shards = _running_shards_by_server(
+            session,
+            evidence_limit=evidence_limit,
+        )
         queue_depth, stale_leases = _queue_and_lease_counts(
             session,
             now=current_time,
@@ -330,9 +368,14 @@ def capacity_diagnostics(
         sample_pages, throughput_complete = _throughput_evidence(
             session,
             now=current_time,
-            limits=limits,
+            evidence_limit=evidence_limit,
+            persist_event_details=persist_event_details,
+            event_detail_limit=event_detail_limit,
         )
-        remaining_pages, remaining_reliable = _remaining_pages(session)
+        remaining_pages, remaining_reliable = _remaining_pages(
+            session,
+            evidence_limit=evidence_limit,
+        )
 
     ready_slots = 0
     available_slots = 0
@@ -413,14 +456,10 @@ def _trace_audit(
     session: Session,
     *,
     now: datetime,
-    limits: __ControlLimits | None = None,
+    evidence_limit: int,
+    persist_event_details: bool,
+    event_detail_limit: int,
 ) -> dict[str, object]:
-    if limits is None:
-        persist_event_details = PERSIST_JOB_EVENT_DETAILS
-        event_detail_limit = JOB_EVENT_DETAIL_LIMIT
-    else:
-        persist_event_details = limits.persist_job_event_details
-        event_detail_limit = limits.job_event_detail_limit
     rows = list(
         session.execute(
             select(JobEvent.payload_json)
@@ -428,18 +467,18 @@ def _trace_audit(
             .where(JobEvent.created_at >= now - THROUGHPUT_WINDOW)
             .where(JobEvent.created_at <= now)
             .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-            .limit(EVIDENCE_ROW_LIMIT + 1)
+            .limit(evidence_limit + 1)
         ).scalars()
     )
     truncated = (
         not persist_event_details
-        or 0 < event_detail_limit <= EVIDENCE_ROW_LIMIT
-        or len(rows) > EVIDENCE_ROW_LIMIT
+        or 0 < event_detail_limit <= evidence_limit
+        or len(rows) > evidence_limit
     )
     stage_statuses: Counter[str] = Counter()
     stage_failures: Counter[str] = Counter()
     fallbacks: Counter[str] = Counter()
-    for payload_json in rows[:EVIDENCE_ROW_LIMIT]:
+    for payload_json in rows[:evidence_limit]:
         payload = _safe_json_object(payload_json)
         stages = payload.get("stages")
         if isinstance(stages, list):
@@ -475,6 +514,10 @@ def audit_diagnostics(
     limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
     current_time = _utc(now)
+    evidence_limit = _resolve_evidence_limit(limits)
+    persist_event_details, event_detail_limit = (
+        _resolve_event_retention(limits)
+    )
     with session.no_autoflush:
         manifest_rows = _bounded_rows(
             session.execute(
@@ -498,8 +541,9 @@ def audit_diagnostics(
                 )
                 .group_by(Manifest.worker_integrity_status)
                 .order_by(Manifest.worker_integrity_status.asc())
-                .limit(EVIDENCE_ROW_LIMIT + 1)
-            )
+                .limit(evidence_limit + 1)
+            ),
+            evidence_limit=evidence_limit,
         )
         attempt_rows = _bounded_rows(
             session.execute(
@@ -516,8 +560,9 @@ def audit_diagnostics(
                     ShardAttempt.status.asc(),
                     ShardAttempt.failure_category.asc(),
                 )
-                .limit(EVIDENCE_ROW_LIMIT + 1)
-            )
+                .limit(evidence_limit + 1)
+            ),
+            evidence_limit=evidence_limit,
         )
         artifact_rows = _bounded_rows(
             session.execute(
@@ -529,8 +574,9 @@ def audit_diagnostics(
                 .where(JobFile.output_path != "")
                 .group_by(JobFile.status)
                 .order_by(JobFile.status.asc())
-                .limit(EVIDENCE_ROW_LIMIT + 1)
-            )
+                .limit(evidence_limit + 1)
+            ),
+            evidence_limit=evidence_limit,
         )
         missing_artifacts = session.execute(
             select(func.count(JobFile.id))
@@ -546,7 +592,9 @@ def audit_diagnostics(
         execution = _trace_audit(
             session,
             now=current_time,
-            limits=limits,
+            evidence_limit=evidence_limit,
+            persist_event_details=persist_event_details,
+            event_detail_limit=event_detail_limit,
         )
 
     manifest_statuses: Counter[str] = Counter()
@@ -653,6 +701,7 @@ def _worker_alert_counts(
     session: Session,
     *,
     now: datetime,
+    evidence_limit: int,
 ) -> dict[str, int]:
     counts = {
         "stale_worker_heartbeat": 0,
@@ -661,7 +710,10 @@ def _worker_alert_counts(
         "log_spool_backlog": 0,
         "shard_update_spool_backlog": 0,
     }
-    for server in _worker_rows(session):
+    for server in _worker_rows(
+        session,
+        evidence_limit=evidence_limit,
+    ):
         capabilities = _safe_json_object(server.capabilities_json)
         counts["stale_worker_heartbeat"] += int(
             _heartbeat_is_stale(server, now)
@@ -703,11 +755,17 @@ def alerts_diagnostics(
     capacity: Mapping[str, object],
     audit: Mapping[str, object],
     now: datetime | None = None,
+    limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
     current_time = _utc(now)
+    evidence_limit = _resolve_evidence_limit(limits)
     active = migration_alerts(database_status)
     with session.no_autoflush:
-        worker_counts = _worker_alert_counts(session, now=current_time)
+        worker_counts = _worker_alert_counts(
+            session,
+            now=current_time,
+            evidence_limit=evidence_limit,
+        )
     active.extend(
         _alert_item(code, count)
         for code, count in worker_counts.items()

@@ -12,6 +12,8 @@ DEFAULT_JOB_LOG_DETAIL_LIMIT = 10_000
 DEFAULT_JOB_FAILED_FILE_SAMPLE_LIMIT = 100
 DEFAULT_JOB_SUMMARY_ATTENTION_SHARD_LIMIT = 50
 DEFAULT_RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = 1
+DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT = 10_000
+DEFAULT_METRICS_TRACE_EVENT_LIMIT = 10_000
 
 
 def _non_negative_int(value: Any, default: int) -> int:
@@ -55,6 +57,10 @@ class ControlLimits:
     retained_control_event_limit_when_details_disabled: int = (
         DEFAULT_RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED
     )
+    diagnostics_evidence_row_limit: int = (
+        DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
+    )
+    metrics_trace_event_limit: int = DEFAULT_METRICS_TRACE_EVENT_LIMIT
 
     @property
     def persist_job_file_details(self) -> bool:
@@ -105,6 +111,10 @@ class ControlLimits:
             retained_control_event_limit_when_details_disabled=(
                 DEFAULT_RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED
             ),
+            diagnostics_evidence_row_limit=(
+                DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
+            ),
+            metrics_trace_event_limit=DEFAULT_METRICS_TRACE_EVENT_LIMIT,
         )
 
 
@@ -155,6 +165,10 @@ def legacy_control_limits() -> ControlLimits:
                 DEFAULT_RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED,
             )
         ),
+        diagnostics_evidence_row_limit=(
+            DEFAULT_DIAGNOSTICS_EVIDENCE_ROW_LIMIT
+        ),
+        metrics_trace_event_limit=DEFAULT_METRICS_TRACE_EVENT_LIMIT,
     )
 
 

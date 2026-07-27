@@ -19,6 +19,7 @@ from ocr_parser.contracts.observability import (
     status_label,
 )
 
+from ...limits import ControlLimits as __ControlLimits
 from ..common import JOB_STATUS_FILTERS, POOL_SERVER_ID, TERMINAL_JOB_STATUSES
 from ...models import Job, JobEvent, JobFile, Server, WorkShard
 
@@ -129,6 +130,14 @@ def _nonnegative_int(value: object) -> int:
         return 0
 
 
+def _resolve_trace_limit(
+    limits: __ControlLimits | None,
+) -> int:
+    if limits is None:
+        return TRACE_EVENT_LIMIT
+    return max(0, limits.metrics_trace_event_limit)
+
+
 def _add(
     samples: dict[str, Counter[tuple[str, ...]]],
     family: str,
@@ -224,6 +233,7 @@ def _trace_samples(
     samples: dict[str, Counter[tuple[str, ...]]],
     *,
     now: datetime,
+    trace_limit: int,
 ) -> None:
     cutoff = now - TRACE_WINDOW
     rows = session.execute(
@@ -233,16 +243,16 @@ def _trace_samples(
         .where(JobEvent.created_at >= cutoff)
         .where(JobEvent.created_at <= now)
         .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-        .limit(TRACE_EVENT_LIMIT + 1)
+        .limit(trace_limit + 1)
     ).all()
-    truncated = len(rows) > TRACE_EVENT_LIMIT
+    truncated = len(rows) > trace_limit
     _add(
         samples,
         "ocr_platform_trace_window_truncated",
         (),
         int(truncated),
     )
-    for engine, payload_json in rows[:TRACE_EVENT_LIMIT]:
+    for engine, payload_json in rows[:trace_limit]:
         payload = _safe_json_object(payload_json)
         stages = payload.get("stages")
         if isinstance(stages, list):
@@ -300,12 +310,14 @@ def metrics_snapshot(
     session: Session,
     *,
     now: datetime | None = None,
+    limits: __ControlLimits | None = None,
 ) -> dict[str, Counter[tuple[str, ...]]]:
     """Read one immutable metrics snapshot without mutating the session."""
 
     current_time = now or datetime.now(timezone.utc)
     if current_time.tzinfo is None:
         current_time = current_time.replace(tzinfo=timezone.utc)
+    trace_limit = _resolve_trace_limit(limits)
     samples = {
         family.name: Counter()
         for family in METRIC_FAMILIES
@@ -314,7 +326,12 @@ def metrics_snapshot(
         _worker_samples(session, samples)
         _shard_queue_samples(session, samples)
         _failure_samples(session, samples)
-        _trace_samples(session, samples, now=current_time)
+        _trace_samples(
+            session,
+            samples,
+            now=current_time,
+            trace_limit=trace_limit,
+        )
         _artifact_samples(session, samples)
     return samples
 
@@ -355,8 +372,15 @@ def render_control_metrics(
     session: Session,
     *,
     now: datetime | None = None,
+    limits: __ControlLimits | None = None,
 ) -> str:
-    return encode_prometheus(metrics_snapshot(session, now=now))
+    return encode_prometheus(
+        metrics_snapshot(
+            session,
+            now=now,
+            limits=limits,
+        )
+    )
 
 
 __all__ = [
