@@ -7,6 +7,7 @@ for one release so existing Python integrations do not break during v0.3.
 import sys
 from types import ModuleType
 
+from .. import limits as __limits
 from ..domains import common as _common
 from ..domains.jobs import core as _jobs
 from ..domains.manifests import core as _manifests
@@ -32,7 +33,14 @@ class _CompatibilityModule(ModuleType):
 
     def __setattr__(self, name, value):
         super().__setattr__(name, value)
-        for target in (_common, _jobs, _manifests, _model_profiles, _workers):
+        for target in (
+            globals()["__limits"],
+            _common,
+            _jobs,
+            _manifests,
+            _model_profiles,
+            _workers,
+        ):
             if hasattr(target, name):
                 setattr(target, name, value)
 

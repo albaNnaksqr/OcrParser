@@ -92,6 +92,7 @@ def _assemble_control_app(control_runtime: ControlRuntime) -> FastAPI:
         app = FastAPI(title="OCR Platform Control API")
 
     app.state.control_settings = control_settings
+    app.state.control_limits = control_runtime.limits
     app.state.control_runtime = control_runtime
     install_control_request_guard(
         app,
@@ -104,6 +105,7 @@ def _assemble_control_app(control_runtime: ControlRuntime) -> FastAPI:
         create_diagnostics_router(
             get_db,
             settings=control_settings,
+            limits=control_runtime.limits,
         )
     )
     app.include_router(create_workers_router(get_db))
@@ -117,6 +119,7 @@ def _assemble_control_app(control_runtime: ControlRuntime) -> FastAPI:
         create_jobs_router(
             get_db,
             settings=control_settings,
+            limits=control_runtime.limits,
         )
     )
     app.include_router(

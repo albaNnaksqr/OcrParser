@@ -17,6 +17,7 @@ from ocr_parser.contracts.observability import (
     status_label,
 )
 
+from ...limits import ControlLimits as __ControlLimits
 from ...models import (
     Job,
     JobCounter,
@@ -225,7 +226,14 @@ def _throughput_evidence(
     session: Session,
     *,
     now: datetime,
+    limits: __ControlLimits | None = None,
 ) -> tuple[int, bool]:
+    if limits is None:
+        persist_event_details = PERSIST_JOB_EVENT_DETAILS
+        event_detail_limit = JOB_EVENT_DETAIL_LIMIT
+    else:
+        persist_event_details = limits.persist_job_event_details
+        event_detail_limit = limits.job_event_detail_limit
     rows = list(
         session.execute(
             select(
@@ -255,9 +263,9 @@ def _throughput_evidence(
             continue
         keys.add((job_id, file_path, page_no))
     complete = (
-        PERSIST_JOB_EVENT_DETAILS
+        persist_event_details
         and not (
-            0 < JOB_EVENT_DETAIL_LIMIT <= EVIDENCE_ROW_LIMIT
+            0 < event_detail_limit <= EVIDENCE_ROW_LIMIT
         )
         and not truncated
         and not missing_key
@@ -309,6 +317,7 @@ def capacity_diagnostics(
     session: Session,
     *,
     now: datetime | None = None,
+    limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
     current_time = _utc(now)
     with session.no_autoflush:
@@ -321,6 +330,7 @@ def capacity_diagnostics(
         sample_pages, throughput_complete = _throughput_evidence(
             session,
             now=current_time,
+            limits=limits,
         )
         remaining_pages, remaining_reliable = _remaining_pages(session)
 
@@ -403,7 +413,14 @@ def _trace_audit(
     session: Session,
     *,
     now: datetime,
+    limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
+    if limits is None:
+        persist_event_details = PERSIST_JOB_EVENT_DETAILS
+        event_detail_limit = JOB_EVENT_DETAIL_LIMIT
+    else:
+        persist_event_details = limits.persist_job_event_details
+        event_detail_limit = limits.job_event_detail_limit
     rows = list(
         session.execute(
             select(JobEvent.payload_json)
@@ -414,7 +431,11 @@ def _trace_audit(
             .limit(EVIDENCE_ROW_LIMIT + 1)
         ).scalars()
     )
-    truncated = len(rows) > EVIDENCE_ROW_LIMIT
+    truncated = (
+        not persist_event_details
+        or 0 < event_detail_limit <= EVIDENCE_ROW_LIMIT
+        or len(rows) > EVIDENCE_ROW_LIMIT
+    )
     stage_statuses: Counter[str] = Counter()
     stage_failures: Counter[str] = Counter()
     fallbacks: Counter[str] = Counter()
@@ -451,6 +472,7 @@ def audit_diagnostics(
     session: Session,
     *,
     now: datetime | None = None,
+    limits: __ControlLimits | None = None,
 ) -> dict[str, object]:
     current_time = _utc(now)
     with session.no_autoflush:
@@ -521,7 +543,11 @@ def audit_diagnostics(
         completed_jobs = session.execute(
             select(func.count(Job.id)).where(Job.status == "succeeded")
         ).scalar_one()
-        execution = _trace_audit(session, now=current_time)
+        execution = _trace_audit(
+            session,
+            now=current_time,
+            limits=limits,
+        )
 
     manifest_statuses: Counter[str] = Counter()
     manifest_total = 0

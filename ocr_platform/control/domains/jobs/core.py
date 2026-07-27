@@ -30,6 +30,8 @@ from ...schemas import (
     ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
 )
 from ... import settings as __control_settings
+from ...limits import ControlLimits as __ControlLimits
+from ...limits import legacy_control_limits as __legacy_control_limits
 from ..common import *
 
 def _create_distributed_scan_for_job(*args, **kwargs):
@@ -200,7 +202,11 @@ def list_job_summaries(
     limit: int = 100,
     offset: int = 0,
     include_archived: bool = False,
+    limits: __ControlLimits | None = None,
 ) -> list[JobSummaryResponse]:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     stmt = select(Job).order_by(Job.created_at.desc())
     status = _normalized_status_filter(status)
     if status:
@@ -209,7 +215,10 @@ def list_job_summaries(
         stmt = stmt.where(Job.archived_at.is_(None))
     stmt = stmt.offset(max(offset, 0)).limit(max(limit, 1))
     jobs = session.execute(stmt).scalars().all()
-    return [get_job_summary(session, job) for job in jobs]
+    return [
+        get_job_summary(session, job, limits=control_limits)
+        for job in jobs
+    ]
 
 def list_job_summaries_page(
     session: Session,
@@ -218,7 +227,11 @@ def list_job_summaries_page(
     limit: int = 100,
     offset: int = 0,
     include_archived: bool = False,
+    limits: __ControlLimits | None = None,
 ) -> JobSummaryListResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     limit = max(limit, 1)
     offset = max(offset, 0)
     status = _normalized_status_filter(status)
@@ -237,7 +250,10 @@ def list_job_summaries_page(
         limit=limit,
         offset=offset,
         has_more=offset + len(jobs) < total,
-        items=[get_job_summary(session, job) for job in jobs],
+        items=[
+            get_job_summary(session, job, limits=control_limits)
+            for job in jobs
+        ],
     )
 
 def _static_input_file_count(session: Session, job_id: str) -> int:
@@ -536,7 +552,15 @@ def _manifest_freeze_integrity_summary(manifest: Manifest | None) -> dict[str, A
         "manifest_integrity_issue_count": int(report.get("integrity_issue_count") or 0),
     }
 
-def get_job_summary(session: Session, job_or_id: Job | str) -> JobSummaryResponse:
+def get_job_summary(
+    session: Session,
+    job_or_id: Job | str,
+    *,
+    limits: __ControlLimits | None = None,
+) -> JobSummaryResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     job = get_job_or_raise(session, job_or_id) if isinstance(job_or_id, str) else job_or_id
     reconcile_expired_shard_leases(session, job_id=job.id)
     reconcile_expired_scan_unit_leases(session, job_id=job.id)
@@ -759,8 +783,10 @@ def get_job_summary(session: Session, job_or_id: Job | str) -> JobSummaryRespons
         .where(WorkShard.status.in_(ATTENTION_SHARD_STATUSES))
         .order_by(attention_shard_priority, WorkShard.shard_index.asc())
     )
-    if JOB_SUMMARY_ATTENTION_SHARD_LIMIT:
-        attention_shard_stmt = attention_shard_stmt.limit(JOB_SUMMARY_ATTENTION_SHARD_LIMIT)
+    if control_limits.job_summary_attention_shard_limit:
+        attention_shard_stmt = attention_shard_stmt.limit(
+            control_limits.job_summary_attention_shard_limit
+        )
     attention_shard_rows = list(session.execute(attention_shard_stmt).scalars().all())
     attention_shard_rows.sort(
         key=lambda shard: (
@@ -1368,8 +1394,13 @@ def _failed_file_sample_from_payload(payload: dict[str, Any]) -> dict[str, Any] 
         "failure_category": infer_failure_category(payload),
     }
 
-def _store_recent_failed_file_sample(counter: JobCounter, payload: dict[str, Any]) -> None:
-    limit = max(0, JOB_FAILED_FILE_SAMPLE_LIMIT)
+def _store_recent_failed_file_sample(
+    counter: JobCounter,
+    payload: dict[str, Any],
+    *,
+    limits: __ControlLimits,
+) -> None:
+    limit = max(0, limits.job_failed_file_sample_limit)
     sample = _failed_file_sample_from_payload(payload)
     if sample is None:
         return
@@ -1409,8 +1440,9 @@ def _store_recent_error_sample(
     event: JobEventRequest,
     *,
     event_time: datetime,
+    limits: __ControlLimits,
 ) -> None:
-    limit = max(0, JOB_RECENT_ERROR_SAMPLE_LIMIT)
+    limit = max(0, limits.job_recent_error_sample_limit)
     sample = _failure_event_sample_from_event(event, event_time=event_time)
     if sample is None:
         return
@@ -1448,7 +1480,11 @@ def update_job_counter_from_event(
     event: JobEventRequest,
     *,
     event_time: datetime,
+    limits: __ControlLimits | None = None,
 ) -> JobCounter:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     counter = get_or_create_job_counter(session, job.id)
     if counter.first_event_at is None:
         counter.first_event_at = event_time
@@ -1476,9 +1512,18 @@ def update_job_counter_from_event(
     elif event.type == "file_failed":
         counter.failed_files += 1
         _increment_failure_category_count(counter, infer_failure_category(payload))
-        _store_recent_failed_file_sample(counter, payload)
+        _store_recent_failed_file_sample(
+            counter,
+            payload,
+            limits=control_limits,
+        )
     if event.type in PRIORITY_FAILURE_EVENT_TYPES:
-        _store_recent_error_sample(counter, event, event_time=event_time)
+        _store_recent_error_sample(
+            counter,
+            event,
+            event_time=event_time,
+            limits=control_limits,
+        )
     return counter
 
 def _job_counter_total_files(counter: JobCounter | None) -> int:
@@ -1487,9 +1532,22 @@ def _job_counter_total_files(counter: JobCounter | None) -> int:
     terminal_files = counter.completed_files + counter.failed_files + counter.skipped_files
     return max(counter.started_files, terminal_files)
 
-def prune_job_detail_rows(session: Session, job_id: str) -> None:
-    if JOB_FILE_DETAIL_LIMIT >= 0:
-        if JOB_FILE_DETAIL_LIMIT == 0:
+def prune_job_detail_rows(
+    session: Session,
+    job_id: str,
+    *,
+    limits: __ControlLimits | None = None,
+) -> None:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    file_limit = control_limits.job_file_detail_limit
+    event_limit = control_limits.job_event_detail_limit
+    retained_event_limit = (
+        control_limits.retained_control_event_limit_when_details_disabled
+    )
+    if file_limit >= 0:
+        if file_limit == 0:
             stale_file_ids = list(
                 session.execute(
                     select(JobFile.id).where(JobFile.job_id == job_id)
@@ -1505,14 +1563,14 @@ def prune_job_detail_rows(session: Session, job_id: str) -> None:
                         JobFile.updated_at.desc(),
                         JobFile.id.desc(),
                     )
-                    .limit(JOB_FILE_DETAIL_LIMIT + 1)
+                    .limit(file_limit + 1)
                 ).scalars()
             )
-            stale_file_ids = recent_file_ids[JOB_FILE_DETAIL_LIMIT:]
+            stale_file_ids = recent_file_ids[file_limit:]
         if stale_file_ids:
             session.execute(delete(JobFile).where(JobFile.id.in_(stale_file_ids)))
-    if JOB_EVENT_DETAIL_LIMIT >= 0:
-        if JOB_EVENT_DETAIL_LIMIT == 0:
+    if event_limit >= 0:
+        if event_limit == 0:
             stale_event_ids = list(
                 session.execute(
                     select(JobEvent.id)
@@ -1535,13 +1593,13 @@ def prune_job_detail_rows(session: Session, job_id: str) -> None:
                         JobEvent.created_at.desc(),
                         JobEvent.id.desc(),
                     )
-                    .limit(JOB_EVENT_DETAIL_LIMIT + 1)
+                    .limit(event_limit + 1)
                 ).scalars()
             )
-            stale_event_ids = recent_event_ids[JOB_EVENT_DETAIL_LIMIT:]
+            stale_event_ids = recent_event_ids[event_limit:]
         if stale_event_ids:
             session.execute(delete(JobEvent).where(JobEvent.id.in_(stale_event_ids)))
-    if JOB_EVENT_DETAIL_LIMIT == 0 and RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED >= 0:
+    if event_limit == 0 and retained_event_limit >= 0:
         for event_type in RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED:
             retained_event_ids = list(
                 session.execute(
@@ -1549,25 +1607,40 @@ def prune_job_detail_rows(session: Session, job_id: str) -> None:
                     .where(JobEvent.job_id == job_id)
                     .where(JobEvent.event_type == event_type)
                     .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-                    .limit(RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED + 1)
+                    .limit(retained_event_limit + 1)
                 ).scalars()
             )
             stale_retained_event_ids = retained_event_ids[
-                RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED:
+                retained_event_limit:
             ]
             if stale_retained_event_ids:
                 session.execute(
                     delete(JobEvent).where(JobEvent.id.in_(stale_retained_event_ids))
                 )
 
-def record_event(session: Session, job_id: str, event: JobEventRequest) -> Job:
+def record_event(
+    session: Session,
+    job_id: str,
+    event: JobEventRequest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> Job:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
     job = get_job_or_raise(session, job_id)
     payload = event.payload
     page_no = parse_page_no(payload)
     event_time = utcnow()
-    update_job_counter_from_event(session, job, event, event_time=event_time)
+    update_job_counter_from_event(
+        session,
+        job,
+        event,
+        event_time=event_time,
+        limits=control_limits,
+    )
     if (
-        JOB_EVENT_DETAIL_LIMIT != 0
+        control_limits.persist_job_event_details
         or event.type in RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED
     ):
         failure_category = (
@@ -1587,10 +1660,14 @@ def record_event(session: Session, job_id: str, event: JobEventRequest) -> Job:
         )
         session.add(row)
         session.flush()
-    if JOB_FILE_DETAIL_LIMIT != 0:
+    if control_limits.persist_job_file_details:
         upsert_job_file_from_event(session, job, event)
     session.flush()
-    prune_job_detail_rows(session, job.id)
+    prune_job_detail_rows(
+        session,
+        job.id,
+        limits=control_limits,
+    )
 
     terminal_status = TERMINAL_EVENT_STATUSES.get(event.type)
     is_static_child_terminal = (
@@ -1619,9 +1696,19 @@ def record_event(session: Session, job_id: str, event: JobEventRequest) -> Job:
     session.refresh(job)
     return job
 
-def record_log(session: Session, job_id: str, request: JobLogRequest) -> JobLog:
+def record_log(
+    session: Session,
+    job_id: str,
+    request: JobLogRequest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> JobLog:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    log_limit = control_limits.job_log_detail_limit
     get_job_or_raise(session, job_id)
-    if JOB_LOG_DETAIL_LIMIT == 0:
+    if log_limit == 0:
         session.commit()
         return JobLog(
             job_id=job_id,
@@ -1637,16 +1724,16 @@ def record_log(session: Session, job_id: str, request: JobLogRequest) -> JobLog:
     )
     session.add(row)
     session.flush()
-    if JOB_LOG_DETAIL_LIMIT >= 0:
+    if log_limit >= 0:
         recent_log_ids = list(
             session.execute(
                 select(JobLog.id)
                 .where(JobLog.job_id == job_id)
                 .order_by(JobLog.created_at.desc(), JobLog.id.desc())
-                .limit(JOB_LOG_DETAIL_LIMIT + 1)
+                .limit(log_limit + 1)
             ).scalars()
         )
-        stale_log_ids = recent_log_ids[JOB_LOG_DETAIL_LIMIT:]
+        stale_log_ids = recent_log_ids[log_limit:]
         if stale_log_ids:
             session.execute(delete(JobLog).where(JobLog.id.in_(stale_log_ids)))
     session.commit()

@@ -5,6 +5,7 @@ from typing import Callable, Generator, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from ...limits import ControlLimits, legacy_control_limits
 from ...schemas import (
     JobCreateRequest,
     JobEventRequest,
@@ -32,9 +33,13 @@ def create_router(
     get_db: GetDb,
     *,
     settings: ControlSettings | None = None,
+    limits: ControlLimits | None = None,
 ) -> APIRouter:
     control_settings = (
         settings if settings is not None else ControlSettings.from_environment()
+    )
+    control_limits = (
+        limits if limits is not None else legacy_control_limits()
     )
     router = APIRouter()
 
@@ -44,6 +49,7 @@ def create_router(
             session,
             request,
             settings=control_settings,
+            limits=control_limits,
         )
 
     @router.post("/api/jobs", response_model=JobResponse)
@@ -129,6 +135,7 @@ def create_router(
                 limit=limit,
                 offset=offset,
                 include_archived=include_archived,
+                limits=control_limits,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -148,6 +155,7 @@ def create_router(
                 limit=limit,
                 offset=offset,
                 include_archived=include_archived,
+                limits=control_limits,
             )
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -162,7 +170,11 @@ def create_router(
     @router.get("/api/jobs/{job_id}/summary", response_model=JobSummaryResponse)
     def api_get_job_summary(job_id: str, session: Session = Depends(get_db)):
         try:
-            return queries.get_job_summary(session, job_id)
+            return queries.get_job_summary(
+                session,
+                job_id,
+                limits=control_limits,
+            )
         except commands.UnknownJobError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -203,7 +215,15 @@ def create_router(
     @router.post("/api/jobs/{job_id}/events", response_model=JobResponse)
     def api_record_event(job_id: str, request: JobEventRequest, session: Session = Depends(get_db)):
         try:
-            return job_to_response(commands.record_event(session, job_id, request), session)
+            return job_to_response(
+                commands.record_event(
+                    session,
+                    job_id,
+                    request,
+                    limits=control_limits,
+                ),
+                session,
+            )
         except commands.UnknownJobError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc
         except ValueError as exc:
@@ -212,7 +232,12 @@ def create_router(
     @router.post("/api/jobs/{job_id}/logs")
     def api_record_log(job_id: str, request: JobLogRequest, session: Session = Depends(get_db)):
         try:
-            commands.record_log(session, job_id, request)
+            commands.record_log(
+                session,
+                job_id,
+                request,
+                limits=control_limits,
+            )
             return {"ok": True}
         except commands.UnknownJobError as exc:
             raise HTTPException(status_code=404, detail=str(exc)) from exc

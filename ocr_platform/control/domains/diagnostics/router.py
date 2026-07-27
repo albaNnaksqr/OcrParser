@@ -7,6 +7,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse,
 from sqlalchemy.orm import Session
 
 from ... import database
+from ...limits import ControlLimits, legacy_control_limits
 from ...readiness import database_status_unavailable_body
 from ...redaction import diagnostics_unavailable_message
 from ...schemas import DatabaseStatusResponse
@@ -27,9 +28,13 @@ def create_router(
     get_db: GetDb,
     *,
     settings: ControlSettings | None = None,
+    limits: ControlLimits | None = None,
 ) -> APIRouter:
     control_settings = (
         settings if settings is not None else ControlSettings.from_environment()
+    )
+    control_limits = (
+        limits if limits is not None else legacy_control_limits()
     )
     router = APIRouter()
 
@@ -84,6 +89,7 @@ def create_router(
                 session,
                 strict_production=True,
                 settings=control_settings,
+                limits=control_limits,
             )
         except Exception:
             return JSONResponse(

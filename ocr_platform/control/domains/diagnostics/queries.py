@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from ocr_platform.legal import agpl_license_text, source_offer
 
 from ... import database
+from ...limits import ControlLimits
 from ...settings import ControlSettings
 from ..common import json_loads_object
 from . import operations
@@ -138,6 +139,7 @@ def system_operational_diagnostics(
     *,
     strict_production: bool = False,
     settings: ControlSettings | None = None,
+    limits: ControlLimits | None = None,
     now: datetime | None = None,
 ) -> dict[str, object]:
     payload = system_diagnostics(
@@ -158,7 +160,9 @@ def system_operational_diagnostics(
     try:
         capacity = run_section(
             lambda read_session: operations.capacity_diagnostics(
-                read_session, now=now
+                read_session,
+                now=now,
+                limits=limits,
             )
         )
     except Exception:
@@ -166,7 +170,9 @@ def system_operational_diagnostics(
     try:
         audit = run_section(
             lambda read_session: operations.audit_diagnostics(
-                read_session, now=now
+                read_session,
+                now=now,
+                limits=limits,
             )
         )
     except Exception:

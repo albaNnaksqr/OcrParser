@@ -31,6 +31,8 @@ from ...schemas import (
     ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
 )
 from ... import settings as __control_settings
+from ...limits import ControlLimits as __ControlLimits
+from ...limits import legacy_control_limits as __legacy_control_limits
 from ..common import *
 
 def _resolve_model_profile_api_key(*args, **kwargs):
@@ -824,11 +826,15 @@ def preflight_job(
     request: JobCreateRequest,
     *,
     settings: __control_settings.ControlSettings | None = None,
+    limits: __ControlLimits | None = None,
 ) -> JobPreflightResponse:
     control_settings = (
         settings
         if settings is not None
         else __control_settings.ControlSettings.from_environment()
+    )
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
     )
     ensure_pool_server(session)
     issues: list[JobPreflightIssue] = []
@@ -1006,14 +1012,21 @@ def preflight_job(
                 )
             )
 
-    if JOB_FILE_DETAIL_LIMIT > 100000 or JOB_EVENT_DETAIL_LIMIT > 100000:
+    if (
+        control_limits.job_file_detail_limit > 100000
+        or control_limits.job_event_detail_limit > 100000
+    ):
         issues.append(
             _preflight_issue(
                 "warning",
                 "high_detail_row_limits",
                 "Large per-file or raw-event retention limits can grow quickly on million-scale jobs.",
-                job_file_detail_limit=JOB_FILE_DETAIL_LIMIT,
-                job_event_detail_limit=JOB_EVENT_DETAIL_LIMIT,
+                job_file_detail_limit=(
+                    control_limits.job_file_detail_limit
+                ),
+                job_event_detail_limit=(
+                    control_limits.job_event_detail_limit
+                ),
             )
         )
 

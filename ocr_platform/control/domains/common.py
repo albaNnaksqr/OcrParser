@@ -9,6 +9,15 @@ from ocr_parser.infra.failure_category import infer_failure_category
 from sqlalchemy.orm import Session
 
 from .. import settings as __control_settings
+from ..limits import (
+    JOB_EVENT_DETAIL_LIMIT,
+    JOB_FAILED_FILE_SAMPLE_LIMIT,
+    JOB_FILE_DETAIL_LIMIT,
+    JOB_LOG_DETAIL_LIMIT,
+    JOB_RECENT_ERROR_SAMPLE_LIMIT,
+    JOB_SUMMARY_ATTENTION_SHARD_LIMIT,
+    RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED,
+)
 from ..schemas import ScanUnitFailRequest
 
 TERMINAL_JOB_STATUSES = {"succeeded", "failed", "stopped"}
@@ -34,8 +43,9 @@ PROCESSED_FILE_STATUSES = COMPLETED_FILE_STATUSES | FAILED_FILE_STATUSES | SKIPP
 DEGRADED_PAGE_STATUSES = {"success_fallback_image"}
 PRIORITY_FAILURE_EVENT_TYPES = {"file_failed", "job_failed"}
 PRIORITY_TERMINAL_EVENT_TYPES = {"file_done", "job_done", "job_stopped"}
-RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED = {"manifest_scan_progress"}
-RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED = 1
+RETAINED_CONTROL_EVENT_TYPES_WHEN_DETAILS_DISABLED = frozenset(
+    {"manifest_scan_progress"}
+)
 TRUTHY_ENV_VALUES = {"1", "true", "yes", "on"}
 def _env_truthy(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in TRUTHY_ENV_VALUES
@@ -77,23 +87,11 @@ def _env_non_negative_int(name: str, default: int) -> int:
 STALE_AFTER_SECONDS = _env_positive_int("OCR_JOB_STALE_AFTER_SECONDS", 120)
 SERVER_STALE_AFTER_SECONDS = _env_positive_int("OCR_SERVER_STALE_AFTER_SECONDS", 120)
 SHARD_LEASE_SECONDS = _env_positive_int("OCR_SHARD_LEASE_SECONDS", 180)
-JOB_FILE_DETAIL_LIMIT = _env_non_negative_int("OCR_JOB_FILE_DETAIL_LIMIT", 10000)
-JOB_EVENT_DETAIL_LIMIT = _env_non_negative_int("OCR_JOB_EVENT_DETAIL_LIMIT", 50000)
-JOB_LOG_DETAIL_LIMIT = _env_non_negative_int("OCR_JOB_LOG_DETAIL_LIMIT", 10000)
-JOB_FAILED_FILE_SAMPLE_LIMIT = _env_non_negative_int("OCR_JOB_FAILED_FILE_SAMPLE_LIMIT", 100)
-JOB_RECENT_ERROR_SAMPLE_LIMIT = _env_non_negative_int(
-    "OCR_JOB_RECENT_ERROR_SAMPLE_LIMIT",
-    JOB_FAILED_FILE_SAMPLE_LIMIT,
-)
-JOB_SUMMARY_ATTENTION_SHARD_LIMIT = _env_non_negative_int(
-    "OCR_JOB_SUMMARY_ATTENTION_SHARD_LIMIT",
-    50,
-)
+SCAN_UNIT_CLAIM_BATCH_SIZE = _env_positive_int("OCR_SCAN_UNIT_CLAIM_BATCH_SIZE", 100)
 MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT = _env_non_negative_int(
     "OCR_MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
     50,
 )
-SCAN_UNIT_CLAIM_BATCH_SIZE = _env_positive_int("OCR_SCAN_UNIT_CLAIM_BATCH_SIZE", 100)
 PERSIST_JOB_FILE_DETAILS = JOB_FILE_DETAIL_LIMIT != 0
 PERSIST_JOB_EVENT_DETAILS = JOB_EVENT_DETAIL_LIMIT != 0
 TERMINAL_EVENT_STATUSES = {

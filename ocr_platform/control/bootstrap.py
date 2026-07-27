@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from . import database
 from .domains.common import DEFAULT_MODEL_PROFILES, json_dumps
 from .domains.remote_admin.ports import RemoteWorkerPort
+from .limits import ControlLimits, legacy_control_limits
 from .models import ModelProfile
 from .remote_workers import RemoteWorkerExecutor
 from .settings import ControlSettings
@@ -29,6 +30,7 @@ class BootstrapResult:
 @dataclass(frozen=True, slots=True)
 class ControlRuntime:
     settings: ControlSettings
+    limits: ControlLimits
     session_factory: sessionmaker[Session]
     engine: Engine
     remote_worker_executor: RemoteWorkerPort
@@ -38,12 +40,14 @@ class ControlRuntime:
 def build_control_runtime(
     *,
     settings: ControlSettings | None = None,
+    limits: ControlLimits | None = None,
     session_factory: sessionmaker[Session] | None = None,
     remote_worker_executor: RemoteWorkerPort | None = None,
 ) -> ControlRuntime:
     control_settings = (
         settings if settings is not None else ControlSettings.from_environment()
     )
+    control_limits = limits if limits is not None else legacy_control_limits()
     executor = (
         remote_worker_executor
         if remote_worker_executor is not None
@@ -59,6 +63,7 @@ def build_control_runtime(
             db_engine = session.get_bind()
     return ControlRuntime(
         settings=control_settings,
+        limits=control_limits,
         session_factory=session_factory,
         engine=db_engine,
         remote_worker_executor=executor,
