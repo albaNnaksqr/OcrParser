@@ -7,6 +7,7 @@ import logging
 import os
 from typing import Optional
 
+import ocr_platform.engine_provenance as _engine_provenance
 from ocr_platform.optional import PLATFORM_MODULES, require_extra
 
 from . import lanes as _lanes
@@ -75,7 +76,10 @@ async def amain(argv: Optional[list[str]] = None) -> None:
 
 def main() -> None:
     require_extra("platform", PLATFORM_MODULES)
-    asyncio.run(amain())
+    try:
+        asyncio.run(amain())
+    except _engine_provenance.EngineProvenanceError as exc:
+        raise SystemExit(str(exc)) from None
 
 
 if __name__ == "__main__":

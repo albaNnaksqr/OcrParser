@@ -109,6 +109,33 @@
       "error_code": null,
       "executed_branch": {
         "call_chain": [
+          "ocr_platform.control.domains.workers.router.api_server_heartbeat"
+        ],
+        "evidence": "ocr_platform/control/domains/workers/router.py:44",
+        "exception_types": [
+          "_engine_provenance.EngineProvenanceError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post",
+      "path": "/api/servers/{server_id}/heartbeat",
+      "request_condition": "engine provenance contains a malformed digest",
+      "scenario": "bad_request_invalid_heartbeat_provenance",
+      "stable_body": {
+        "detail": "engine_provenance_invalid"
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_list_jobs"
         ],
         "evidence": "ocr_platform/control/domains/jobs/router.py:79",
@@ -126,6 +153,33 @@
       "scenario": "bad_request_invalid_job_status",
       "stable_body": {
         "detail": "unknown job status filter: definitely-invalid; allowed values: all, failed, queued, running, stopped, stopping, succeeded"
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
+        "detail": "string"
+      },
+      "error_code": null,
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.workers.router.api_register_server"
+        ],
+        "evidence": "ocr_platform/control/domains/workers/router.py:33",
+        "exception_types": [
+          "_engine_provenance.EngineProvenanceError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_register_server_api_servers_register_post",
+      "path": "/api/servers/register",
+      "request_condition": "engine provenance contains a non-whitelisted field",
+      "scenario": "bad_request_invalid_register_provenance",
+      "stable_body": {
+        "detail": "engine_provenance_invalid"
       },
       "status": 400
     },

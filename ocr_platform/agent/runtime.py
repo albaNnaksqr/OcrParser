@@ -10,7 +10,7 @@ from contextlib import suppress
 from typing import Awaitable, Callable
 
 from .client import ControlClient
-from .config import AgentConfig
+from .config import AgentConfig, prepare_agent_config
 from .lanes import (
     _heartbeat_capabilities,
     _job_exception_failure_payload,
@@ -113,13 +113,13 @@ class AgentRuntime:
         client: ControlClient | None = None,
         supervisor: AgentSupervisor | None = None,
     ) -> None:
-        self.config = config
+        self.config = prepare_agent_config(config)
         self.client = client or ControlClient(
-            config.control_url,
-            config.server_id,
-            api_token=config.control_api_token,
-            event_spool_dir=config.event_spool_dir,
-            event_spool_max_bytes=config.event_spool_max_bytes,
+            self.config.control_url,
+            self.config.server_id,
+            api_token=self.config.control_api_token,
+            event_spool_dir=self.config.event_spool_dir,
+            event_spool_max_bytes=self.config.event_spool_max_bytes,
         )
         self.supervisor = supervisor or AgentSupervisor()
         self.current_job_id: str | None = None
@@ -231,7 +231,10 @@ class AgentRuntime:
     async def run(self) -> None:
         self.supervisor.install_signal_handlers()
         try:
-            await self.client.register(host=socket.gethostname())
+            await self.client.register(
+                host=socket.gethostname(),
+                capabilities={"engine_provenance": self.config.engine_provenance},
+            )
             self.start_lanes()
             await self.supervisor.wait()
             if self.supervisor.failure is not None:

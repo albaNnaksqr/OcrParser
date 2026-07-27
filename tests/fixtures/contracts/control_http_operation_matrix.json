@@ -1,7 +1,7 @@
 {
-  "behavior_covered_branch_count": 146,
+  "behavior_covered_branch_count": 148,
   "builder": "tools.control_contracts.build_http_operation_matrix",
-  "non_2xx_branch_count": 194,
+  "non_2xx_branch_count": 196,
   "operation_count": 49,
   "operations": [
     {
@@ -233,15 +233,15 @@
           "call_chain": [
             "ocr_platform.control.domains.workers.router.api_archive_server"
           ],
-          "evidence": "ocr_platform/control/domains/workers/router.py:55",
+          "evidence": "ocr_platform/control/domains/workers/router.py:62",
           "exception_types": [
             "commands.UnknownServerError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/workers/router.py:55"
+              "ocr_platform/control/domains/workers/router.py:62"
             ],
-            "reason": "api_archive_server_api_servers__server_id__delete has a missing job/shard/resource branch that requires commands.UnknownServerError; its distinct router mapping is frozen from ocr_platform/control/domains/workers/router.py:55 but is not separately executed."
+            "reason": "api_archive_server_api_servers__server_id__delete has a missing job/shard/resource branch that requires commands.UnknownServerError; its distinct router mapping is frozen from ocr_platform/control/domains/workers/router.py:62 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -252,15 +252,15 @@
           "call_chain": [
             "ocr_platform.control.domains.workers.router.api_archive_server"
           ],
-          "evidence": "ocr_platform/control/domains/workers/router.py:57",
+          "evidence": "ocr_platform/control/domains/workers/router.py:64",
           "exception_types": [
             "commands.ServerArchiveError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/workers/router.py:57"
+              "ocr_platform/control/domains/workers/router.py:64"
             ],
-            "reason": "api_archive_server_api_servers__server_id__delete has a state, server, or attempt conflict that requires commands.ServerArchiveError; its distinct router mapping is frozen from ocr_platform/control/domains/workers/router.py:57 but is not separately executed."
+            "reason": "api_archive_server_api_servers__server_id__delete has a state, server, or attempt conflict that requires commands.ServerArchiveError; its distinct router mapping is frozen from ocr_platform/control/domains/workers/router.py:64 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 409
@@ -4624,6 +4624,7 @@
     },
     {
       "behavior_scenario_refs": [
+        "bad_request_invalid_register_provenance",
         "validation_missing_server_fields"
       ],
       "declared_statuses": [
@@ -4640,7 +4641,41 @@
       "non_2xx_branches": [
         {
           "behavior_reference": {
-            "branch_id": "api_register_server_api_servers_register_post:401:01",
+            "branch_id": "api_register_server_api_servers_register_post:400:01",
+            "coverage": "exact source branch",
+            "exception_types": [
+              "_engine_provenance.EngineProvenanceError"
+            ],
+            "executed_branch": {
+              "call_chain": [
+                "ocr_platform.control.domains.workers.router.api_register_server"
+              ],
+              "evidence": "ocr_platform/control/domains/workers/router.py:33",
+              "exception_types": [
+                "_engine_provenance.EngineProvenanceError"
+              ],
+              "kind": "router_exception_mapping",
+              "status": 400
+            },
+            "fixture": "control_http_behavior.json",
+            "scenario": "bad_request_invalid_register_provenance",
+            "source_evidence": "ocr_platform/control/domains/workers/router.py:33"
+          },
+          "branch_id": "api_register_server_api_servers_register_post:400:01",
+          "call_chain": [
+            "ocr_platform.control.domains.workers.router.api_register_server"
+          ],
+          "evidence": "ocr_platform/control/domains/workers/router.py:33",
+          "exception_types": [
+            "_engine_provenance.EngineProvenanceError"
+          ],
+          "exemption": null,
+          "kind": "router_exception_mapping",
+          "status": 400
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_register_server_api_servers_register_post:401:02",
             "coverage": "shared middleware branch",
             "exception_types": [],
             "fixture": "control_http_behavior.json",
@@ -4659,7 +4694,7 @@
             },
             "source_evidence": "ocr_platform/control/readiness.py:212"
           },
-          "branch_id": "api_register_server_api_servers_register_post:401:01",
+          "branch_id": "api_register_server_api_servers_register_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
@@ -4671,7 +4706,7 @@
         },
         {
           "behavior_reference": {
-            "branch_id": "api_register_server_api_servers_register_post:422:02",
+            "branch_id": "api_register_server_api_servers_register_post:422:03",
             "coverage": "shared FastAPI validation branch",
             "exception_types": [
               "RequestValidationError"
@@ -4693,7 +4728,7 @@
             },
             "source_evidence": "OpenAPI POST /api/servers/register responses.422"
           },
-          "branch_id": "api_register_server_api_servers_register_post:422:02",
+          "branch_id": "api_register_server_api_servers_register_post:422:03",
           "call_chain": [
             "fastapi.request_validation_exception_handler"
           ],
@@ -4707,7 +4742,7 @@
         },
         {
           "behavior_reference": {
-            "branch_id": "api_register_server_api_servers_register_post:503:03",
+            "branch_id": "api_register_server_api_servers_register_post:503:04",
             "coverage": "shared middleware branch",
             "exception_types": [],
             "fixture": "control_http_behavior.json",
@@ -4726,7 +4761,7 @@
             },
             "source_evidence": "ocr_platform/control/readiness.py:232"
           },
-          "branch_id": "api_register_server_api_servers_register_post:503:03",
+          "branch_id": "api_register_server_api_servers_register_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
@@ -4740,6 +4775,7 @@
       "operation_id": "api_register_server_api_servers_register_post",
       "path": "/api/servers/register",
       "source_reachable_statuses": [
+        400,
         401,
         422,
         503
@@ -6354,7 +6390,9 @@
       ]
     },
     {
-      "behavior_scenario_refs": [],
+      "behavior_scenario_refs": [
+        "bad_request_invalid_heartbeat_provenance"
+      ],
       "declared_statuses": [
         {
           "description": "Successful Response",
@@ -6369,7 +6407,41 @@
       "non_2xx_branches": [
         {
           "behavior_reference": {
-            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:01",
+            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:400:01",
+            "coverage": "exact source branch",
+            "exception_types": [
+              "_engine_provenance.EngineProvenanceError"
+            ],
+            "executed_branch": {
+              "call_chain": [
+                "ocr_platform.control.domains.workers.router.api_server_heartbeat"
+              ],
+              "evidence": "ocr_platform/control/domains/workers/router.py:44",
+              "exception_types": [
+                "_engine_provenance.EngineProvenanceError"
+              ],
+              "kind": "router_exception_mapping",
+              "status": 400
+            },
+            "fixture": "control_http_behavior.json",
+            "scenario": "bad_request_invalid_heartbeat_provenance",
+            "source_evidence": "ocr_platform/control/domains/workers/router.py:44"
+          },
+          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:400:01",
+          "call_chain": [
+            "ocr_platform.control.domains.workers.router.api_server_heartbeat"
+          ],
+          "evidence": "ocr_platform/control/domains/workers/router.py:44",
+          "exception_types": [
+            "_engine_provenance.EngineProvenanceError"
+          ],
+          "exemption": null,
+          "kind": "router_exception_mapping",
+          "status": 400
+        },
+        {
+          "behavior_reference": {
+            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:02",
             "coverage": "shared middleware branch",
             "exception_types": [],
             "fixture": "control_http_behavior.json",
@@ -6388,7 +6460,7 @@
             },
             "source_evidence": "ocr_platform/control/readiness.py:212"
           },
-          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:01",
+          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:401:02",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
@@ -6400,7 +6472,7 @@
         },
         {
           "behavior_reference": {
-            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:422:02",
+            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:422:03",
             "coverage": "shared FastAPI validation branch",
             "exception_types": [
               "RequestValidationError"
@@ -6422,7 +6494,7 @@
             },
             "source_evidence": "OpenAPI POST /api/servers/{server_id}/heartbeat responses.422"
           },
-          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:422:02",
+          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:422:03",
           "call_chain": [
             "fastapi.request_validation_exception_handler"
           ],
@@ -6436,7 +6508,7 @@
         },
         {
           "behavior_reference": {
-            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:03",
+            "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:04",
             "coverage": "shared middleware branch",
             "exception_types": [],
             "fixture": "control_http_behavior.json",
@@ -6455,7 +6527,7 @@
             },
             "source_evidence": "ocr_platform/control/readiness.py:232"
           },
-          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:03",
+          "branch_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post:503:04",
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
@@ -6469,6 +6541,7 @@
       "operation_id": "api_server_heartbeat_api_servers__server_id__heartbeat_post",
       "path": "/api/servers/{server_id}/heartbeat",
       "source_reachable_statuses": [
+        400,
         401,
         422,
         503
@@ -6948,6 +7021,24 @@
       },
       {
         "call_chain": [
+          "ocr_platform/control/domains/workers/router.py:create_router",
+          "ocr_platform/control/domains/workers/router.py:api_register_server"
+        ],
+        "constructor": "HTTPException",
+        "evidence": "ocr_platform/control/domains/workers/router.py:33",
+        "status": 400
+      },
+      {
+        "call_chain": [
+          "ocr_platform/control/domains/workers/router.py:create_router",
+          "ocr_platform/control/domains/workers/router.py:api_server_heartbeat"
+        ],
+        "constructor": "HTTPException",
+        "evidence": "ocr_platform/control/domains/workers/router.py:44",
+        "status": 400
+      },
+      {
+        "call_chain": [
           "ocr_platform/control/readiness.py:install_control_request_guard",
           "ocr_platform/control/readiness.py:api_token_auth"
         ],
@@ -7185,7 +7276,7 @@
           "ocr_platform/control/domains/workers/router.py:api_archive_server"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/workers/router.py:55",
+        "evidence": "ocr_platform/control/domains/workers/router.py:62",
         "status": 404
       },
       {
@@ -7239,7 +7330,7 @@
           "ocr_platform/control/domains/workers/router.py:api_archive_server"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/workers/router.py:57",
+        "evidence": "ocr_platform/control/domains/workers/router.py:64",
         "status": 409
       },
       {

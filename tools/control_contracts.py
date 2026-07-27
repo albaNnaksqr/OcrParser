@@ -433,6 +433,66 @@ def build_http_behavior_contract() -> dict[str, Any]:
                 )
             )
 
+            response = client.post(
+                "/api/servers/register",
+                json={
+                    "id": "invalid-provenance-worker",
+                    "name": "Invalid Provenance Worker",
+                    "host": "localhost",
+                    "capabilities": {
+                        "engine_provenance": {
+                            "profiles": {
+                                "dotsocr": {
+                                    "api_key": "contract-secret-not-stored",
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+            observations.append(
+                _http_observation(
+                    scenario="bad_request_invalid_register_provenance",
+                    app=app,
+                    method="post",
+                    path_template="/api/servers/register",
+                    request_condition=(
+                        "engine provenance contains a non-whitelisted field"
+                    ),
+                    response=response,
+                    expected_status=400,
+                )
+            )
+
+            response = client.post(
+                "/api/servers/invalid-provenance-worker/heartbeat",
+                json={
+                    "status": "idle",
+                    "capabilities": {
+                        "engine_provenance": {
+                            "profiles": {
+                                "dotsocr": {
+                                    "runtime_digest": "not-a-sha256-digest",
+                                }
+                            }
+                        }
+                    },
+                },
+            )
+            observations.append(
+                _http_observation(
+                    scenario="bad_request_invalid_heartbeat_provenance",
+                    app=app,
+                    method="post",
+                    path_template="/api/servers/{server_id}/heartbeat",
+                    request_condition=(
+                        "engine provenance contains a malformed digest"
+                    ),
+                    response=response,
+                    expected_status=400,
+                )
+            )
+
             remote_admin_cases = [
                 {
                     "scenario": "remote_admin_disabled",

@@ -5,8 +5,14 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import List, Optional
+
+from ocr_platform.engine_provenance import (
+    build_engine_provenance_capability,
+    load_engine_provenance_file,
+    sanitize_engine_provenance,
+)
 
 
 DEFAULT_EVENT_SPOOL_MAX_BYTES = 256 * 1024**2
@@ -36,6 +42,44 @@ class AgentConfig:
     resource_guard_min_available_memory_bytes: int = 4 * 1024**3
     resource_guard_disk_percent: float = 95.0
     resource_guard_min_free_disk_bytes: int = 10 * 1024**3
+    engine_provenance_file: str | None = field(default=None, repr=False)
+    engine_provenance: dict[str, object] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+
+def _with_engine_provenance(
+    config: AgentConfig,
+    engine_provenance: dict[str, object],
+) -> AgentConfig:
+    prepared = replace(config)
+    object.__setattr__(
+        prepared,
+        "engine_provenance",
+        sanitize_engine_provenance(engine_provenance),
+    )
+    return prepared
+
+
+def prepare_agent_config(config: AgentConfig) -> AgentConfig:
+    """Load and validate engine provenance exactly once for this process."""
+
+    if config.engine_provenance is not None:
+        return _with_engine_provenance(config, config.engine_provenance)
+    loaded = (
+        load_engine_provenance_file(config.engine_provenance_file)
+        if config.engine_provenance_file
+        else {"profiles": {}}
+    )
+    return _with_engine_provenance(
+        config,
+        build_engine_provenance_capability(
+            profiles=loaded["profiles"],
+        ),
+    )
 
 
 def parse_args(argv: Optional[List[str]] = None) -> AgentConfig:
@@ -125,6 +169,10 @@ def parse_args(argv: Optional[List[str]] = None) -> AgentConfig:
         default=os.environ.get("OCR_AGENT_SCRIPT_VERSION"),
     )
     parser.add_argument(
+        "--engine_provenance_file",
+        default=os.environ.get("OCR_AGENT_ENGINE_PROVENANCE_FILE"),
+    )
+    parser.add_argument(
         "--disable_resource_guard",
         action="store_true",
         default=os.environ.get("OCR_AGENT_DISABLE_RESOURCE_GUARD", "").lower()
@@ -161,7 +209,7 @@ def parse_args(argv: Optional[List[str]] = None) -> AgentConfig:
     if not args.disable_event_spool:
         event_spool_dir = args.event_spool_dir or os.path.join(args.work_dir, "event-spool")
 
-    return AgentConfig(
+    return prepare_agent_config(AgentConfig(
         server_id=args.server_id,
         control_url=args.control_url.rstrip("/"),
         control_api_token=args.control_api_token,
@@ -186,4 +234,5 @@ def parse_args(argv: Optional[List[str]] = None) -> AgentConfig:
         ),
         resource_guard_disk_percent=args.resource_guard_disk_percent,
         resource_guard_min_free_disk_bytes=int(args.resource_guard_min_free_disk_gb * 1024**3),
-    )
+        engine_provenance_file=args.engine_provenance_file,
+    ))

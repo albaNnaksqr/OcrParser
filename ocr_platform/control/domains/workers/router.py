@@ -4,6 +4,7 @@ from typing import Callable, Generator, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+import ocr_platform.engine_provenance as _engine_provenance
 
 from ...schemas import (
     JobResponse,
@@ -26,7 +27,10 @@ def create_router(get_db: GetDb) -> APIRouter:
 
     @router.post("/api/servers/register", response_model=ServerResponse)
     def api_register_server(request: ServerRegisterRequest, session: Session = Depends(get_db)):
-        return server_to_response(commands.register_server(session, request), session)
+        try:
+            return server_to_response(commands.register_server(session, request), session)
+        except _engine_provenance.EngineProvenanceError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.post("/api/servers/{server_id}/heartbeat", response_model=ServerResponse)
     def api_server_heartbeat(
@@ -34,7 +38,10 @@ def create_router(get_db: GetDb) -> APIRouter:
         request: ServerHeartbeatRequest,
         session: Session = Depends(get_db),
     ):
-        return server_to_response(commands.heartbeat_server(session, server_id, request), session)
+        try:
+            return server_to_response(commands.heartbeat_server(session, server_id, request), session)
+        except _engine_provenance.EngineProvenanceError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @router.get("/api/servers", response_model=list[ServerResponse])
     def api_list_servers(

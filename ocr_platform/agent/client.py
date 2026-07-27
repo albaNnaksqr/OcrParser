@@ -331,8 +331,12 @@ class ControlClient:
         await self._client.aclose()
 
     async def register(
-        self, name: Optional[str] = None, host: Optional[str] = None
+        self,
+        name: Optional[str] = None,
+        host: Optional[str] = None,
+        capabilities: Optional[dict[str, Any]] = None,
     ) -> dict[str, Any]:
+        register_capabilities = {"agent": "ocr-platform-mvp", **(capabilities or {})}
         response = await self._client.post(
             f"{self.control_url}/api/servers/register",
             json={
@@ -340,7 +344,7 @@ class ControlClient:
                 "name": name or self.server_id,
                 "host": host or self.server_id,
                 "capacity_slots": 1,
-                "capabilities": {"agent": "ocr-platform-mvp"},
+                "capabilities": register_capabilities,
             },
         )
         response.raise_for_status()

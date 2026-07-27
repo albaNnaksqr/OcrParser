@@ -15,6 +15,7 @@ from ocr_platform.manifest.scanner import scan_folder_snapshot
 from ocr_platform.manifest.sharder import write_manifest_snapshot
 from sqlalchemy import Integer, case, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
+import ocr_platform.engine_provenance as __engine_provenance
 
 from ... import database
 from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
@@ -60,6 +61,7 @@ def server_is_allowed_for_job(job: Job, server_id: str) -> bool:
     return not allowed_server_ids or server_id in allowed_server_ids
 
 def register_server(session: Session, request: ServerRegisterRequest) -> Server:
+    safe_capabilities = __engine_provenance.sanitize_capabilities(request.capabilities)
     server = session.execute(
         select(Server)
         .where(Server.id == request.id)
@@ -78,7 +80,7 @@ def register_server(session: Session, request: ServerRegisterRequest) -> Server:
     server.name = request.name
     server.host = request.host
     server.capacity_slots = request.capacity_slots
-    server.capabilities_json = json_dumps(request.capabilities)
+    server.capabilities_json = json_dumps(safe_capabilities)
     server.status = "online"
     server.last_heartbeat_at = utcnow()
     server.archived_at = None
@@ -172,6 +174,7 @@ def public_assigned_server_id(job: Job) -> str | None:
     return None if job.assigned_server_id == POOL_SERVER_ID else job.assigned_server_id
 
 def heartbeat_server(session: Session, server_id: str, request: ServerHeartbeatRequest) -> Server:
+    safe_capabilities = __engine_provenance.sanitize_capabilities(request.capabilities)
     server = session.get(Server, server_id)
     if server is None:
         server = Server(id=server_id, name=server_id, host=server_id)
@@ -179,7 +182,7 @@ def heartbeat_server(session: Session, server_id: str, request: ServerHeartbeatR
 
     now = utcnow()
     existing_capabilities = json_loads_object(server.capabilities_json)
-    merged_capabilities = {**existing_capabilities, **request.capabilities}
+    merged_capabilities = {**existing_capabilities, **safe_capabilities}
     server.status = request.status
     server.capabilities_json = json_dumps(merged_capabilities)
     server.last_heartbeat_at = now

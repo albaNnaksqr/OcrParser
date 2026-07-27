@@ -122,6 +122,7 @@ def _heartbeat_capabilities(config: AgentConfig) -> dict[str, object]:
         "process_termination_timeout_seconds": config.process_termination_timeout_seconds,
         "stop_poll_interval_seconds": config.stop_poll_interval_seconds,
         "event_spool_dir": config.event_spool_dir,
+        "engine_provenance": config.engine_provenance or {"profiles": {}},
     }
     event_spool = _event_spool_capabilities(
         config.event_spool_dir,
