@@ -469,20 +469,24 @@ def test_model_profile_rejects_saved_api_key_when_db_profile_keys_are_disabled(t
 def test_model_profile_rejects_saved_api_key_by_default(tmp_path, monkeypatch):
     monkeypatch.delenv("OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS", raising=False)
     monkeypatch.delenv("OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS", raising=False)
-    client = make_client(tmp_path)
+    client, session_factory = make_client_with_session(tmp_path)
 
     response = client.put(
-        "/api/model-profiles/dotsocr_15",
+        "/api/model-profiles/blocked-default",
         json={
             "label": "DotsOCR production",
             "engine": "dotsocr",
             "requires_api_key": True,
             "api_key": "profile-secret",
+            "is_default": True,
         },
     )
 
     assert response.status_code == 400
     assert "api_key_env_var" in response.json()["detail"]
+    with session_factory() as session:
+        assert session.get(ModelProfile, "blocked-default") is None
+        assert session.get(ModelProfile, "dotsocr_15").is_default is True
 
 
 def test_model_profile_allows_env_api_key_when_db_profile_keys_are_disabled(tmp_path, monkeypatch):

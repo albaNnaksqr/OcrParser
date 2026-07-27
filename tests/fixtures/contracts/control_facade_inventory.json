@@ -338,70 +338,70 @@
         "fingerprint": "9f0ac71074d766c573a6cf2d31ec7e69402d02612d2321de2c3c807eb5d25ac9",
         "id": "tests/test_control_manifest_api.py:<module>:facade-symbol-import[POOL_SERVER_ID]@9f0ac71074d7:1",
         "kind": "direct_import",
-        "source": "tests/test_control_manifest_api.py:11",
+        "source": "tests/test_control_manifest_api.py:24",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "7bf3515212adeade122b2d7e45f48784a0384cacbd041fc07ed45fb3d0d54721",
         "id": "tests/test_control_manifest_api.py:<module>:facade-symbol-import[create_job]@7bf3515212ad:1",
         "kind": "direct_import",
-        "source": "tests/test_control_manifest_api.py:11",
+        "source": "tests/test_control_manifest_api.py:24",
         "symbol": "create_job"
       },
       {
         "fingerprint": "5e3d27156821cf0a01d751eeb860850d83978c967b46fc9ca481447e28a57244",
         "id": "tests/test_control_manifest_api.py:<module>:facade-symbol-import[upsert_model_profile]@5e3d27156821:1",
         "kind": "direct_import",
-        "source": "tests/test_control_manifest_api.py:11",
+        "source": "tests/test_control_manifest_api.py:24",
         "symbol": "upsert_model_profile"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tests/test_control_manifest_api.py:test_create_distributed_manifest_scan_job_seeds_root_scan_unit:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:278",
+        "source": "tests/test_control_manifest_api.py:348",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tests/test_control_manifest_api.py:test_create_folder_snapshot_job_without_assigned_server_creates_pool_job:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:223",
+        "source": "tests/test_control_manifest_api.py:293",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tests/test_control_manifest_api.py:test_create_folder_snapshot_job_without_assigned_server_creates_pool_job:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:2",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:224",
+        "source": "tests/test_control_manifest_api.py:294",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "1f2efaa28d6d53b0c3355710599011a50dbebea5847dfc80b27be09fbcb882d5",
         "id": "tests/test_control_manifest_api.py:test_create_job_rejects_invalid_parser_extra_arg_value:facade-symbol-use[create_job]@1f2efaa28d6d:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:56",
+        "source": "tests/test_control_manifest_api.py:126",
         "symbol": "create_job"
       },
       {
         "fingerprint": "e4594f94ae2631f73e56b5a92f5a4c0583f34ee55c7d5194e9e1c0d8a5444f08",
         "id": "tests/test_control_manifest_api.py:test_create_remote_folder_snapshot_does_not_scan_on_control_host:facade-symbol-use[POOL_SERVER_ID]@e4594f94ae26:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:249",
+        "source": "tests/test_control_manifest_api.py:319",
         "symbol": "POOL_SERVER_ID"
       },
       {
         "fingerprint": "1f2efaa28d6d53b0c3355710599011a50dbebea5847dfc80b27be09fbcb882d5",
         "id": "tests/test_control_manifest_api.py:test_failed_manifest_job_creation_rolls_back_flushed_job:facade-symbol-use[create_job]@1f2efaa28d6d:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:4256",
+        "source": "tests/test_control_manifest_api.py:4326",
         "symbol": "create_job"
       },
       {
         "fingerprint": "6770e90731ff28035e02ab724de8afba52530c34b2f5f153902503b421f1033a",
         "id": "tests/test_control_manifest_api.py:test_model_profile_rejects_unknown_parser_extra_arg:facade-symbol-use[upsert_model_profile]@6770e90731ff:1",
         "kind": "direct_name",
-        "source": "tests/test_control_manifest_api.py:35",
+        "source": "tests/test_control_manifest_api.py:89",
         "symbol": "upsert_model_profile"
       },
       {
@@ -4823,11 +4823,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": true,
-        "defining_module": "ocr_platform.control.domains.model_profiles.core",
+        "defining_module": "ocr_platform.control.domains.model_profiles.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.model_profiles.core"
-        ],
+        "owners": [],
         "reason": "Use the existing Model Profile command surface.",
         "symbol": "upsert_model_profile",
         "target": "ocr_platform.control.domains.model_profiles.commands.upsert_model_profile",
@@ -4997,7 +4995,7 @@
         "fingerprint": "76b8a8e81623b3304d951cd0760daac75a9383b18ef94fa5ad9ce740c6772072",
         "id": "tests/test_control_manifest_api.py:<module>:facade-import@76b8a8e81623:1",
         "kind": "from_service",
-        "source": "tests/test_control_manifest_api.py:11",
+        "source": "tests/test_control_manifest_api.py:24",
         "symbols": [
           "POOL_SERVER_ID",
           "create_job",
@@ -5207,7 +5205,7 @@
         "fingerprint": "672bea756ba770f70ce10faf30ee78b8783df356bcde7d885a3e79e2bb714eb5",
         "form": "string",
         "id": "tests/test_control_manifest_api.py:test_scan_unit_claim_checks_later_batches_when_first_batch_inaccessible:facade-monkeypatch[SCAN_UNIT_CLAIM_BATCH_SIZE]@672bea756ba7:1",
-        "source": "tests/test_control_manifest_api.py:429",
+        "source": "tests/test_control_manifest_api.py:499",
         "symbol": "SCAN_UNIT_CLAIM_BATCH_SIZE"
       }
     ]

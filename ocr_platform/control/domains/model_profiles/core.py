@@ -158,8 +158,6 @@ def upsert_model_profile(
         for name, value in certification_values.items():
             setattr(certification, name, value)
 
-    session.commit()
-    session.refresh(profile)
     return profile
 
 def _resolve_model_profile_api_key(profile: ModelProfile) -> str | None:

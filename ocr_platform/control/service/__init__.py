@@ -17,6 +17,9 @@ from ..domains.jobs.core import *
 from ..domains.manifests.core import *
 from ..domains.model_profiles.core import *
 from ..domains.workers.core import *
+from ..domains.model_profiles.commands import (
+    upsert_model_profile as upsert_model_profile,
+)
 
 
 class _CompatibilityModule(ModuleType):

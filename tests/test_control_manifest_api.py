@@ -6,9 +6,26 @@ from sqlalchemy import event
 
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.models import Job, Manifest, ScanUnit, Server, ShardAttempt, WorkShard, utcnow
+from ocr_platform.control.domains.model_profiles.commands import (
+    ACTIVE_TRANSACTION_ERROR,
+    ModelProfileTransactionError,
+)
+from ocr_platform.control.models import (
+    Job,
+    Manifest,
+    ModelProfile,
+    ScanUnit,
+    Server,
+    ShardAttempt,
+    WorkShard,
+    utcnow,
+)
 from ocr_platform.control.schemas import JobCreateRequest, ModelProfileRequest
-from ocr_platform.control.service import POOL_SERVER_ID, create_job, upsert_model_profile
+from ocr_platform.control.service import (
+    POOL_SERVER_ID,
+    create_job,
+    upsert_model_profile,
+)
 from ocr_platform.manifest.models import ManifestItem
 
 
@@ -26,12 +43,49 @@ def register_server(client):
     )
 
 
-def test_model_profile_rejects_unknown_parser_extra_arg(tmp_path):
+@pytest.mark.parametrize(
+    "transaction_mode",
+    ["none", "explicit", "autobegin"],
+)
+def test_model_profile_rejects_unknown_parser_extra_arg(
+    tmp_path,
+    transaction_mode,
+):
     session_factory, engine = create_session_factory(f"sqlite:///{tmp_path / 'control.db'}")
     init_db(engine)
 
     with session_factory() as session:
-        with pytest.raises(ValueError, match="unknown model profile extra_args key"):
+        commits = []
+        rollbacks = []
+        event.listen(
+            session,
+            "after_commit",
+            lambda current: commits.append(1),
+        )
+        event.listen(
+            session,
+            "after_rollback",
+            lambda current: rollbacks.append(1),
+        )
+        outer_profile = None
+        if transaction_mode == "explicit":
+            session.begin()
+        elif transaction_mode == "autobegin":
+            assert session.get(ModelProfile, "missing") is None
+        if transaction_mode != "none":
+            outer_profile = ModelProfile(
+                id=f"outer-{transaction_mode}",
+                label="Outer transaction",
+                engine="dotsocr",
+            )
+            session.add(outer_profile)
+            expected_error = ModelProfileTransactionError
+            expected_message = f"^{ACTIVE_TRANSACTION_ERROR}$"
+        else:
+            expected_error = ValueError
+            expected_message = "unknown model profile extra_args key"
+
+        with pytest.raises(expected_error, match=expected_message):
             upsert_model_profile(
                 session,
                 "bad",
@@ -41,6 +95,22 @@ def test_model_profile_rejects_unknown_parser_extra_arg(tmp_path):
                     extra_args={"not_a_parser_option": True},
                 ),
             )
+        if transaction_mode != "none":
+            assert session.in_transaction() is True
+            assert outer_profile in session.new
+            assert commits == []
+            assert rollbacks == []
+            session.rollback()
+            assert commits == []
+            assert rollbacks == [1]
+
+    if transaction_mode != "none":
+        with session_factory() as session:
+            assert session.get(
+                ModelProfile,
+                f"outer-{transaction_mode}",
+            ) is None
+            assert session.get(ModelProfile, "bad") is None
 
 
 def test_create_job_rejects_invalid_parser_extra_arg_value(tmp_path):

@@ -53,6 +53,9 @@ def test_facade_fixture_matches_runtime_and_consumers() -> None:
 
 def test_facade_inventory_counts_match_independent_audit() -> None:
     inventory = _baseline()
+    exports = {
+        item["symbol"]: item for item in inventory["exports"]["symbols"]
+    }
 
     assert inventory["exports"]["count"] == 286
     assert inventory["exports"]["classification_counts"] == {
@@ -62,6 +65,13 @@ def test_facade_inventory_counts_match_independent_audit() -> None:
         "supported_explicit_target": 76,
         "unsupported_leaked": 24,
     }
+    assert exports["upsert_model_profile"]["defining_module"] == (
+        "ocr_platform.control.domains.model_profiles.commands"
+    )
+    assert exports["upsert_model_profile"]["target"] == (
+        "ocr_platform.control.domains.model_profiles.commands."
+        "upsert_model_profile"
+    )
     assert inventory["imports"]["ast_count"] == 19
     assert inventory["imports"]["dynamic_count"] == 0
     assert inventory["imports"]["embedded_count"] == 1

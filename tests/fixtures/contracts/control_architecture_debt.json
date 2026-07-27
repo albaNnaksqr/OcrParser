@@ -1329,7 +1329,7 @@
   "schema_version": 1,
   "transactions": {
     "operations": {
-      "commit": 28,
+      "commit": 27,
       "flush": 14,
       "rollback": 7
     },
@@ -1558,12 +1558,6 @@
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.model_profiles.core:upsert_model_profile:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/model_profiles/core.py:161"
-      },
-      {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:archive_server:session.commit@809b98bd0ebc:1",
         "operation": "commit",
         "source": "ocr_platform/control/domains/workers/core.py:1068"
@@ -1629,6 +1623,6 @@
         "source": "ocr_platform/control/domains/workers/core.py:406"
       }
     ],
-    "total": 49
+    "total": 48
   }
 }

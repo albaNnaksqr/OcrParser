@@ -98,6 +98,44 @@ def test_control_runtime_composition_has_no_database_registry_or_leaf_transactio
     assert "database.engine" not in readiness_path.read_text(encoding="utf-8")
 
 
+def test_model_profile_command_owns_transaction_and_core_is_a_leaf() -> None:
+    command_path = (
+        ROOT
+        / "ocr_platform"
+        / "control"
+        / "domains"
+        / "model_profiles"
+        / "commands.py"
+    )
+    core_path = command_path.with_name("core.py")
+
+    def function_session_methods(path: Path, function_name: str) -> list[str]:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef)
+            and node.name == function_name
+        )
+        return [
+            node.func.attr
+            for node in ast.walk(function)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr
+            in {"begin", "commit", "rollback", "flush", "refresh"}
+        ]
+
+    assert function_session_methods(
+        command_path,
+        "upsert_model_profile",
+    ) == ["begin"]
+    assert function_session_methods(
+        core_path,
+        "upsert_model_profile",
+    ) == []
+
+
 def test_architecture_debt_fixture_matches_generated_sites() -> None:
     expected = _baseline()
     actual = control_architecture_debt.build_architecture_debt()
@@ -177,9 +215,9 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
     assert imports["strongly_connected_components"] == [
         ["jobs", "manifests", "workers"]
     ]
-    assert transactions["total"] == 49
+    assert transactions["total"] == 48
     assert transactions["operations"] == {
-        "commit": 28,
+        "commit": 27,
         "flush": 14,
         "rollback": 7,
     }
@@ -394,7 +432,7 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
         transaction_actual,
         baseline,
     )
-    assert transaction_actual["transactions"]["total"] == 48
+    assert transaction_actual["transactions"]["total"] == 47
 
     policy_root = _copy_domains(tmp_path / "policy")
     worker_core = (
@@ -663,7 +701,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
     alias_actual = control_architecture_debt.build_architecture_debt(
         alias_root
     )
-    assert alias_actual["transactions"]["total"] == 50
+    assert alias_actual["transactions"]["total"] == 49
     with pytest.raises(ValueError, match="transactions.sites"):
         control_architecture_debt.validate_decreasing(
             alias_actual,
@@ -864,7 +902,7 @@ def test_alias_dynamic_import_and_closure_escape_hatches_are_blocked(
     closure_actual = control_architecture_debt.build_architecture_debt(
         closure_root
     )
-    assert closure_actual["transactions"]["total"] == 50
+    assert closure_actual["transactions"]["total"] == 49
 
     for actual in (
         sql_alias_actual,
