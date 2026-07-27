@@ -17,6 +17,7 @@ from sqlalchemy import Integer, case, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
 
 from ... import database
+from ... import certification_gate as __certification_gate
 from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
 from ...schemas import (
     JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
@@ -61,6 +62,10 @@ def _manifest_integrity_freeze_summary(*args, **kwargs):
 
 def allowed_server_ids_for_job(*args, **kwargs):
     from ..workers.core import allowed_server_ids_for_job as target
+    return target(*args, **kwargs)
+
+def __candidate_workers_for_job(*args, **kwargs):
+    from ..workers.queries import candidate_workers_for_job as target
     return target(*args, **kwargs)
 
 def ensure_pool_server(*args, **kwargs):
@@ -117,16 +122,25 @@ def create_job(
     assigned_server_id = request.assigned_server_id
     if request.input_mode == "directory" and not assigned_server_id:
         raise ValueError("assigned_server_id is required for directory input_mode")
-    if request.input_mode != "directory" and not assigned_server_id:
-        assigned_server_id = ensure_pool_server(session).id
-    assigned_server = session.get(Server, assigned_server_id) if assigned_server_id is not None else None
-    if assigned_server is None or assigned_server.archived_at is not None:
-        raise ValueError(f"unknown assigned server: {assigned_server_id}")
+    if assigned_server_id and assigned_server_id != POOL_SERVER_ID:
+        assigned_server = session.get(Server, assigned_server_id)
+        if assigned_server is None or assigned_server.archived_at is not None:
+            raise ValueError(f"unknown assigned server: {assigned_server_id}")
     allowed_server_ids = list(dict.fromkeys(request.allowed_server_ids))
     for server_id in allowed_server_ids:
         server = session.get(Server, server_id)
         if server is None or server.archived_at is not None or server_id == POOL_SERVER_ID:
             raise ValueError(f"unknown allowed server: {server_id}")
+    __certification_gate.require_job_model_profile_certification(
+        session,
+        request,
+        candidates=__candidate_workers_for_job(session, request),
+    )
+    if request.input_mode != "directory" and not assigned_server_id:
+        assigned_server_id = ensure_pool_server(session).id
+    assigned_server = session.get(Server, assigned_server_id) if assigned_server_id is not None else None
+    if assigned_server is None or assigned_server.archived_at is not None:
+        raise ValueError(f"unknown assigned server: {assigned_server_id}")
     manifest_root = request.manifest_root or infer_default_manifest_root(
         session,
         input_dir=request.input_dir,

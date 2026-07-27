@@ -522,12 +522,12 @@
           "stale": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/workers/core.py:142",
+              "source": "ocr_platform/control/domains/workers/core.py:143",
               "symbol": "update(ScanUnit).values(status=...)"
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/workers/core.py:309",
+              "source": "ocr_platform/control/domains/workers/core.py:310",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],

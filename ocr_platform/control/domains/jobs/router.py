@@ -19,6 +19,7 @@ from ...schemas import (
     JobSummaryResponse,
 )
 from ...settings import ControlSettings
+from ..model_profiles import policy as certification_policy
 from . import commands, queries
 from ..workers.core import preflight_job
 from .schemas import job_file_to_response, job_to_response
@@ -56,6 +57,21 @@ def create_router(
                 ),
                 session,
             )
+        except certification_policy.ModelProfileCertificationMissingError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=exc.public_detail(),
+            ) from exc
+        except certification_policy.ModelProfileCertificationMismatchError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=exc.public_detail(),
+            ) from exc
+        except certification_policy.ModelProfileRiskAcceptanceRequiredError as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=exc.public_detail(),
+            ) from exc
         except (FileNotFoundError, ValueError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

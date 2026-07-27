@@ -536,8 +536,8 @@ def test_http_operation_matrix_covers_every_openapi_operation_and_branch() -> No
 
     assert set(operations) == set(expected)
     assert matrix["operation_count"] == 49
-    assert matrix["non_2xx_branch_count"] == 196
-    assert matrix["behavior_covered_branch_count"] == 148
+    assert matrix["non_2xx_branch_count"] == 199
+    assert matrix["behavior_covered_branch_count"] == 151
     assert matrix["source_backed_exemption_count"] == 48
     for operation_id, operation in operations.items():
         assert operation["method"] == expected[operation_id]["method"]
@@ -651,10 +651,10 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
         "framework_request_validation": 43,
         "global_api_token_middleware": 47,
         "global_readiness_middleware": 45,
-        "router_exception_mapping": 42,
+        "router_exception_mapping": 45,
     }
     assert by_status == {
-        400: 19,
+        400: 22,
         401: 47,
         403: 7,
         404: 25,
@@ -741,7 +741,7 @@ def test_control_transport_future_gate_scans_all_runtime_python_sources() -> Non
 
     assert inventory["scanned_file_count"] == len(expected_files)
     assert inventory["scanned_file_count"] >= 52
-    assert len(inventory["branches"]) == 51
+    assert len(inventory["branches"]) == 54
     assert inventory["forbidden_dependencies"] == []
     assert inventory["unresolved_status_calls"] == []
     matrix = control_contracts.build_http_operation_matrix()

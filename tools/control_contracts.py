@@ -493,6 +493,162 @@ def build_http_behavior_contract() -> dict[str, Any]:
                 )
             )
 
+            from ocr_platform.control.models import (
+                ModelProfile,
+                ModelProfileCertification,
+            )
+
+            parser_revision = "contract-parser-revision"
+            runtime_digest = f"sha256:{'a' * 64}"
+            fixture_digest = f"sha256:{'b' * 64}"
+            evidence_digest = f"sha256:{'c' * 64}"
+            profile_cases = {
+                "contract-cert-missing": {
+                    "enforcement": "certified",
+                    "status": "certified",
+                    "parser_revision": parser_revision,
+                    "model_revision": None,
+                    "runtime_digest": runtime_digest,
+                    "fixture_set_digest": fixture_digest,
+                    "evidence_digest": evidence_digest,
+                },
+                "contract-cert-mismatch": {
+                    "enforcement": "certified",
+                    "status": "certified",
+                    "parser_revision": parser_revision,
+                    "model_revision": "model-r1",
+                    "runtime_digest": runtime_digest,
+                    "fixture_set_digest": fixture_digest,
+                    "evidence_digest": evidence_digest,
+                },
+                "contract-cert-risk": {
+                    "enforcement": "verified",
+                    "status": "verified",
+                    "risk_acceptance_json": "{}",
+                },
+            }
+            with _session_factory() as session:
+                for profile_id, certification in profile_cases.items():
+                    session.add(
+                        ModelProfile(
+                            id=profile_id,
+                            label="Contract certification profile",
+                            engine="dotsocr",
+                            model_name="DotsOCR",
+                            extra_args_json="{}",
+                        )
+                    )
+                    session.add(
+                        ModelProfileCertification(
+                            profile_id=profile_id,
+                            **certification,
+                        )
+                    )
+                session.commit()
+
+            response = client.post(
+                "/api/servers/register",
+                json={
+                    "id": "contract-cert-worker",
+                    "name": "Contract Certification Worker",
+                    "host": "localhost",
+                    "capabilities": {
+                        "shared_paths": [
+                            {
+                                "path": "/shared",
+                                "exists": True,
+                                "is_dir": True,
+                                "readable": True,
+                                "writable": True,
+                            }
+                        ],
+                        "engine_provenance": {
+                            "source_revision": parser_revision,
+                            "dirty": False,
+                            "profiles": {
+                                "contract-cert-missing": {
+                                    "model_revision": "model-r1",
+                                    "runtime_digest": runtime_digest,
+                                },
+                                "contract-cert-mismatch": {
+                                    "model_revision": "different-model",
+                                    "runtime_digest": runtime_digest,
+                                },
+                            },
+                        },
+                    },
+                },
+            )
+            if response.status_code != 200:
+                raise RuntimeError(response.text)
+
+            certification_scenarios = [
+                (
+                    "bad_request_model_profile_certification_missing",
+                    "contract-cert-missing",
+                    "certified profile provenance is incomplete",
+                    "certification_policy.ModelProfileCertificationMissingError",
+                ),
+                (
+                    "bad_request_model_profile_certification_mismatch",
+                    "contract-cert-mismatch",
+                    "certified profile and worker provenance differ",
+                    "certification_policy.ModelProfileCertificationMismatchError",
+                ),
+                (
+                    "bad_request_model_profile_risk_acceptance_required",
+                    "contract-cert-risk",
+                    "verified enforcement has no risk acceptance",
+                    "certification_policy.ModelProfileRiskAcceptanceRequiredError",
+                ),
+            ]
+            with patch(
+                "ocr_platform.legal.build_provenance",
+                return_value={
+                    "source_revision": parser_revision,
+                    "dirty": False,
+                },
+            ):
+                for scenario, profile_id, condition, exception_type in (
+                    certification_scenarios
+                ):
+                    response = client.post(
+                        "/api/jobs",
+                        json={
+                            "input_dir": "/shared/input",
+                            "output_dir": "/shared/output",
+                            "engine": "dotsocr",
+                            "model_profile_id": profile_id,
+                            "assigned_server_id": "contract-cert-worker",
+                        },
+                    )
+                    observations.append(
+                        _http_observation(
+                            scenario=scenario,
+                            app=app,
+                            method="post",
+                            path_template="/api/jobs",
+                            request_condition=condition,
+                            response=response,
+                            expected_status=400,
+                            branch_selector={
+                                "kind": "router_exception_mapping",
+                                "exception_types": [exception_type],
+                            },
+                        )
+                    )
+
+            from ocr_platform.control.models import Server
+
+            with _session_factory() as session:
+                contract_worker = session.get(
+                    Server,
+                    "contract-cert-worker",
+                )
+                if contract_worker is not None:
+                    session.delete(contract_worker)
+                    session.commit()
+
             remote_admin_cases = [
                 {
                     "scenario": "remote_admin_disabled",

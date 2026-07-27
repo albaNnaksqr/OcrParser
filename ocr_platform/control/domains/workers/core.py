@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 import ocr_platform.engine_provenance as __engine_provenance
 
 from ... import database
+from ... import certification_gate as __certification_gate
 from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
 from ...schemas import (
     JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
@@ -463,7 +464,10 @@ def evaluate_server_path_access(
             "reason": "server_offline",
         }
 
-    capabilities = json_loads_object(server.capabilities_json)
+    try:
+        capabilities = json_loads_object(server.capabilities_json)
+    except (TypeError, ValueError):
+        capabilities = {}
     checks = capabilities.get("shared_paths") or []
     if not isinstance(checks, list) or not checks:
         return {
@@ -516,6 +520,52 @@ def evaluate_server_path_access(
         "matched_path": matched_unavailable,
         "reason": reason,
     }
+
+
+def __candidate_workers_for_job(
+    session: Session,
+    request: JobCreateRequest,
+) -> list[Server | None]:
+    """Return every current worker that could execute a job request."""
+
+    explicit_ids: list[str] = []
+    if (
+        request.assigned_server_id
+        and request.assigned_server_id != POOL_SERVER_ID
+    ):
+        explicit_ids.append(request.assigned_server_id)
+    explicit_ids.extend(request.allowed_server_ids or [])
+    explicit_ids = list(dict.fromkeys(explicit_ids))
+    if explicit_ids:
+        candidates: list[Server | None] = []
+        for server_id in explicit_ids:
+            server = (
+                session.get(Server, server_id)
+                if server_id != POOL_SERVER_ID
+                else None
+            )
+            candidates.append(
+                server
+                if server is not None and server.archived_at is None
+                else None
+            )
+        return candidates
+
+    possible = session.execute(
+        select(Server)
+        .where(Server.id != POOL_SERVER_ID)
+        .where(Server.archived_at.is_(None))
+        .order_by(Server.id.asc())
+    ).scalars().all()
+    return [
+        server
+        for server in possible
+        if evaluate_server_path_access(
+            server,
+            request.input_dir,
+        ).get("can_access")
+    ]
+
 
 def list_server_eligibility(session: Session, input_dir: str) -> list[dict[str, Any]]:
     return [
@@ -937,6 +987,22 @@ def preflight_job(
                     "Selected model profile stores a legacy API key in the control database; save the profile with clear_api_key=true and migrate to api_key_env_var.",
                     model_profile_id=request.model_profile_id,
                     api_key_env_var=profile.api_key_env_var,
+                )
+            )
+        certification_result = (
+            __certification_gate.evaluate_job_model_profile_certification(
+                session,
+                request,
+                candidates=__candidate_workers_for_job(session, request),
+            )
+        )
+        if not certification_result.allowed:
+            issues.append(
+                _preflight_issue(
+                    "error",
+                    str(certification_result.code),
+                    str(certification_result.message),
+                    **certification_result.details,
                 )
             )
 

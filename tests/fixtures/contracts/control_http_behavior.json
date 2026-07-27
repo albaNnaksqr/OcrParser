@@ -138,7 +138,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_list_jobs"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:79",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:95",
         "exception_types": [
           "ValueError"
         ],
@@ -185,6 +185,162 @@
     },
     {
       "body_shape": {
+        "detail": {
+          "code": "string",
+          "details": {
+            "affected_candidate_count": "integer",
+            "candidate_count": "integer",
+            "field_count": "integer",
+            "mismatched_fields": {
+              "array_items": [
+                "string"
+              ],
+              "length": 1
+            }
+          },
+          "message": "string"
+        }
+      },
+      "error_code": "model_profile_certification_mismatch",
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_create_job"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:66",
+        "exception_types": [
+          "certification_policy.ModelProfileCertificationMismatchError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_create_job_api_jobs_post",
+      "path": "/api/jobs",
+      "request_condition": "certified profile and worker provenance differ",
+      "scenario": "bad_request_model_profile_certification_mismatch",
+      "stable_body": {
+        "detail": {
+          "code": "model_profile_certification_mismatch",
+          "details": {
+            "affected_candidate_count": 1,
+            "candidate_count": 1,
+            "field_count": 1,
+            "mismatched_fields": [
+              "agent.model_revision"
+            ]
+          },
+          "message": "Model profile certification provenance does not match the current Control build and candidate workers."
+        }
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
+        "detail": {
+          "code": "string",
+          "details": {
+            "affected_candidate_count": "integer",
+            "candidate_count": "integer",
+            "field_count": "integer",
+            "missing_fields": {
+              "array_items": [
+                "string"
+              ],
+              "length": 1
+            }
+          },
+          "message": "string"
+        }
+      },
+      "error_code": "model_profile_certification_missing",
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_create_job"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:61",
+        "exception_types": [
+          "certification_policy.ModelProfileCertificationMissingError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_create_job_api_jobs_post",
+      "path": "/api/jobs",
+      "request_condition": "certified profile provenance is incomplete",
+      "scenario": "bad_request_model_profile_certification_missing",
+      "stable_body": {
+        "detail": {
+          "code": "model_profile_certification_missing",
+          "details": {
+            "affected_candidate_count": 0,
+            "candidate_count": 1,
+            "field_count": 1,
+            "missing_fields": [
+              "profile.model_revision"
+            ]
+          },
+          "message": "Model profile certification provenance is incomplete."
+        }
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
+        "detail": {
+          "code": "string",
+          "details": {
+            "field_count": "integer",
+            "missing_fields": {
+              "array_items": [
+                "string",
+                "string",
+                "string"
+              ],
+              "length": 3
+            }
+          },
+          "message": "string"
+        }
+      },
+      "error_code": "model_profile_risk_acceptance_required",
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.jobs.router.api_create_job"
+        ],
+        "evidence": "ocr_platform/control/domains/jobs/router.py:71",
+        "exception_types": [
+          "certification_policy.ModelProfileRiskAcceptanceRequiredError"
+        ],
+        "kind": "router_exception_mapping",
+        "status": 400
+      },
+      "method": "POST",
+      "normalization_rules": [],
+      "operation_id": "api_create_job_api_jobs_post",
+      "path": "/api/jobs",
+      "request_condition": "verified enforcement has no risk acceptance",
+      "scenario": "bad_request_model_profile_risk_acceptance_required",
+      "stable_body": {
+        "detail": {
+          "code": "model_profile_risk_acceptance_required",
+          "details": {
+            "field_count": 3,
+            "missing_fields": [
+              "accepted_at",
+              "accepted_by",
+              "reason"
+            ]
+          },
+          "message": "Verified model profile enforcement requires a complete risk acceptance record."
+        }
+      },
+      "status": 400
+    },
+    {
+      "body_shape": {
         "detail": "string"
       },
       "error_code": null,
@@ -192,7 +348,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_archive_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:240",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:256",
         "exception_types": [
           "commands.JobNotTerminalError"
         ],
@@ -470,7 +626,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_get_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:144",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:160",
         "exception_types": [
           "commands.UnknownJobError"
         ],
