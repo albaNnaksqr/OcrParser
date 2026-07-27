@@ -109,6 +109,44 @@ def test_sqlite_bootstrap_is_concurrent_idempotent_and_non_overwriting(
     engine.dispose()
 
 
+def test_seed_count_uses_returned_ids_instead_of_unreliable_rowcount() -> None:
+    class ScalarResult:
+        def all(self):
+            return ["dotsocr_15", "mineru_vllm"]
+
+    class UnreliableRowcountResult:
+        @property
+        def rowcount(self):
+            raise AssertionError("rowcount must not be read")
+
+        def scalars(self):
+            return ScalarResult()
+
+    class FakeSession:
+        def __init__(self):
+            self.commits = 0
+            self.rollbacks = 0
+
+        def get_bind(self):
+            dialect = type("Dialect", (), {"name": "postgresql"})()
+            return type("Bind", (), {"dialect": dialect})()
+
+        def execute(self, statement):
+            return UnreliableRowcountResult()
+
+        def commit(self):
+            self.commits += 1
+
+        def rollback(self):
+            self.rollbacks += 1
+
+    session = FakeSession()
+
+    assert seed_default_model_profiles(session) == 2
+    assert session.commits == 1
+    assert session.rollbacks == 0
+
+
 @pytest.mark.skipif(
     not POSTGRES_URL,
     reason="OCR_TEST_POSTGRES_URL is required for PostgreSQL bootstrap tests",

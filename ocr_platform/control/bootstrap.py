@@ -50,24 +50,29 @@ def seed_default_model_profiles(session: Session) -> int:
         statement = postgresql_insert(ModelProfile).values(rows)
         statement = statement.on_conflict_do_nothing(
             index_elements=[ModelProfile.id]
-        )
+        ).returning(ModelProfile.id)
+        uses_returning = True
     elif dialect == "sqlite":
         statement = sqlite_insert(ModelProfile).values(rows)
         statement = statement.on_conflict_do_nothing(
             index_elements=[ModelProfile.id]
         )
+        uses_returning = False
     else:
         raise RuntimeError(
             "Default model-profile bootstrap supports SQLite and PostgreSQL."
         )
     try:
         result = session.execute(statement)
+        if uses_returning:
+            inserted_count = len(result.scalars().all())
+        else:
+            inserted_count = max(int(result.rowcount or 0), 0)
         session.commit()
     except Exception:
         session.rollback()
         raise
-    rowcount = int(result.rowcount or 0)
-    return max(rowcount, 0)
+    return inserted_count
 
 
 def bootstrap_control_database(
