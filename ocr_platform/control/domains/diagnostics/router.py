@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Callable, Generator
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from ... import database
@@ -12,6 +12,7 @@ from ...redaction import diagnostics_unavailable_message
 from ...schemas import DatabaseStatusResponse
 from ...settings import ControlSettings
 from .queries import agpl_license_text, source_offer, system_diagnostics
+from .metrics import PROMETHEUS_CONTENT_TYPE, render_control_metrics
 
 
 GetDb = Callable[[], Generator[Session, None, None]]
@@ -84,5 +85,22 @@ def create_router(
                 status_code=503,
                 content=database_status_unavailable_body(),
             )
+
+    @router.get(
+        "/api/system/metrics",
+        response_class=PlainTextResponse,
+    )
+    def api_system_metrics(session: Session = Depends(get_db)):
+        try:
+            payload = render_control_metrics(session)
+        except Exception:
+            return JSONResponse(
+                status_code=503,
+                content=database_status_unavailable_body(),
+            )
+        return Response(
+            content=payload,
+            headers={"Content-Type": PROMETHEUS_CONTENT_TYPE},
+        )
 
     return router

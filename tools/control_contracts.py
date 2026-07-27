@@ -314,13 +314,19 @@ def _http_observation(
     normalization_rules: tuple[dict[str, Any], ...] = (),
     branch_selector: dict[str, Any] | None = None,
     note: str | None = None,
+    response_format: str = "json",
 ) -> dict[str, Any]:
     if response.status_code != expected_status:
         raise RuntimeError(
             f"{scenario}: expected HTTP {expected_status}, got "
             f"{response.status_code}: {response.text}"
         )
-    payload = response.json()
+    if response_format == "json":
+        payload = response.json()
+    elif response_format == "text":
+        payload = response.text
+    else:
+        raise ValueError("unsupported HTTP response format")
     stable_body = _normalize_http_body(payload, normalization_rules)
     error_code = None
     if isinstance(payload, dict):
@@ -353,6 +359,8 @@ def _http_observation(
         )
     if note is not None:
         observed["note"] = note
+    if response_format == "text":
+        observed["content_type"] = response.headers.get("content-type")
     if branch_selector is not None:
         observed["_branch_selector"] = copy.deepcopy(branch_selector)
     return observed
@@ -387,6 +395,46 @@ def build_http_behavior_contract() -> dict[str, Any]:
                     request_condition="API token is not configured",
                     response=response,
                     expected_status=200,
+                )
+            )
+
+            response = client.get("/api/system/metrics")
+            observations.append(
+                _http_observation(
+                    scenario="system_metrics_success",
+                    app=app,
+                    method="get",
+                    path_template="/api/system/metrics",
+                    request_condition=(
+                        "database snapshot is readable and API auth is disabled"
+                    ),
+                    response=response,
+                    expected_status=200,
+                    response_format="text",
+                )
+            )
+
+            with patch(
+                "ocr_platform.control.domains.diagnostics.router."
+                "render_control_metrics",
+                side_effect=RuntimeError("contract-private-database-error"),
+            ):
+                response = client.get("/api/system/metrics")
+            observations.append(
+                _http_observation(
+                    scenario="system_metrics_database_unavailable",
+                    app=app,
+                    method="get",
+                    path_template="/api/system/metrics",
+                    request_condition=(
+                        "metrics snapshot query fails before exposition"
+                    ),
+                    response=response,
+                    expected_status=503,
+                    branch_selector={
+                        "kind": "explicit_response_status",
+                        "exception_types": ["Exception"],
+                    },
                 )
             )
 
@@ -1708,6 +1756,7 @@ def build_http_operation_matrix() -> dict[str, Any]:
     """Inventory every canonical operation and every reachable status branch."""
 
     from ocr_platform.control.app import create_app
+    from ocr_platform.control.readiness import READINESS_ALLOWLIST
 
     with _temporary_environment(remove=CONTROL_CONTRACT_ENV_VARS):
         app = create_app()
@@ -1756,10 +1805,7 @@ def build_http_operation_matrix() -> dict[str, Any]:
             branches = _scan_callable_status_branches(route.endpoint)
             if path.startswith("/api/"):
                 branches.append(copy.deepcopy(auth_branch))
-            if path.startswith("/api/") and path not in {
-                "/api/system/database",
-                "/api/system/diagnostics",
-            }:
+            if path.startswith("/api/") and path not in READINESS_ALLOWLIST:
                 branches.append(copy.deepcopy(readiness_branch))
             if any(item["status"] == 422 for item in declared_statuses):
                 branches.append(
@@ -1836,9 +1882,9 @@ def build_http_operation_matrix() -> dict[str, Any]:
                 }
             )
 
-    if len(operations) != 49:
+    if len(operations) != 50:
         raise RuntimeError(
-            f"expected 49 canonical operations, found {len(operations)}"
+            f"expected 50 canonical operations, found {len(operations)}"
         )
     matrix = {
         "schema_version": 1,

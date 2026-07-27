@@ -82,7 +82,7 @@
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:232",
+          "evidence": "ocr_platform/control/readiness.py:233",
           "exception_types": [],
           "kind": "global_readiness_middleware",
           "status": 503
@@ -504,7 +504,7 @@
         "call_chain": [
           "ocr_platform.control.domains.diagnostics.router.api_readyz"
         ],
-        "evidence": "ocr_platform/control/domains/diagnostics/router.py:62",
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:63",
         "exception_types": [],
         "kind": "explicit_response_status",
         "status": 503
@@ -915,6 +915,65 @@
     },
     {
       "body_shape": {
+        "detail": {
+          "code": "string",
+          "commands": {
+            "array_items": [
+              "string",
+              "string",
+              "string"
+            ],
+            "length": 3
+          },
+          "reason": "string"
+        }
+      },
+      "error_code": "control_database_status_unavailable",
+      "executed_branch": {
+        "call_chain": [
+          "ocr_platform.control.domains.diagnostics.router.api_system_metrics"
+        ],
+        "evidence": "ocr_platform/control/domains/diagnostics/router.py:97",
+        "exception_types": [
+          "Exception"
+        ],
+        "kind": "explicit_response_status",
+        "status": 503
+      },
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_system_metrics_api_system_metrics_get",
+      "path": "/api/system/metrics",
+      "request_condition": "metrics snapshot query fails before exposition",
+      "scenario": "system_metrics_database_unavailable",
+      "stable_body": {
+        "detail": {
+          "code": "control_database_status_unavailable",
+          "commands": [
+            "ocr-platform-migrate plan",
+            "ocr-platform-migrate apply",
+            "ocr-platform-migrate verify"
+          ],
+          "reason": "database_status_unavailable"
+        }
+      },
+      "status": 503
+    },
+    {
+      "body_shape": "string",
+      "content_type": "text/plain; version=0.0.4; charset=utf-8",
+      "error_code": null,
+      "method": "GET",
+      "normalization_rules": [],
+      "operation_id": "api_system_metrics_api_system_metrics_get",
+      "path": "/api/system/metrics",
+      "request_condition": "database snapshot is readable and API auth is disabled",
+      "scenario": "system_metrics_success",
+      "stable_body": "# HELP ocr_platform_artifact_records Persisted job-file records with a declared output artifact.\n# TYPE ocr_platform_artifact_records gauge\n# HELP ocr_platform_failure_events Retained failure event records by bounded category.\n# TYPE ocr_platform_failure_events gauge\n# HELP ocr_platform_fallbacks Page fallback selections among the latest 10000 retained page_done events created in the rolling 60 minute window.\n# TYPE ocr_platform_fallbacks gauge\n# HELP ocr_platform_shard_queue Persisted claimable shard records by bounded status.\n# TYPE ocr_platform_shard_queue gauge\n# HELP ocr_platform_stage_outcomes Page stage outcomes among the latest 10000 retained page_done events created in the rolling 60 minute window.\n# TYPE ocr_platform_stage_outcomes gauge\n# HELP ocr_platform_trace_window_truncated Whether more than 10000 retained page_done events exist in the rolling 60 minute window.\n# TYPE ocr_platform_trace_window_truncated gauge\nocr_platform_trace_window_truncated 0\n# HELP ocr_platform_worker_slots Configured slots on non-archived worker records.\n# TYPE ocr_platform_worker_slots gauge\nocr_platform_worker_slots 0\n# HELP ocr_platform_worker_slots_by_status Configured slots on non-archived workers by bounded status.\n# TYPE ocr_platform_worker_slots_by_status gauge\n# HELP ocr_platform_workers Non-archived worker records.\n# TYPE ocr_platform_workers gauge\nocr_platform_workers 0\n# HELP ocr_platform_workers_by_status Non-archived worker records by bounded status.\n# TYPE ocr_platform_workers_by_status gauge\n",
+      "status": 200
+    },
+    {
+      "body_shape": {
         "detail": "string"
       },
       "error_code": null,
@@ -929,7 +988,7 @@
           "call_chain": [
             "ocr_platform.control.readiness.api_token_auth"
           ],
-          "evidence": "ocr_platform/control/readiness.py:212",
+          "evidence": "ocr_platform/control/readiness.py:213",
           "exception_types": [],
           "kind": "global_api_token_middleware",
           "status": 401

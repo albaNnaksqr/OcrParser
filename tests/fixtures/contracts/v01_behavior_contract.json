@@ -76,6 +76,7 @@
     "/api/shards/{shard_id}": ["post"],
     "/api/system/database": ["get"],
     "/api/system/diagnostics": ["get"],
+    "/api/system/metrics": ["get"],
     "/healthz": ["get"],
     "/readyz": ["get"]
   }

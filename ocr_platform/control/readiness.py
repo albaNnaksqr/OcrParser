@@ -30,6 +30,7 @@ READINESS_ALLOWLIST = frozenset(
         "/readyz",
         "/api/system/database",
         "/api/system/diagnostics",
+        "/api/system/metrics",
         "/source",
         "/source.json",
         "/legal/agpl-3.0",

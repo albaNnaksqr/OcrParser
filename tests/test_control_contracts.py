@@ -87,8 +87,8 @@ def test_complete_canonical_openapi_baseline_is_locked() -> None:
         if method in {"get", "post", "put", "patch", "delete"}
     }
 
-    assert len(schema["paths"]) == 47
-    assert len(operations) == 49
+    assert len(schema["paths"]) == 48
+    assert len(operations) == 50
     assert len(schema["components"]["schemas"]) == 60
     assert {
         "ModelProfileCertificationRequest",
@@ -96,9 +96,9 @@ def test_complete_canonical_openapi_baseline_is_locked() -> None:
         "RiskAcceptanceRequest",
         "RiskAcceptanceResponse",
     } <= set(schema["components"]["schemas"])
-    assert len(path.read_bytes()) == 86_679
+    assert len(path.read_bytes()) == 86_912
     assert hashlib.sha256(path.read_bytes()).hexdigest() == (
-        "8bd6cbffe721981e2c3e566e98cc28f371f6d912d17c506d43278592a04a23da"
+        "1367f709c71ee670fd960cb88ff5c34890a1f7e316e401b56da3012de83b94ec"
     )
 
 
@@ -131,8 +131,8 @@ def test_api_route_traversal_covers_every_canonical_operation() -> None:
         if route.include_in_schema
     }
 
-    assert len(openapi["paths"]) == 47
-    assert len(expected) == 49
+    assert len(openapi["paths"]) == 48
+    assert len(expected) == 50
     assert expected <= actual
     assert expected_ids == actual_ids
     assert "api_list_jobs_api_jobs_get" in actual_ids
@@ -330,10 +330,15 @@ def test_http_stable_body_mutations_fail_the_fixture_comparison(
             continue
         for path in scalar_paths:
             mutated = copy.deepcopy(observed)
-            _replace_at_path(
-                mutated["scenarios"][scenario_index]["stable_body"],
-                path,
-            )
+            if not path:
+                mutated["scenarios"][scenario_index][
+                    "stable_body"
+                ] = "mutated-stable-body"
+            else:
+                _replace_at_path(
+                    mutated["scenarios"][scenario_index]["stable_body"],
+                    path,
+                )
             require_check_failure(mutated)
             mutated_scalars += 1
     assert mutated_scalars > 100
@@ -535,9 +540,9 @@ def test_http_operation_matrix_covers_every_openapi_operation_and_branch() -> No
     }
 
     assert set(operations) == set(expected)
-    assert matrix["operation_count"] == 49
-    assert matrix["non_2xx_branch_count"] == 199
-    assert matrix["behavior_covered_branch_count"] == 151
+    assert matrix["operation_count"] == 50
+    assert matrix["non_2xx_branch_count"] == 201
+    assert matrix["behavior_covered_branch_count"] == 153
     assert matrix["source_backed_exemption_count"] == 48
     for operation_id, operation in operations.items():
         assert operation["method"] == expected[operation_id]["method"]
@@ -647,20 +652,20 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
 
     assert by_kind == {
         "called_service_http_exception": 15,
-        "explicit_response_status": 4,
+        "explicit_response_status": 5,
         "framework_request_validation": 43,
-        "global_api_token_middleware": 47,
+        "global_api_token_middleware": 48,
         "global_readiness_middleware": 45,
         "router_exception_mapping": 45,
     }
     assert by_status == {
         400: 22,
-        401: 47,
+        401: 48,
         403: 7,
         404: 25,
         409: 6,
         422: 43,
-        503: 49,
+        503: 50,
     }
     scale_plan = next(
         operation
@@ -681,6 +686,8 @@ def test_http_operation_matrix_source_inventory_has_expected_branch_kinds() -> N
 
 
 def test_http_operation_matrix_records_conditional_readiness_503() -> None:
+    from ocr_platform.control.readiness import READINESS_ALLOWLIST
+
     matrix = control_contracts.build_http_operation_matrix()
 
     for operation in matrix["operations"]:
@@ -691,11 +698,7 @@ def test_http_operation_matrix_records_conditional_readiness_503() -> None:
         ]
         expected = (
             operation["path"].startswith("/api/")
-            and operation["path"]
-            not in {
-                "/api/system/database",
-                "/api/system/diagnostics",
-            }
+            and operation["path"] not in READINESS_ALLOWLIST
         )
         assert len(branches) == int(expected), operation["operation_id"]
         if branches:
@@ -741,7 +744,7 @@ def test_control_transport_future_gate_scans_all_runtime_python_sources() -> Non
 
     assert inventory["scanned_file_count"] == len(expected_files)
     assert inventory["scanned_file_count"] >= 52
-    assert len(inventory["branches"]) == 54
+    assert len(inventory["branches"]) == 55
     assert inventory["forbidden_dependencies"] == []
     assert inventory["unresolved_status_calls"] == []
     matrix = control_contracts.build_http_operation_matrix()
