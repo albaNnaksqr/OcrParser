@@ -1329,7 +1329,7 @@
   "schema_version": 1,
   "transactions": {
     "operations": {
-      "commit": 24,
+      "commit": 23,
       "flush": 14,
       "rollback": 7
     },
@@ -1503,12 +1503,6 @@
         "source": "ocr_platform/control/domains/manifests/core.py:555"
       },
       {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.manifests.core:register_remote_manifest:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:325"
-      },
-      {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.manifests.core:register_remote_manifest:session.flush@62d494078650:1",
         "operation": "flush",
@@ -1605,6 +1599,6 @@
         "source": "ocr_platform/control/domains/workers/core.py:412"
       }
     ],
-    "total": 45
+    "total": 44
   }
 }

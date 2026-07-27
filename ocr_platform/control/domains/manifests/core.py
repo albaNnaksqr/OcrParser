@@ -322,8 +322,8 @@ def register_remote_manifest(
                 file_count=shard.file_count,
             )
         )
-    session.commit()
-    session.refresh(manifest)
+    # Transaction ownership belongs to the manifest command wrapper.
+    # Keep this leaf neutral so failures roll back the full registration.
     return manifest
 
 def _claimable_scan_unit_id_select(

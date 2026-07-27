@@ -4502,11 +4502,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.manifests.core",
+        "defining_module": "ocr_platform.control.domains.manifests.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.manifests.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "register_remote_manifest",
         "target": "ocr_platform.control.domains.manifests.commands.register_remote_manifest",

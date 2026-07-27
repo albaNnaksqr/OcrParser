@@ -33,6 +33,15 @@ __job_command_wrappers = {
     "record_event": record_event,
     "record_log": record_log,
 }
+__manifest_core_command_leaves = {
+    "register_remote_manifest": _manifests.register_remote_manifest,
+}
+from ..domains.manifests.commands import (
+    register_remote_manifest as register_remote_manifest,
+)
+__manifest_command_wrappers = {
+    "register_remote_manifest": register_remote_manifest,
+}
 
 
 class _CompatibilityModule(ModuleType):
@@ -64,6 +73,17 @@ class _CompatibilityModule(ModuleType):
                         target,
                         name,
                         globals()["__jobs_core_command_leaves"][name],
+                    )
+                elif (
+                    target is _manifests
+                    and name in globals()["__manifest_command_wrappers"]
+                    and value
+                    is globals()["__manifest_command_wrappers"][name]
+                ):
+                    setattr(
+                        target,
+                        name,
+                        globals()["__manifest_core_command_leaves"][name],
                     )
                 else:
                     setattr(target, name, value)

@@ -84,6 +84,13 @@ def test_facade_inventory_counts_match_independent_audit() -> None:
     assert exports["record_log"]["target"] == (
         "ocr_platform.control.domains.jobs.commands.record_log"
     )
+    assert exports["register_remote_manifest"]["defining_module"] == (
+        "ocr_platform.control.domains.manifests.commands"
+    )
+    assert exports["register_remote_manifest"]["target"] == (
+        "ocr_platform.control.domains.manifests.commands."
+        "register_remote_manifest"
+    )
     assert inventory["imports"]["ast_count"] == 19
     assert inventory["imports"]["dynamic_count"] == 0
     assert inventory["imports"]["embedded_count"] == 1
