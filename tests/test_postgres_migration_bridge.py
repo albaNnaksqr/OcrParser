@@ -158,9 +158,9 @@ def test_postgres_concurrent_remote_manifest_registration_is_serialized(
     monkeypatch,
 ):
     session_factory, engine = create_session_factory(POSTGRES_URL)
-    suffix = uuid.uuid4().hex
-    server_id = f"manifest-server-{suffix}"
-    job_id = f"manifest-job-{suffix}"
+    suffix = uuid.uuid4().hex[:20]
+    server_id = f"ms-{suffix}"
+    job_id = f"mj-{suffix}"
     first_lock_acquired = threading.Event()
     release_first = threading.Event()
     second_backend_ready = threading.Event()
