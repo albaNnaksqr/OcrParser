@@ -65,6 +65,13 @@
       "wave": "PR 8"
     },
     {
+      "classification": "internal_no_compat",
+      "reason": "The v0.3 compatibility test inventories the legacy surface.",
+      "symbol": "__all__",
+      "target": null,
+      "wave": "PR 8"
+    },
+    {
       "classification": "scheduling_application_pending",
       "reason": "Move selector ownership into the scheduling kernel.",
       "symbol": "_claimable_scan_unit_id_select",
@@ -165,10 +172,10 @@
   ],
   "consumers": {
     "category_counts": {
-      "test": 6,
+      "test": 7,
       "tool": 1
     },
-    "file_count": 7,
+    "file_count": 8,
     "files": [
       {
         "category": "test",
@@ -192,6 +199,10 @@
       },
       {
         "category": "test",
+        "path": "tests/test_dependency_boundaries.py"
+      },
+      {
+        "category": "test",
         "path": "tests/test_failure_category.py"
       },
       {
@@ -199,7 +210,7 @@
         "path": "tools/pg_claim_stress.py"
       }
     ],
-    "symbol_use_count": 69,
+    "symbol_use_count": 70,
     "symbol_use_sites": [
       {
         "fingerprint": "9f0ac71074d766c573a6cf2d31ec7e69402d02612d2321de2c3c807eb5d25ac9",
@@ -447,6 +458,13 @@
         "symbol": "STALE_AFTER_SECONDS"
       },
       {
+        "fingerprint": "2b7669776f3dedcf339d821df07e45e5a441f25a5a0903de39e444c81ac8a56c",
+        "id": "tests/test_dependency_boundaries.py:test_control_service_facade_symbols_match_v0_3_2:facade-symbol-use[__all__]@2b7669776f3d:1",
+        "kind": "attribute",
+        "source": "tests/test_dependency_boundaries.py:137",
+        "symbol": "__all__"
+      },
+      {
         "fingerprint": "a556ae0309e06a099d511654a1d1a6f5ffa568272a1445e6ffa25ca286dc0bd8",
         "id": "tests/test_failure_category.py:<module>:facade-symbol-import[infer_failure_category]@a556ae0309e0:1",
         "kind": "direct_import",
@@ -685,7 +703,7 @@
         "symbol": "update_work_shard"
       }
     ],
-    "unique_symbol_count": 23,
+    "unique_symbol_count": 24,
     "unique_symbols": [
       "JOB_EVENT_DETAIL_LIMIT",
       "JOB_FILE_DETAIL_LIMIT",
@@ -696,6 +714,7 @@
       "SHARD_LEASE_SECONDS",
       "STALE_AFTER_SECONDS",
       "ShardAttemptConflictError",
+      "__all__",
       "_claimable_scan_unit_id_select",
       "_claimable_shard_id_select",
       "_database_migration_preflight_issue",
@@ -4861,7 +4880,7 @@
     ]
   },
   "imports": {
-    "ast_count": 19,
+    "ast_count": 20,
     "ast_sites": [
       {
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
@@ -5002,6 +5021,14 @@
         "id": "tests/test_control_recovery.py:<module>:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
         "source": "tests/test_control_recovery.py:9",
+        "symbols": [],
+        "wildcard": false
+      },
+      {
+        "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
+        "id": "tests/test_dependency_boundaries.py:test_control_service_facade_symbols_match_v0_3_2:facade-import@abedbe5b0ec4:1",
+        "kind": "from_parent",
+        "source": "tests/test_dependency_boundaries.py:135",
         "symbols": [],
         "wildcard": false
       },

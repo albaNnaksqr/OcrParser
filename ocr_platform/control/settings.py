@@ -9,6 +9,8 @@ DEFAULT_DATABASE_URL = "sqlite:///./ocr_platform.db"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8080
 TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS"
+ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV = "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS"
 
 
 def env_truthy(environment: Mapping[str, str], name: str) -> bool:
@@ -44,7 +46,7 @@ class ControlSettings:
         values = os.environ if environment is None else environment
         saved_keys_disabled = env_truthy(
             values,
-            "OCR_PLATFORM_DISABLE_SAVED_MODEL_PROFILE_KEYS",
+            DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV,
         )
         return cls(
             database_url=(
@@ -76,7 +78,7 @@ class ControlSettings:
                 not saved_keys_disabled
                 and env_truthy(
                     values,
-                    "OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS",
+                    ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV,
                 )
             ),
         )

@@ -21,6 +21,10 @@ from ..domains.workers.core import *
 from ..domains.model_profiles.commands import (
     upsert_model_profile as upsert_model_profile,
 )
+from ..settings import (
+    ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV as ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV,
+    DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV as DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV,
+)
 __jobs_core_command_leaves = {
     "record_event": _jobs.record_event,
     "record_log": _jobs.record_log,

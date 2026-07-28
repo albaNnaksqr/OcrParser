@@ -106,41 +106,39 @@ def _fence_running_work_for_restarted_server(
     is claimed with a new attempt number.
     """
 
-    current_shard_attempt_number = (
-        select(WorkShard.attempt_count)
-        .where(WorkShard.id == ShardAttempt.shard_id)
-        .scalar_subquery()
+    orphaned_shard_ids = list(
+        session.execute(
+            select(WorkShard.id)
+            .where(WorkShard.assigned_server_id == server_id)
+            .where(WorkShard.status == "running")
+            .order_by(WorkShard.id.asc())
+            .with_for_update()
+        ).scalars()
     )
-    orphaned_shard_ids = (
-        select(WorkShard.id)
-        .where(WorkShard.assigned_server_id == server_id)
-        .where(WorkShard.status == "running")
-    )
-    session.execute(
-        update(ShardAttempt)
-        .where(ShardAttempt.shard_id.in_(orphaned_shard_ids))
-        .where(ShardAttempt.attempt_number == current_shard_attempt_number)
-        .where(ShardAttempt.status == "running")
-        .values(
-            status="stale",
-            failure_category="process_killed",
-            error_message="worker process re-registered before shard completion",
-            finished_at=now,
+    if orphaned_shard_ids:
+        from ...scheduling import _fence_running_shards_for_restarted_server
+
+        _fence_running_shards_for_restarted_server(
+            session,
+            orphaned_shard_ids,
         )
-    )
-    session.execute(
-        update(WorkShard)
-        .where(WorkShard.assigned_server_id == server_id)
-        .where(WorkShard.status == "running")
-        .values(
-            status="stale",
-            assigned_server_id=None,
-            failure_category="process_killed",
-            error_message="worker process re-registered before shard completion",
-            lease_expires_at=None,
-            finished_at=None,
+        current_shard_attempt_number = (
+            select(WorkShard.attempt_count)
+            .where(WorkShard.id == ShardAttempt.shard_id)
+            .scalar_subquery()
         )
-    )
+        session.execute(
+            update(ShardAttempt)
+            .where(ShardAttempt.shard_id.in_(orphaned_shard_ids))
+            .where(ShardAttempt.attempt_number == current_shard_attempt_number)
+            .where(ShardAttempt.status == "running")
+            .values(
+                status="stale",
+                failure_category="process_killed",
+                error_message="worker process re-registered before shard completion",
+                finished_at=now,
+            )
+        )
     session.execute(
         update(ScanUnit)
         .where(ScanUnit.assigned_server_id == server_id)
@@ -178,7 +176,12 @@ def public_assigned_server_id(job: Job) -> str | None:
 
 def heartbeat_server(session: Session, server_id: str, request: ServerHeartbeatRequest) -> Server:
     safe_capabilities = __engine_provenance.sanitize_capabilities(request.capabilities)
-    server = session.get(Server, server_id)
+    server = session.execute(
+        select(Server)
+        .where(Server.id == server_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
     if server is None:
         server = Server(id=server_id, name=server_id, host=server_id)
         session.add(server)
@@ -213,98 +216,38 @@ def shard_lease_deadline(now: datetime | None = None) -> datetime:
 def scan_unit_lease_deadline(now: datetime | None = None) -> datetime:
     return (now or utcnow()) + timedelta(seconds=SHARD_LEASE_SECONDS)
 
-def _expired_running_shard_filter(now: datetime):
-    return (
-        (WorkShard.status == "running")
-        & (WorkShard.lease_expires_at.is_not(None))
-        & (WorkShard.lease_expires_at <= now)
-    )
 
-def reconcile_expired_shard_leases(session: Session, *, now: datetime | None = None, job_id: str | None = None) -> None:
-    current_time = now or utcnow()
-    expired_shard_probe = (
-        select(WorkShard.id)
-        .where(_expired_running_shard_filter(current_time))
-        .limit(1)
-    )
-    if job_id is not None:
-        expired_shard_probe = expired_shard_probe.where(WorkShard.job_id == job_id)
-    if session.execute(expired_shard_probe).scalar_one_or_none() is None:
-        return
+def _expired_running_shard_filter(*args, **kwargs):
+    from ...scheduling import _expired_running_shard_filter as target
 
-    stopped_parent = (
-        select(Job.id)
-        .where(Job.id == WorkShard.job_id)
-        .where(
-            (Job.stop_requested.is_(True))
-            | (Job.status == "stopping")
-        )
-        .exists()
-    )
-    current_shard_attempt_number = (
-        select(WorkShard.attempt_count)
-        .where(WorkShard.id == ShardAttempt.shard_id)
-        .scalar_subquery()
-    )
-    stopped_shard_ids = (
-        select(WorkShard.id)
-        .join(Job, Job.id == WorkShard.job_id)
-        .where(_expired_running_shard_filter(current_time))
-        .where((Job.stop_requested.is_(True)) | (Job.status == "stopping"))
-    )
-    if job_id is not None:
-        stopped_shard_ids = stopped_shard_ids.where(WorkShard.job_id == job_id)
-    session.execute(
-        update(ShardAttempt)
-        .where(ShardAttempt.shard_id.in_(stopped_shard_ids))
-        .where(ShardAttempt.attempt_number == current_shard_attempt_number)
-        .where(ShardAttempt.status == "running")
-        .values(
-            status="stopped",
-            failure_category="operator_stopped",
-            finished_at=current_time,
-        )
-    )
-    stop_stmt = (
-        update(WorkShard)
-        .where(_expired_running_shard_filter(current_time))
-        .where(stopped_parent)
-        .values(
-            status="stopped",
-            failure_category="operator_stopped",
-            lease_expires_at=None,
-            finished_at=current_time,
-        )
-    )
-    if job_id is not None:
-        stop_stmt = stop_stmt.where(WorkShard.job_id == job_id)
-    session.execute(stop_stmt)
+    return target(*args, **kwargs)
 
-    stale_shard_ids = (
-        select(WorkShard.id)
-        .where(_expired_running_shard_filter(current_time))
-    )
-    if job_id is not None:
-        stale_shard_ids = stale_shard_ids.where(WorkShard.job_id == job_id)
-    session.execute(
-        update(ShardAttempt)
-        .where(ShardAttempt.shard_id.in_(stale_shard_ids))
-        .where(ShardAttempt.attempt_number == current_shard_attempt_number)
-        .where(ShardAttempt.status == "running")
-        .values(
-            status="stale",
-            failure_category="lease_expired",
-            finished_at=current_time,
-        )
-    )
-    stale_stmt = (
-        update(WorkShard)
-        .where(_expired_running_shard_filter(current_time))
-        .values(status="stale", lease_expires_at=None)
-    )
-    if job_id is not None:
-        stale_stmt = stale_stmt.where(WorkShard.job_id == job_id)
-    session.execute(stale_stmt)
+
+def _lock_job_for_shard_change(*args, **kwargs):
+    from ...scheduling import _lock_job_for_shard_change as target
+
+    return target(*args, **kwargs)
+
+
+def _finalize_job_after_shard_change(*args, **kwargs):
+    from ...scheduling import _finalize_job_after_shard_change as target
+
+    return target(*args, **kwargs)
+
+
+def _reconcile_expired_shard_leases(*args, **kwargs):
+    from ...scheduling import _reconcile_expired_shard_leases as target
+
+    return target(*args, **kwargs)
+
+
+def reconcile_expired_shard_leases(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    job_id: str | None = None,
+) -> None:
+    _reconcile_expired_shard_leases(session, now=now, job_id=job_id)
 
 def reconcile_expired_scan_unit_leases(session: Session, *, now: datetime | None = None, job_id: str | None = None) -> None:
     current_time = now or utcnow()
@@ -1080,12 +1023,22 @@ def claim_next_job(session: Session, server_id: str) -> Job | None:
     return session.get(Job, job.id)
 
 def _pool_job_has_claimable_shards(session: Session, job_id: str, now: datetime) -> bool:
-    reconcile_expired_shard_leases(session, now=now, job_id=job_id)
+    reconciliation = _reconcile_expired_shard_leases(
+        session,
+        now=now,
+        job_id=job_id,
+    )
     claimable_count = session.execute(
         select(func.count(WorkShard.id))
+        .join(Job, Job.id == WorkShard.job_id)
         .where(WorkShard.job_id == job_id)
         .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
+        .where(WorkShard.attempt_count < Job.max_shard_attempts)
     ).scalar_one()
+    if reconciliation.changed:
+        from ...scheduling import _commit_reconciliation
+
+        _commit_reconciliation(session)
     return bool(claimable_count)
 
 def claim_next_pool_job(session: Session, server_id: str) -> Job | None:
@@ -1155,4 +1108,18 @@ def list_servers(session: Session, *, include_archived: bool = False) -> list[Se
         stmt = stmt.where(Server.archived_at.is_(None))
     return list(session.execute(stmt).scalars().all())
 
-__all__ = [name for name in globals() if not name.startswith("__")]
+__all__ = [
+    name
+    for name in globals()
+    if not name.startswith("__")
+    and name not in {
+        "_SHARD_LEASE_ATTEMPTS_EXHAUSTED_ERROR",
+        "_ShardLeaseReconcileResult",
+        "_deterministic_failed_shard",
+        "_finalize_job_after_shard_change",
+        "_latest_current_shard_attempt",
+        "_lock_job_for_shard_change",
+        "_reconcile_expired_shard_leases",
+        "dataclass",
+    }
+]

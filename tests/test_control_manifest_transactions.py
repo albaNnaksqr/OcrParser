@@ -466,6 +466,9 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         / "core.py"
     )
     commands_path = core_path.with_name("commands.py")
+    scheduling_path = (
+        ROOT / "ocr_platform" / "control" / "scheduling.py"
+    )
 
     def session_calls(path: Path, function_name: str) -> Counter[str]:
         tree = ast.parse(path.read_text(encoding="utf-8"))
@@ -509,10 +512,13 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "_create_static_shards_for_job",
     ) == {"flush": 2}
     assert session_calls(core_path, "claim_next_pending_shard") == {
-        "execute": 3,
+        "execute": 2,
         "commit": 1,
         "rollback": 1,
         "refresh": 1,
+    }
+    assert session_calls(scheduling_path, "_claim_work_shard") == {
+        "execute": 1,
     }
     assert session_calls(core_path, "claim_next_scan_unit") == {
         "execute": 2,

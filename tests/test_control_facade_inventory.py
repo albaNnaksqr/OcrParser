@@ -91,15 +91,15 @@ def test_facade_inventory_counts_match_independent_audit() -> None:
         "ocr_platform.control.domains.manifests.commands."
         "register_remote_manifest"
     )
-    assert inventory["imports"]["ast_count"] == 19
+    assert inventory["imports"]["ast_count"] == 20
     assert inventory["imports"]["dynamic_count"] == 0
     assert inventory["imports"]["embedded_count"] == 1
-    assert inventory["consumers"]["file_count"] == 7
+    assert inventory["consumers"]["file_count"] == 8
     assert inventory["consumers"]["category_counts"] == {
-        "test": 6,
+        "test": 7,
         "tool": 1,
     }
-    assert inventory["consumers"]["unique_symbol_count"] == 23
+    assert inventory["consumers"]["unique_symbol_count"] == 24
     assert inventory["monkeypatches"]["count"] == 21
     assert inventory["monkeypatches"]["form_counts"] == {
         "object": 20,
@@ -123,7 +123,7 @@ def test_consumed_symbol_migration_map_is_complete_and_owned() -> None:
         "supported_explicit_target": 9,
         "settings_pending": 7,
         "scheduling_application_pending": 4,
-        "internal_no_compat": 3,
+        "internal_no_compat": 4,
     }
     assert migrations["database"]["target"] == (
         "ocr_platform.control.database"
@@ -133,7 +133,7 @@ def test_consumed_symbol_migration_map_is_complete_and_owned() -> None:
         symbol
         for symbol, item in migrations.items()
         if item["classification"] == "internal_no_compat"
-    } == {"POOL_SERVER_ID", "json_loads_object", "utcnow"}
+    } == {"POOL_SERVER_ID", "__all__", "json_loads_object", "utcnow"}
 
 
 def test_wildcard_dependency_leaks_are_not_supported_targets() -> None:

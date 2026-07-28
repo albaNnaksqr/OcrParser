@@ -36,6 +36,12 @@ CATEGORIES = {
 }
 
 CONSUMED_MIGRATIONS: dict[str, dict[str, str | None]] = {
+    "__all__": {
+        "classification": "internal_no_compat",
+        "target": None,
+        "wave": "PR 8",
+        "reason": "The v0.3 compatibility test inventories the legacy surface.",
+    },
     "database": {
         "classification": "supported_explicit_target",
         "target": "ocr_platform.control.database",

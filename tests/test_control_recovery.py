@@ -1,11 +1,16 @@
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
+import pytest
 from fastapi.testclient import TestClient
 
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.models import ScanUnit, ShardAttempt, WorkShard, utcnow
+from ocr_platform.control.domains.manifests.commands import (
+    claim_next_pending_shard,
+)
+from ocr_platform.control.domains.workers import core as workers_core
+from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import service
 from sqlalchemy.dialects import postgresql
 
@@ -38,7 +43,7 @@ def heartbeat_worker(client, server_id, *, status="idle", current_job_id=None):
     )
 
 
-def create_remote_shard_job(client, *, max_shard_attempts=3):
+def create_remote_shard_job(client, *, max_shard_attempts=3, shard_count=1):
     job = client.post(
         "/api/jobs",
         json={
@@ -55,14 +60,18 @@ def create_remote_shard_job(client, *, max_shard_attempts=3):
             "input_mode": "remote_folder_snapshot",
             "input_root": "/shared/input",
             "manifest_path": "/shared/manifests/job/manifest.jsonl",
-            "file_count": 1,
-            "total_bytes": 12,
+            "file_count": shard_count,
+            "total_bytes": 12 * shard_count,
             "shards": [
                 {
-                    "shard_index": 1,
-                    "shard_path": "/shared/manifests/job/shards/shard-000001.jsonl",
+                    "shard_index": shard_index,
+                    "shard_path": (
+                        "/shared/manifests/job/shards/"
+                        f"shard-{shard_index:06d}.jsonl"
+                    ),
                     "file_count": 1,
                 }
+                for shard_index in range(1, shard_count + 1)
             ],
         },
     )
@@ -106,6 +115,380 @@ def test_expired_running_shard_becomes_stale_and_can_be_reclaimed(tmp_path):
     assert second_claim["assigned_server_id"] == "worker-b"
     assert second_claim["attempt_count"] == 2
     assert second_claim["status"] == "running"
+
+
+def test_public_reconcile_expired_shard_leases_keeps_none_return(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client, max_shard_attempts=2)
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job['id']}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+    with session_factory() as session:
+        assert workers_core.reconcile_expired_shard_leases(
+            session,
+            job_id=job["id"],
+        ) is None
+        session.commit()
+    with session_factory() as session:
+        assert session.get(WorkShard, claim["id"]).status == "stale"
+
+
+def test_expired_running_shard_at_attempt_cap_fails_without_reclaim(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(client, max_shard_attempts=1)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.processed_files = 3
+        shard.completed_pages = 7
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    exhausted = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    )
+
+    assert exhausted.status_code == 200
+    assert exhausted.json() is None
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        stored_job = session.get(Job, job_id)
+        assert shard.status == "failed"
+        assert shard.attempt_count == 1
+        assert shard.assigned_server_id == "worker-a"
+        assert shard.processed_files == 3
+        assert shard.completed_pages == 7
+        assert shard.failure_category == "lease_expired"
+        assert shard.error_message == "shard lease expired after maximum attempts"
+        assert shard.lease_expires_at is None
+        assert attempt.status == "failed"
+        assert attempt.failure_category == "lease_expired"
+        assert attempt.error_message == shard.error_message
+        assert stored_job.status == "failed"
+        assert stored_job.failure_category == "lease_expired"
+        assert stored_job.error_message == shard.error_message
+        assert shard.finished_at == attempt.finished_at == stored_job.finished_at
+        finished_at = shard.finished_at
+
+    assert client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json() is None
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        stored_job = session.get(Job, job_id)
+        assert shard.finished_at == finished_at
+        assert attempt.finished_at == finished_at
+        assert stored_job.finished_at == finished_at
+        assert session.query(ShardAttempt).filter_by(shard_id=shard.id).count() == 1
+
+
+def test_expired_running_shard_reclaims_once_then_exhausts(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(client, max_shard_attempts=2)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    first = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, first["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    second = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json()
+    assert second["attempt_count"] == 2
+    with session_factory() as session:
+        shard = session.get(WorkShard, second["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    assert client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json() is None
+    with session_factory() as session:
+        shard = session.get(WorkShard, second["id"])
+        attempts = (
+            session.query(ShardAttempt)
+            .filter_by(shard_id=shard.id)
+            .order_by(ShardAttempt.attempt_number)
+            .all()
+        )
+        assert shard.status == "failed"
+        assert shard.attempt_count == 2
+        assert [attempt.status for attempt in attempts] == ["stale", "failed"]
+        assert [attempt.attempt_number for attempt in attempts] == [1, 2]
+
+
+def test_stop_request_wins_over_expired_attempt_cap(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client, max_shard_attempts=1)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    assert client.post(f"/api/jobs/{job_id}/request-stop").json()["status"] == "stopping"
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    summary = client.get(f"/api/jobs/{job_id}/summary").json()
+
+    assert summary["status"] == "stopped"
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        assert shard.status == "stopped"
+        assert shard.failure_category == "operator_stopped"
+        assert attempt.status == "stopped"
+        assert attempt.failure_category == "operator_stopped"
+
+
+@pytest.mark.parametrize("legacy_status", ["pending", "stale", "retrying"])
+def test_legacy_exhausted_shard_is_normalized_and_committed(
+    tmp_path,
+    legacy_status,
+):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(client, max_shard_attempts=1)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        shard.status = legacy_status
+        shard.lease_expires_at = None
+        attempt.status = legacy_status
+        attempt.finished_at = utcnow()
+        session.commit()
+
+    assert client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json() is None
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        assert shard.status == "failed"
+        assert attempt.status == "failed"
+        assert shard.failure_category == attempt.failure_category == "lease_expired"
+        assert shard.error_message == attempt.error_message
+        assert session.get(Job, job_id).status == "failed"
+
+
+def test_attempt_cap_reconciliation_rolls_back_if_commit_fails(
+    tmp_path,
+    monkeypatch,
+):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client, max_shard_attempts=1)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    with session_factory() as session:
+        def fail_commit():
+            raise RuntimeError("injected commit failure")
+
+        monkeypatch.setattr(session, "commit", fail_commit)
+        with pytest.raises(RuntimeError, match="injected commit failure"):
+            claim_next_pending_shard(session, job_id, "worker-a")
+        session.rollback()
+
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        attempt = session.query(ShardAttempt).filter_by(shard_id=shard.id).one()
+        assert shard.status == "running"
+        assert shard.attempt_count == 1
+        assert attempt.status == "running"
+        assert session.get(Job, job_id).status == "running"
+
+
+def test_exhausted_sibling_fails_job_when_last_open_shard_succeeds(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(
+        client,
+        max_shard_attempts=1,
+        shard_count=2,
+    )
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    exhausted = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    open_shard = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, exhausted["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+
+    assert client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json() is None
+    with session_factory() as session:
+        assert session.get(WorkShard, exhausted["id"]).status == "failed"
+        assert session.get(Job, job_id).status == "running"
+
+    response = client.post(
+        f"/api/shards/{open_shard['id']}",
+        json={
+            "status": "succeeded",
+            "assigned_server_id": "worker-b",
+            "attempt_count": 1,
+            "processed_files": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    with session_factory() as session:
+        stored_job = session.get(Job, job_id)
+        assert stored_job.status == "failed"
+        assert stored_job.failure_category == "lease_expired"
+        assert (
+            stored_job.error_message
+            == "shard lease expired after maximum attempts"
+        )
+
+
+def test_terminal_lease_failure_replay_is_idempotent_and_fenced(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(client, max_shard_attempts=1)
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+    assert client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json() is None
+    with session_factory() as session:
+        original = session.get(WorkShard, claim["id"])
+        original_finished_at = original.finished_at
+        original_error = original.error_message
+
+    same_attempt = client.post(
+        f"/api/shards/{claim['id']}",
+        json={
+            "status": "running",
+            "assigned_server_id": "worker-a",
+            "attempt_count": 1,
+            "processed_files": 999,
+        },
+    )
+    wrong_server = client.post(
+        f"/api/shards/{claim['id']}",
+        json={
+            "status": "succeeded",
+            "assigned_server_id": "worker-b",
+            "attempt_count": 1,
+        },
+    )
+    old_attempt = client.post(
+        f"/api/shards/{claim['id']}",
+        json={
+            "status": "succeeded",
+            "assigned_server_id": "worker-a",
+            "attempt_count": 0,
+        },
+    )
+
+    assert same_attempt.status_code == 200
+    assert same_attempt.json()["status"] == "failed"
+    assert same_attempt.json()["failure_category"] == "lease_expired"
+    assert same_attempt.json()["error_message"] == original_error
+    assert wrong_server.status_code == 409
+    assert old_attempt.status_code == 409
+    with session_factory() as session:
+        replayed = session.get(WorkShard, claim["id"])
+        assert replayed.finished_at == original_finished_at
+        assert replayed.processed_files != 999
+
+
+def test_last_explicit_failed_shard_controls_job_failure_attribution(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    heartbeat_worker(client, "worker-b")
+    job = create_remote_shard_job(
+        client,
+        max_shard_attempts=1,
+        shard_count=2,
+    )
+    job_id = job["id"]
+    client.post("/api/agents/worker-a/next-job")
+    first = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-a"
+    ).json()
+    second = client.post(
+        f"/api/jobs/{job_id}/shards/claim?server_id=worker-b"
+    ).json()
+
+    assert client.post(
+        f"/api/shards/{first['id']}",
+        json={
+            "status": "failed",
+            "assigned_server_id": "worker-a",
+            "attempt_count": 1,
+            "failure_category": "model_error",
+            "error_message": "first explicit failure",
+        },
+    ).status_code == 200
+    assert client.post(
+        f"/api/shards/{second['id']}",
+        json={
+            "status": "failed",
+            "assigned_server_id": "worker-b",
+            "attempt_count": 1,
+            "failure_category": "output_error",
+            "error_message": "last explicit failure",
+        },
+    ).status_code == 200
+
+    with session_factory() as session:
+        stored_job = session.get(Job, job_id)
+        assert stored_job.status == "failed"
+        assert stored_job.failure_category == "output_error"
+        assert stored_job.error_message == "last explicit failure"
 
 
 def test_late_shard_update_from_reclaimed_attempt_is_rejected(tmp_path):
@@ -521,7 +904,7 @@ def test_claimable_shard_select_uses_postgresql_skip_locked():
         )
     )
 
-    assert "FOR UPDATE SKIP LOCKED" in compiled
+    assert "FOR UPDATE OF work_shards SKIP LOCKED" in compiled
 
 
 def test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit():
