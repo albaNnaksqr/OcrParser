@@ -343,24 +343,13 @@ def _claimable_scan_unit_id_select(
     after_id: int | None = None,
     statuses: set[str] | None = None,
 ):
-    statement = (
-        select(ScanUnit)
-        .join(Job, ScanUnit.job_id == Job.id)
-        .where(ScanUnit.status.in_(statuses or RECLAIMABLE_SCAN_UNIT_STATUSES))
-        .where(Job.assigned_server_id == POOL_SERVER_ID)
-        .where(Job.status.in_({"queued", "running"}))
-    )
-    if after_id is not None:
-        statement = statement.where(ScanUnit.id > after_id)
-    return (
-        statement.order_by(ScanUnit.id.asc())
-        .limit(limit)
-        .with_for_update(skip_locked=True)
-        .with_only_columns(ScanUnit.id)
-    )
+    from ...scheduling import _claimable_scan_unit_id_select as target
 
-class _ScanUnitClaimCollision(RuntimeError):
-    pass
+    return target(
+        limit=limit,
+        after_id=after_id,
+        statuses=statuses or RECLAIMABLE_SCAN_UNIT_STATUSES,
+    )
 
 
 def claim_next_scan_unit(
@@ -380,6 +369,8 @@ def _claim_next_scan_unit_phase(
     now: datetime | None,
     reconcile: bool,
 ) -> tuple[ScanUnit | None, datetime | None, bool]:
+    from ... import scheduling as scheduling_policy
+
     if reconcile:
         server = session.get(Server, server_id)
         if server is None or server.archived_at is not None:
@@ -392,7 +383,7 @@ def _claim_next_scan_unit_phase(
     after_id: int | None = None
     while True:
         candidate_ids = session.execute(
-            _claimable_scan_unit_id_select(
+            scheduling_policy._claimable_scan_unit_id_select(
                 limit=SCAN_UNIT_CLAIM_BATCH_SIZE,
                 after_id=after_id,
                 statuses=claim_statuses,
@@ -414,24 +405,13 @@ def _claim_next_scan_unit_phase(
                 unit.path,
             ):
                 continue
-            result = session.execute(
-                update(ScanUnit)
-                .where(ScanUnit.id == unit.id)
-                .where(ScanUnit.status.in_(claim_statuses))
-                .values(
-                    status="running",
-                    assigned_server_id=server_id,
-                    attempt_count=ScanUnit.attempt_count + 1,
-                    started_at=now,
-                    lease_expires_at=scan_unit_lease_deadline(now),
-                    failure_category=None,
-                    error_message=None,
-                )
+            scheduling_policy._claim_scan_unit_candidate(
+                session,
+                unit.id,
+                server_id,
+                claim_statuses=claim_statuses,
+                now=now,
             )
-            if result.rowcount != 1:
-                raise _ScanUnitClaimCollision(
-                    "scan unit claim lost a compare-and-set race"
-                )
             if job.status == "queued":
                 job.status = "running"
                 job.started_at = now
@@ -2197,7 +2177,6 @@ __all__ = [
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
-        "_ScanUnitClaimCollision",
         "_WorkShardClaimCollision",
     }
 ]

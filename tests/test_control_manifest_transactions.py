@@ -2175,9 +2175,13 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     }
     assert session_calls(core_path, "claim_next_scan_unit") == {}
     assert session_calls(core_path, "_claim_next_scan_unit_phase") == {
-        "execute": 2,
+        "execute": 1,
         "refresh": 1,
     }
+    assert session_calls(
+        scheduling_path,
+        "_claim_scan_unit_candidate",
+    ) == {"execute": 1}
     assert session_calls(commands_path, "complete_scan_unit") == {
         "begin": 1,
     }

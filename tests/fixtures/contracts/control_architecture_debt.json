@@ -797,7 +797,7 @@
     "transactions": "commit/rollback/flush are counted only on the conventional session name, a Session-annotated parameter, or an assignment/closure alias of one"
   },
   "policy_external_status_writes": {
-    "count": 20,
+    "count": 19,
     "sites": [
       {
         "field": "status",
@@ -875,22 +875,15 @@
         "field": "status",
         "fingerprint": "4c0555caa3401bcb6ad4b41967249deaa67543c7562b921187da1492b6defae7",
         "id": "ocr_platform.control.domains.manifests.core:_claim_next_scan_unit_phase:attribute-write[job.status<-44b64f7d7c54]@4c0555caa340:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:436",
+        "source": "ocr_platform/control/domains/manifests/core.py:416",
         "target": "job.status",
         "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "7cb6dd5d35ffbb58e4c94979b9fbf9f254561e74a35dd7cec2113879a29248dd",
-        "id": "ocr_platform.control.domains.manifests.core:_claim_next_scan_unit_phase:sql_values[status<-44b64f7d7c54]@7cb6dd5d35ff:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:418",
-        "write_kind": "sql_values"
       },
       {
         "field": "worker_integrity_status",
         "fingerprint": "0fe2eaa0d41ccba1d8de0b8af1de85fe190c44f518dc87613b3de4de59e1ebe6",
         "id": "ocr_platform.control.domains.manifests.core:claim_worker_manifest_integrity_check:attribute-write[manifest.worker_integrity_status<-44b64f7d7c54]@0fe2eaa0d41c:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:1108",
+        "source": "ocr_platform/control/domains/manifests/core.py:1088",
         "target": "manifest.worker_integrity_status",
         "write_kind": "attribute_assignment"
       },
@@ -898,7 +891,7 @@
         "field": "worker_integrity_status",
         "fingerprint": "7222401998789527af1789def28fec5eb634c3d04b3f625856691d443454b86d",
         "id": "ocr_platform.control.domains.manifests.core:complete_worker_manifest_integrity_check:attribute-write[manifest.worker_integrity_status<-f7d85058bdc3]@722240199878:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:1153",
+        "source": "ocr_platform/control/domains/manifests/core.py:1133",
         "target": "manifest.worker_integrity_status",
         "write_kind": "attribute_assignment"
       },
@@ -906,7 +899,7 @@
         "field": "worker_integrity_status",
         "fingerprint": "cda014305e7d0f959aa606f8432b2a49cac90f21621b50957e7f94297414d477",
         "id": "ocr_platform.control.domains.manifests.core:request_worker_manifest_integrity_check:attribute-write[manifest.worker_integrity_status<-411b1a1c2f51]@cda014305e7d:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:1073",
+        "source": "ocr_platform/control/domains/manifests/core.py:1053",
         "target": "manifest.worker_integrity_status",
         "write_kind": "attribute_assignment"
       },
@@ -1078,7 +1071,7 @@
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.manifests.core:_complete_scan_unit:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/manifests/core.py:520"
+        "source": "ocr_platform/control/domains/manifests/core.py:500"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
@@ -1096,19 +1089,19 @@
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.manifests.core:_fail_scan_unit:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/manifests/core.py:564"
+        "source": "ocr_platform/control/domains/manifests/core.py:544"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:claim_worker_manifest_integrity_check:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:1111"
+        "source": "ocr_platform/control/domains/manifests/core.py:1091"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:complete_worker_manifest_integrity_check:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:1164"
+        "source": "ocr_platform/control/domains/manifests/core.py:1144"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
@@ -1120,7 +1113,7 @@
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:request_worker_manifest_integrity_check:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:1079"
+        "source": "ocr_platform/control/domains/manifests/core.py:1059"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",

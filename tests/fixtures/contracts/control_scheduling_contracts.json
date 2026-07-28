@@ -77,7 +77,7 @@
       "contract": "re-registering an existing server fences only its running shard, current running attempt, and scan unit without changing attempt numbers or the parent job",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "server_reregistration_generation_fencing",
-      "policy_source": "ocr_platform/control/scheduling.py:731",
+      "policy_source": "ocr_platform/control/scheduling.py:787",
       "repeated_registration_unchanged": true,
       "state_after_first_registration": {
         "attempts": [
@@ -144,6 +144,10 @@
       }
     },
     {
+      "claim_policy_sources": {
+        "compare_and_set": "ocr_platform/control/scheduling.py:238",
+        "selector": "ocr_platform/control/scheduling.py:215"
+      },
       "contract": "scan units use id ordering, stale-first recovery, lease renewal, attempt increments, and server/attempt fencing",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "first_claim": {
@@ -178,7 +182,7 @@
       "contract": "stop immediately closes reclaimable work, preserves running work until its attempt stops or lease expires, and prevents late updates from regressing terminal state",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "stop_state_results",
-      "policy_source": "ocr_platform/control/scheduling.py:809",
+      "policy_source": "ocr_platform/control/scheduling.py:865",
       "scan_units": {
         "after_request_stop": {
           "pending": "stopped",

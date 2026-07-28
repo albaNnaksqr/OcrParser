@@ -211,7 +211,7 @@ def claim_next_scan_unit(
                     if not exc.server_available:
                         return None
                     now = exc.now
-                except _core._ScanUnitClaimCollision:
+                except _scheduling._ScanUnitClaimCollision:
                     # Leave the failed transaction before restarting from the
                     # server lookup and stale reconciliation phase.
                     restart = True

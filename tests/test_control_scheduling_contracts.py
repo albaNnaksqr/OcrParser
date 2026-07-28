@@ -148,6 +148,14 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
         "attempt_count": 2,
         "server_id": "worker-b",
     }
+    assert set(scan["claim_policy_sources"]) == {
+        "selector",
+        "compare_and_set",
+    }
+    assert all(
+        source.startswith("ocr_platform/control/scheduling.py:")
+        for source in scan["claim_policy_sources"].values()
+    )
     assert scan["wrong_server_status"] == 409
     assert scan["stale_attempt_status"] == 409
     assert scan["old_terminal_attempt_status"] == 409
@@ -247,6 +255,11 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
             "scan_unit_claim_lease_and_fencing",
             ("reclaim", "attempt_count"),
             1,
+        ),
+        (
+            "scan_unit_claim_lease_and_fencing",
+            ("claim_policy_sources", "selector"),
+            "ocr_platform/control/domains/manifests/core.py:1",
         ),
         (
             "server_reregistration_generation_fencing",

@@ -1948,6 +1948,14 @@ def build_scheduling_contract() -> dict[str, Any]:
         ROOT / "ocr_platform" / "control" / "scheduling.py",
         "_fence_running_work_for_restarted_server",
     )
+    scan_claim_selector_source = _function_definition_source(
+        ROOT / "ocr_platform" / "control" / "scheduling.py",
+        "_claimable_scan_unit_id_select",
+    )
+    scan_claim_cas_source = _function_definition_source(
+        ROOT / "ocr_platform" / "control" / "scheduling.py",
+        "_claim_scan_unit_candidate",
+    )
 
     def require_ok(response: Any, context: str) -> dict[str, Any]:
         if response.status_code != 200:
@@ -2981,6 +2989,10 @@ def build_scheduling_contract() -> dict[str, Any]:
                     "attempt_count": scan_reclaim["attempt_count"],
                     "server_id": scan_reclaim["assigned_server_id"],
                 },
+                "claim_policy_sources": {
+                    "selector": scan_claim_selector_source,
+                    "compare_and_set": scan_claim_cas_source,
+                },
                 "wrong_server_status": scan_wrong_server.status_code,
                 "stale_attempt_status": scan_stale_attempt.status_code,
                 "old_terminal_attempt_status": scan_old_attempt.status_code,
@@ -3218,6 +3230,7 @@ def validate_scheduling_contract(contract: dict[str, Any]) -> None:
     }:
         raise ValueError("work shard terminal persistence changed")
     scan = invariants["scan_unit_claim_lease_and_fencing"]
+    claim_policy_sources = scan.get("claim_policy_sources")
     if (
         scan.get("first_claim")
         != {
@@ -3239,6 +3252,14 @@ def validate_scheduling_contract(contract: dict[str, Any]) -> None:
             scan.get("old_terminal_attempt_status"),
         }
         != {409}
+        or not isinstance(claim_policy_sources, dict)
+        or set(claim_policy_sources) != {"selector", "compare_and_set"}
+        or any(
+            not str(source).startswith(
+                "ocr_platform/control/scheduling.py:"
+            )
+            for source in claim_policy_sources.values()
+        )
     ):
         raise ValueError("scan unit claim, lease, or fencing changed")
     scan_terminal = invariants["scan_unit_terminal_replay"]

@@ -11,6 +11,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from .domains.common import (
+    POOL_SERVER_ID,
     RECLAIMABLE_SCAN_UNIT_STATUSES, RECLAIMABLE_SHARD_STATUSES,
     ScanUnitAttemptConflictError,
     SHARD_LEASE_SECONDS,
@@ -205,6 +206,61 @@ def shard_lease_deadline(now: datetime | None = None) -> datetime:
 
 def scan_unit_lease_deadline(now: datetime | None = None) -> datetime:
     return (now or utcnow()) + timedelta(seconds=SHARD_LEASE_SECONDS)
+
+
+class _ScanUnitClaimCollision(RuntimeError):
+    pass
+
+
+def _claimable_scan_unit_id_select(
+    *,
+    limit: int,
+    after_id: int | None = None,
+    statuses: set[str],
+):
+    statement = (
+        select(ScanUnit)
+        .join(Job, ScanUnit.job_id == Job.id)
+        .where(ScanUnit.status.in_(statuses))
+        .where(Job.assigned_server_id == POOL_SERVER_ID)
+        .where(Job.status.in_({"queued", "running"}))
+    )
+    if after_id is not None:
+        statement = statement.where(ScanUnit.id > after_id)
+    return (
+        statement.order_by(ScanUnit.id.asc())
+        .limit(limit)
+        .with_for_update(skip_locked=True)
+        .with_only_columns(ScanUnit.id)
+    )
+
+
+def _claim_scan_unit_candidate(
+    session: Session,
+    scan_unit_id: int,
+    server_id: str,
+    *,
+    claim_statuses: set[str],
+    now: datetime,
+) -> None:
+    result = session.execute(
+        update(ScanUnit)
+        .where(ScanUnit.id == scan_unit_id)
+        .where(ScanUnit.status.in_(claim_statuses))
+        .values(
+            status="running",
+            assigned_server_id=server_id,
+            attempt_count=ScanUnit.attempt_count + 1,
+            started_at=now,
+            lease_expires_at=scan_unit_lease_deadline(now),
+            failure_category=None,
+            error_message=None,
+        )
+    )
+    if result.rowcount != 1:
+        raise _ScanUnitClaimCollision(
+            "scan unit claim lost a compare-and-set race"
+        )
 
 
 def renew_running_shard_leases(
