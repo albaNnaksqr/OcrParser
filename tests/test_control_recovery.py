@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
+from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import service
 from sqlalchemy.dialects import postgresql
@@ -901,6 +902,30 @@ def test_claimable_shard_select_uses_postgresql_skip_locked():
     )
 
     assert "FOR UPDATE OF work_shards SKIP LOCKED" in compiled
+
+
+def test_shard_claim_parent_select_uses_postgresql_key_share():
+    statement = manifests_core._claim_parent_job_for_key_share_select("job-1")
+
+    compiled = str(
+        statement.compile(
+            dialect=postgresql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        )
+    )
+
+    assert "WHERE jobs.id = 'job-1' FOR KEY SHARE" in compiled
+
+
+def test_shard_claim_locks_parent_before_claimable_shard_selector():
+    import inspect
+
+    source = inspect.getsource(manifests_core.claim_next_pending_shard)
+
+    reconcile_position = source.index("_reconcile_expired_shard_leases(")
+    parent_lock_position = source.index("_lock_claim_parent_job(")
+    shard_selector_position = source.index("_claimable_shard_id_select(")
+    assert reconcile_position < parent_lock_position < shard_selector_position
 
 
 def test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit():

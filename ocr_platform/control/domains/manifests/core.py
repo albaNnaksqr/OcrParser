@@ -1828,6 +1828,19 @@ def _claimable_shard_id_select(job_id: str):
         .with_for_update(skip_locked=True, of=WorkShard)
     )
 
+def _claim_parent_job_for_key_share_select(job_id: str):
+    return (
+        select(Job)
+        .where(Job.id == job_id)
+        .with_for_update(read=True, key_share=True)
+    )
+
+def _lock_claim_parent_job(session: Session, job_id: str) -> Job | None:
+    return session.execute(
+        _claim_parent_job_for_key_share_select(job_id)
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+
 def _create_shard_attempt(session: Session, shard: WorkShard, server_id: str) -> None:
     session.add(
         ShardAttempt(
@@ -1879,6 +1892,32 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
         now=now,
         job_id=job_id,
     )
+    if reconciliation.changed:
+        session.flush()
+    job = _lock_claim_parent_job(session, job_id)
+    if job is None:
+        if reconciliation.changed:
+            session.commit()
+        return None
+    if job.stop_requested or job.status in non_claimable_statuses:
+        if reconciliation.changed:
+            session.commit()
+        return None
+    if job.assigned_server_id == POOL_SERVER_ID and not server_can_access_input_dir(
+        session,
+        server_id,
+        job.input_dir,
+    ):
+        if reconciliation.changed:
+            session.commit()
+        return None
+    if job.assigned_server_id == POOL_SERVER_ID and not server_is_allowed_for_job(
+        job,
+        server_id,
+    ):
+        if reconciliation.changed:
+            session.commit()
+        return None
     shard_id = session.execute(_claimable_shard_id_select(job_id)).scalar_one_or_none()
     if shard_id is None:
         if reconciliation.changed:
@@ -2135,7 +2174,9 @@ __all__ = [
     for name in globals()
     if not name.startswith("__")
     and name not in {
+        "_claim_parent_job_for_key_share_select",
         "_finalize_job_after_shard_change",
+        "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
     }
