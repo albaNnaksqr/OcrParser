@@ -82,6 +82,18 @@ def reconcile_expired_shard_leases(*args, **kwargs):
     from ..workers.core import reconcile_expired_shard_leases as target
     return target(*args, **kwargs)
 
+def _reconcile_expired_shard_leases(*args, **kwargs):
+    from ..workers.core import _reconcile_expired_shard_leases as target
+    return target(*args, **kwargs)
+
+def _lock_job_for_shard_change(*args, **kwargs):
+    from ..workers.core import _lock_job_for_shard_change as target
+    return target(*args, **kwargs)
+
+def _finalize_job_after_shard_change(*args, **kwargs):
+    from ..workers.core import _finalize_job_after_shard_change as target
+    return target(*args, **kwargs)
+
 def scan_unit_lease_deadline(*args, **kwargs):
     from ..workers.core import scan_unit_lease_deadline as target
     return target(*args, **kwargs)
@@ -1774,46 +1786,31 @@ def stop_reclaimable_work_for_job(session: Session, job: Job) -> None:
     )
 
 def finalize_stopped_job_if_idle(session: Session, job: Job) -> bool:
-    if not job.stop_requested or job.status in TERMINAL_JOB_STATUSES:
+    session.flush()
+    locked_job = _lock_job_for_shard_change(session, job.id)
+    if locked_job is None:
         return False
-    total_shards = int(
-        session.execute(
-            select(func.count(WorkShard.id)).where(WorkShard.job_id == job.id)
-        ).scalar_one()
-        or 0
-    )
-    total_scan_units = int(
-        session.execute(
-            select(func.count(ScanUnit.id)).where(ScanUnit.job_id == job.id)
-        ).scalar_one()
-        or 0
-    )
-    if total_shards == 0 and total_scan_units == 0:
+    if not locked_job.stop_requested or locked_job.status in TERMINAL_JOB_STATUSES:
         return False
-    open_shards = int(
+    total_work = int(
         session.execute(
-            select(func.count(WorkShard.id))
-            .where(WorkShard.job_id == job.id)
-            .where(WorkShard.status.not_in(TERMINAL_SHARD_STATUSES))
+            select(
+                func.count(WorkShard.id)
+                + select(func.count(ScanUnit.id))
+                .where(ScanUnit.job_id == locked_job.id)
+                .scalar_subquery()
+            )
+            .where(WorkShard.job_id == locked_job.id)
         ).scalar_one()
         or 0
     )
-    open_scan_units = int(
-        session.execute(
-            select(func.count(ScanUnit.id))
-            .where(ScanUnit.job_id == job.id)
-            .where(ScanUnit.status.in_({"pending", "running", "stale"}))
-        ).scalar_one()
-        or 0
-    )
-    if open_shards or open_scan_units:
+    if total_work == 0:
         return False
-    job.status = "stopped"
-    if job.failure_category is None:
-        job.failure_category = "operator_stopped"
-    if job.finished_at is None:
-        job.finished_at = utcnow()
-    return True
+    return _finalize_job_after_shard_change(
+        session,
+        locked_job,
+        now=utcnow(),
+    )
 
 def _claimable_shard_id_select(job_id: str):
     recovery_priority = case(
@@ -1822,11 +1819,13 @@ def _claimable_shard_id_select(job_id: str):
     )
     return (
         select(WorkShard.id)
+        .join(Job, Job.id == WorkShard.job_id)
         .where(WorkShard.job_id == job_id)
         .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
+        .where(WorkShard.attempt_count < Job.max_shard_attempts)
         .order_by(recovery_priority, WorkShard.shard_index.asc())
         .limit(1)
-        .with_for_update(skip_locked=True)
+        .with_for_update(skip_locked=True, of=WorkShard)
     )
 
 def _create_shard_attempt(session: Session, shard: WorkShard, server_id: str) -> None:
@@ -1875,9 +1874,15 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
         return None
 
     now = utcnow()
-    reconcile_expired_shard_leases(session, now=now, job_id=job_id)
+    reconciliation = _reconcile_expired_shard_leases(
+        session,
+        now=now,
+        job_id=job_id,
+    )
     shard_id = session.execute(_claimable_shard_id_select(job_id)).scalar_one_or_none()
     if shard_id is None:
+        if reconciliation.changed:
+            session.commit()
         return None
 
     started_at = now
@@ -1893,6 +1898,12 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
         update(WorkShard)
         .where(WorkShard.id == shard_id)
         .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
+        .where(
+            WorkShard.attempt_count
+            < select(Job.max_shard_attempts)
+            .where(Job.id == WorkShard.job_id)
+            .scalar_subquery()
+        )
         .where(claimable_parent)
         .values(
             status="running",
@@ -1921,10 +1932,27 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
     return session.get(WorkShard, shard_id)
 
 def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateRequest) -> WorkShard:
+    shard_snapshot = session.execute(
+        select(WorkShard.job_id, WorkShard.status)
+        .where(WorkShard.id == shard_id)
+    ).one_or_none()
+    if shard_snapshot is None:
+        raise ValueError(f"unknown shard: {shard_id}")
+    job_id, observed_status = shard_snapshot
+    needs_job_serialization = (
+        request.status in TERMINAL_SHARD_STATUSES
+        or observed_status in TERMINAL_SHARD_STATUSES
+    )
+    job = None
+    if needs_job_serialization:
+        job = _lock_job_for_shard_change(session, job_id)
+        if job is None:
+            raise ValueError(f"unknown shard: {shard_id}")
     shard = session.execute(
         select(WorkShard)
         .where(WorkShard.id == shard_id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     ).scalar_one_or_none()
     if shard is None:
         raise ValueError(f"unknown shard: {shard_id}")
@@ -1937,6 +1965,12 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
             "shard update belongs to a stale attempt"
         )
     if shard.status in TERMINAL_SHARD_STATUSES:
+        if job is not None:
+            _finalize_job_after_shard_change(
+                session,
+                job,
+                now=utcnow(),
+            )
         session.commit()
         session.refresh(shard)
         return shard
@@ -1947,7 +1981,6 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
         session.commit()
         session.refresh(shard)
         return shard
-    job = get_job_or_raise(session, shard.job_id)
     fields_set = getattr(request, "model_fields_set", None)
     if fields_set is None:
         fields_set = getattr(request, "__fields_set__", set())
@@ -1983,6 +2016,8 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
     shard.failure_category = failure_category
     shard.error_message = request.error_message
     if request.status == "failed":
+        if job is None:
+            raise RuntimeError("failed shard update requires Job serialization")
         shard.status = _remaining_retry_status(job, shard)
     if shard.status in TERMINAL_SHARD_STATUSES:
         shard.finished_at = utcnow()
@@ -2004,19 +2039,17 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
         attempt.error_message = request.error_message
         if shard.status != "running":
             attempt.finished_at = utcnow()
-    if shard.status == "failed":
-        open_shards = session.execute(
-            select(func.count(WorkShard.id))
-            .where(WorkShard.job_id == shard.job_id)
-            .where(WorkShard.id != shard.id)
-            .where(WorkShard.status.not_in(TERMINAL_SHARD_STATUSES))
-        ).scalar_one()
-        if not open_shards and job.status not in TERMINAL_JOB_STATUSES:
-            job.status = "failed"
-            job.failure_category = shard.failure_category
-            job.error_message = shard.error_message
-            job.finished_at = utcnow()
-    finalize_stopped_job_if_idle(session, job)
+    if shard.status in TERMINAL_SHARD_STATUSES:
+        if job is None:
+            raise RuntimeError("terminal shard update requires Job serialization")
+        _finalize_job_after_shard_change(
+            session,
+            job,
+            now=utcnow(),
+            preferred_failure_shard_id=(
+                shard.id if shard.status == "failed" else None
+            ),
+        )
     session.commit()
     session.refresh(shard)
     return shard
@@ -2097,4 +2130,13 @@ def shard_attempt_to_response(attempt: ShardAttempt) -> ShardAttemptResponse:
         finished_at=attempt.finished_at,
     )
 
-__all__ = [name for name in globals() if not name.startswith("__")]
+__all__ = [
+    name
+    for name in globals()
+    if not name.startswith("__")
+    and name not in {
+        "_finalize_job_after_shard_change",
+        "_lock_job_for_shard_change",
+        "_reconcile_expired_shard_leases",
+    }
+]

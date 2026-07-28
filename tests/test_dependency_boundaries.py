@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 from pathlib import Path
 
 from ocr_parser.contracts import EngineCapabilities, ManifestItem
@@ -128,3 +129,15 @@ def test_control_domains_do_not_import_legacy_service_facade() -> None:
                 violations.append(f"{path.relative_to(domains_root.parent.parent.parent)}:{node.lineno}")
 
     assert violations == []
+
+
+def test_control_service_facade_symbols_match_v0_3_2() -> None:
+    from ocr_platform.control import service
+
+    symbols = sorted(service.__all__)
+    digest = hashlib.sha256(
+        ("\n".join(symbols) + "\n").encode("utf-8")
+    ).hexdigest()
+
+    assert len(symbols) == 286
+    assert digest == "df80053e16329620bbb85be1f2d3112807055e084a24d1f623f8ea52cb2ffea7"

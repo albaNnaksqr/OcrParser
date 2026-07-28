@@ -66,6 +66,10 @@ def ensure_pool_server(*args, **kwargs):
     from ..workers.core import ensure_pool_server as target
     return target(*args, **kwargs)
 
+def _lock_job_for_shard_change(*args, **kwargs):
+    from ..workers.core import _lock_job_for_shard_change as target
+    return target(*args, **kwargs)
+
 def finalize_stopped_job_if_idle(*args, **kwargs):
     from ..manifests.core import finalize_stopped_job_if_idle as target
     return target(*args, **kwargs)
@@ -1153,7 +1157,9 @@ def list_recent_job_errors_page(
     )
 
 def request_stop(session: Session, job_id: str) -> Job:
-    job = get_job_or_raise(session, job_id)
+    job = _lock_job_for_shard_change(session, job_id)
+    if job is None:
+        raise UnknownJobError(f"unknown job: {job_id}")
     job.stop_requested = True
     if job.status == "queued":
         job.status = "stopped"
@@ -1675,4 +1681,9 @@ def list_job_logs_page(
         items=[job_log_to_response(row) for row in rows],
     )
 
-__all__ = [name for name in globals() if not name.startswith("__")]
+__all__ = [
+    name
+    for name in globals()
+    if not name.startswith("__")
+    and name != "_lock_job_for_shard_change"
+]
