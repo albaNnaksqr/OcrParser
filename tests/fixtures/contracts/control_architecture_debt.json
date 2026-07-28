@@ -797,7 +797,7 @@
     "transactions": "commit/rollback/flush are counted only on the conventional session name, a Session-annotated parameter, or an assignment/closure alias of one"
   },
   "policy_external_status_writes": {
-    "count": 22,
+    "count": 20,
     "sites": [
       {
         "field": "status",
@@ -912,44 +912,30 @@
       },
       {
         "field": "status",
-        "fingerprint": "1a9f6030fbcdefe191b1468e68135370135e263f15a3f458b61b223feec40748",
-        "id": "ocr_platform.control.domains.workers.core:_fence_running_work_for_restarted_server:sql_values[status<-8f39cdbe85f2]@1a9f6030fbcd:1",
-        "source": "ocr_platform/control/domains/workers/core.py:131",
-        "write_kind": "sql_values"
-      },
-      {
-        "field": "status",
-        "fingerprint": "0817efdcdad230154b2545275d9878955875e62ab98363326a85064ae190e303",
-        "id": "ocr_platform.control.domains.workers.core:_fence_running_work_for_restarted_server:sql_values[status<-8f39cdbe85f2]@0817efdcdad2:1",
-        "source": "ocr_platform/control/domains/workers/core.py:143",
-        "write_kind": "sql_values"
-      },
-      {
-        "field": "status",
         "fingerprint": "3d1297ab3a96dc67efc350375e7f0b40a5f006f201716599010026bc575d6c91",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:sql_values[status<-44b64f7d7c54]@3d1297ab3a96:1",
-        "source": "ocr_platform/control/domains/workers/core.py:993",
+        "source": "ocr_platform/control/domains/workers/core.py:940",
         "write_kind": "sql_values"
       },
       {
         "field": "status",
         "fingerprint": "ff0e7830cbd1e0864d741dd2d01617f963d1d39161ea1546ec591a33d3b9a14f",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:sql_values[status<-44b64f7d7c54]@ff0e7830cbd1:1",
-        "source": "ocr_platform/control/domains/workers/core.py:1040",
+        "source": "ocr_platform/control/domains/workers/core.py:987",
         "write_kind": "sql_values"
       },
       {
         "field": "status",
         "fingerprint": "ff0e7830cbd1e0864d741dd2d01617f963d1d39161ea1546ec591a33d3b9a14f",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:sql_values[status<-44b64f7d7c54]@ff0e7830cbd1:2",
-        "source": "ocr_platform/control/domains/workers/core.py:1055",
+        "source": "ocr_platform/control/domains/workers/core.py:1002",
         "write_kind": "sql_values"
       },
       {
         "field": "status",
         "fingerprint": "2d388d52852a323d39339842918994ff7b27f4c48b1440ef0599d4a4a81cc50e",
         "id": "ocr_platform.control.domains.workers.core:heartbeat_server:attribute-write[server.status<-0f9d3160c879]@2d388d52852a:1",
-        "source": "ocr_platform/control/domains/workers/core.py:192",
+        "source": "ocr_platform/control/domains/workers/core.py:139",
         "target": "server.status",
         "write_kind": "attribute_assignment"
       },
@@ -965,7 +951,7 @@
         "field": "status",
         "fingerprint": "4fb86b9fa8182fc10508613b58e714ff67eb880c8f41b0f787b156badaa92e32",
         "id": "ocr_platform.control.domains.workers.core:stop_assigned_queued_jobs_for_server:attribute-write[job.status<-25013cd4f200]@4fb86b9fa818:1",
-        "source": "ocr_platform/control/domains/workers/core.py:329",
+        "source": "ocr_platform/control/domains/workers/core.py:276",
         "target": "job.status",
         "write_kind": "attribute_assignment"
       }
@@ -1140,55 +1126,55 @@
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:archive_server:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1084"
+        "source": "ocr_platform/control/domains/workers/core.py:1031"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1003"
+        "source": "ocr_platform/control/domains/workers/core.py:950"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:session.rollback@44dbf1e505b5:1",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1000"
+        "source": "ocr_platform/control/domains/workers/core.py:947"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1049"
+        "source": "ocr_platform/control/domains/workers/core.py:996"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.commit@809b98bd0ebc:2",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1064"
+        "source": "ocr_platform/control/domains/workers/core.py:1011"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.rollback@44dbf1e505b5:1",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1047"
+        "source": "ocr_platform/control/domains/workers/core.py:994"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.rollback@44dbf1e505b5:2",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1062"
+        "source": "ocr_platform/control/domains/workers/core.py:1009"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.workers.core:ensure_pool_server:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/workers/core.py:169"
+        "source": "ocr_platform/control/domains/workers/core.py:116"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:heartbeat_server:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:209"
+        "source": "ocr_platform/control/domains/workers/core.py:156"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
@@ -1200,7 +1186,7 @@
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.workers.core:stop_assigned_queued_jobs_for_server:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/workers/core.py:336"
+        "source": "ocr_platform/control/domains/workers/core.py:283"
       }
     ],
     "total": 32

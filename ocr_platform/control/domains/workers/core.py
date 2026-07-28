@@ -19,7 +19,7 @@ import ocr_platform.engine_provenance as __engine_provenance
 
 from ... import database
 from ... import certification_gate as __certification_gate
-from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, ShardAttempt, WorkShard
+from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, WorkShard
 from ...schemas import (
     JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
     ManifestFreezeReportResponse, ManifestIntegrityResponse, ManifestIntegrityWorkerCompleteRequest,
@@ -93,65 +93,12 @@ def register_server(session: Session, request: ServerRegisterRequest) -> Server:
 
 
 def _fence_running_work_for_restarted_server(
-    session: Session,
-    server_id: str,
-    *,
-    now: datetime,
-) -> None:
-    """Make work owned by an earlier process generation reclaimable.
+    *args,
+    **kwargs,
+):
+    from ...scheduling import _fence_running_work_for_restarted_server as target
 
-    Agent registration happens once, before its work lanes start. Registering an
-    existing server id therefore establishes a new process generation. Clearing
-    ownership also fences late updates from the old process until the stale work
-    is claimed with a new attempt number.
-    """
-
-    orphaned_shard_ids = list(
-        session.execute(
-            select(WorkShard.id)
-            .where(WorkShard.assigned_server_id == server_id)
-            .where(WorkShard.status == "running")
-            .order_by(WorkShard.id.asc())
-            .with_for_update()
-        ).scalars()
-    )
-    if orphaned_shard_ids:
-        from ...scheduling import _fence_running_shards_for_restarted_server
-
-        _fence_running_shards_for_restarted_server(
-            session,
-            orphaned_shard_ids,
-        )
-        current_shard_attempt_number = (
-            select(WorkShard.attempt_count)
-            .where(WorkShard.id == ShardAttempt.shard_id)
-            .scalar_subquery()
-        )
-        session.execute(
-            update(ShardAttempt)
-            .where(ShardAttempt.shard_id.in_(orphaned_shard_ids))
-            .where(ShardAttempt.attempt_number == current_shard_attempt_number)
-            .where(ShardAttempt.status == "running")
-            .values(
-                status="stale",
-                failure_category="process_killed",
-                error_message="worker process re-registered before shard completion",
-                finished_at=now,
-            )
-        )
-    session.execute(
-        update(ScanUnit)
-        .where(ScanUnit.assigned_server_id == server_id)
-        .where(ScanUnit.status == "running")
-        .values(
-            status="stale",
-            assigned_server_id=None,
-            failure_category="process_killed",
-            error_message="worker process re-registered before scan completion",
-            lease_expires_at=None,
-            finished_at=None,
-        )
-    )
+    return target(*args, **kwargs)
 
 def ensure_pool_server(session: Session) -> Server:
     server = session.get(Server, POOL_SERVER_ID)

@@ -524,19 +524,19 @@
           "stale": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/workers/core.py:143",
+              "source": "ocr_platform/control/scheduling.py:254",
               "symbol": "update(ScanUnit).values(status=...)"
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/scheduling.py:254",
+              "source": "ocr_platform/control/scheduling.py:793",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],
           "stopped": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/scheduling.py:767",
+              "source": "ocr_platform/control/scheduling.py:826",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],

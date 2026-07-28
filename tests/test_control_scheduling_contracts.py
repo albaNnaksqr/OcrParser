@@ -72,6 +72,44 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
     assert fencing["stale_attempt_status"] == 409
     assert fencing["old_terminal_attempt_status"] == 409
 
+    restart_fencing = invariants[
+        "server_reregistration_generation_fencing"
+    ]
+    assert restart_fencing["policy_source"].startswith(
+        "ocr_platform/control/scheduling.py:"
+    )
+    assert restart_fencing["state_after_first_registration"] == {
+        "shard": {
+            "status": "stale",
+            "assigned_server_id": None,
+            "attempt_count": 2,
+            "failure_category": "process_killed",
+            "lease_cleared": True,
+        },
+        "attempts": [
+            {
+                "attempt_number": 1,
+                "status": "failed",
+                "failure_category": "model_error",
+            },
+            {
+                "attempt_number": 2,
+                "status": "stale",
+                "failure_category": "process_killed",
+            },
+        ],
+        "current_attempt_finished": True,
+        "scan_unit": {
+            "status": "stale",
+            "assigned_server_id": None,
+            "attempt_count": 1,
+            "failure_category": "process_killed",
+            "lease_cleared": True,
+        },
+        "job_status": "running",
+    }
+    assert restart_fencing["repeated_registration_unchanged"] is True
+
     terminal = invariants["terminal_monotonicity_and_replay"]
     assert terminal["terminal_response"] == {
         "status": "succeeded",
@@ -209,6 +247,11 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
             "scan_unit_claim_lease_and_fencing",
             ("reclaim", "attempt_count"),
             1,
+        ),
+        (
+            "server_reregistration_generation_fencing",
+            ("repeated_registration_unchanged",),
+            False,
         ),
         (
             "stop_state_results",

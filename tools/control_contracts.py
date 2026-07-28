@@ -1932,6 +1932,8 @@ def build_scheduling_contract() -> dict[str, Any]:
     from datetime import timedelta
 
     from ocr_platform.control.models import (
+        Job,
+        Manifest,
         ScanUnit,
         ShardAttempt,
         WorkShard,
@@ -1941,6 +1943,10 @@ def build_scheduling_contract() -> dict[str, Any]:
     stop_policy_source = _function_definition_source(
         ROOT / "ocr_platform" / "control" / "scheduling.py",
         "stop_reclaimable_work_for_job",
+    )
+    restart_fencing_policy_source = _function_definition_source(
+        ROOT / "ocr_platform" / "control" / "scheduling.py",
+        "_fence_running_work_for_restarted_server",
     )
 
     def require_ok(response: Any, context: str) -> dict[str, Any]:
@@ -2628,6 +2634,189 @@ def build_scheduling_contract() -> dict[str, Any]:
                     )
                 }
 
+            heartbeat(client, "worker-restart")
+            with session_factory() as session:
+                restart_job = Job(
+                    id="contract-restart-job",
+                    input_dir="/shared/restart-input",
+                    output_dir="/shared/restart-output",
+                    engine="dotsocr",
+                    assigned_server_id="worker-restart",
+                    status="running",
+                )
+                restart_manifest = Manifest(
+                    job_id=restart_job.id,
+                    input_mode="remote_folder_snapshot",
+                    input_root=restart_job.input_dir,
+                    manifest_path="/shared/restart/manifest.jsonl",
+                    status="ready",
+                )
+                session.add_all([restart_job, restart_manifest])
+                session.flush()
+                restart_shard = WorkShard(
+                    job_id=restart_job.id,
+                    manifest_id=restart_manifest.id,
+                    shard_index=1,
+                    shard_path="/shared/restart/shard-000001.jsonl",
+                    status="running",
+                    assigned_server_id="worker-restart",
+                    attempt_count=2,
+                    file_count=1,
+                    lease_expires_at=utcnow() + timedelta(minutes=5),
+                )
+                session.add(restart_shard)
+                session.flush()
+                session.add_all(
+                    [
+                        ShardAttempt(
+                            job_id=restart_job.id,
+                            shard_id=restart_shard.id,
+                            attempt_number=1,
+                            server_id="worker-restart",
+                            status="failed",
+                            failure_category="model_error",
+                            error_message="historical contract attempt",
+                        ),
+                        ShardAttempt(
+                            job_id=restart_job.id,
+                            shard_id=restart_shard.id,
+                            attempt_number=2,
+                            server_id="worker-restart",
+                            status="running",
+                        ),
+                        ScanUnit(
+                            job_id=restart_job.id,
+                            path="/shared/restart-input",
+                            status="running",
+                            assigned_server_id="worker-restart",
+                            attempt_count=1,
+                            lease_expires_at=(
+                                utcnow() + timedelta(minutes=5)
+                            ),
+                        ),
+                    ]
+                )
+                session.commit()
+                restart_shard_id = int(restart_shard.id)
+
+            require_ok(
+                client.post(
+                    "/api/servers/register",
+                    json={
+                        "id": "worker-restart",
+                        "name": "worker-restart-generation-two",
+                        "host": "localhost",
+                    },
+                ),
+                "re-register existing worker generation",
+            )
+            with session_factory() as session:
+                restart_shard = session.get(
+                    WorkShard,
+                    restart_shard_id,
+                )
+                restart_attempts = (
+                    session.query(ShardAttempt)
+                    .filter_by(shard_id=restart_shard_id)
+                    .order_by(ShardAttempt.attempt_number)
+                    .all()
+                )
+                restart_scan = (
+                    session.query(ScanUnit)
+                    .filter_by(job_id="contract-restart-job")
+                    .one()
+                )
+                restart_job = session.get(
+                    Job,
+                    "contract-restart-job",
+                )
+                current_finished_at = restart_attempts[1].finished_at
+                restart_state = {
+                    "shard": {
+                        "status": restart_shard.status,
+                        "assigned_server_id": (
+                            restart_shard.assigned_server_id
+                        ),
+                        "attempt_count": restart_shard.attempt_count,
+                        "failure_category": (
+                            restart_shard.failure_category
+                        ),
+                        "lease_cleared": (
+                            restart_shard.lease_expires_at is None
+                        ),
+                    },
+                    "attempts": [
+                        {
+                            "attempt_number": attempt.attempt_number,
+                            "status": attempt.status,
+                            "failure_category": (
+                                attempt.failure_category
+                            ),
+                        }
+                        for attempt in restart_attempts
+                    ],
+                    "current_attempt_finished": (
+                        current_finished_at is not None
+                    ),
+                    "scan_unit": {
+                        "status": restart_scan.status,
+                        "assigned_server_id": (
+                            restart_scan.assigned_server_id
+                        ),
+                        "attempt_count": restart_scan.attempt_count,
+                        "failure_category": (
+                            restart_scan.failure_category
+                        ),
+                        "lease_cleared": (
+                            restart_scan.lease_expires_at is None
+                        ),
+                    },
+                    "job_status": restart_job.status,
+                }
+
+            require_ok(
+                client.post(
+                    "/api/servers/register",
+                    json={
+                        "id": "worker-restart",
+                        "name": "worker-restart-generation-three",
+                        "host": "localhost",
+                    },
+                ),
+                "repeat existing worker registration",
+            )
+            with session_factory() as session:
+                replay_shard = session.get(
+                    WorkShard,
+                    restart_shard_id,
+                )
+                replay_attempts = (
+                    session.query(ShardAttempt)
+                    .filter_by(shard_id=restart_shard_id)
+                    .order_by(ShardAttempt.attempt_number)
+                    .all()
+                )
+                replay_scan = (
+                    session.query(ScanUnit)
+                    .filter_by(job_id="contract-restart-job")
+                    .one()
+                )
+                restart_replay_unchanged = (
+                    replay_shard.status == "stale"
+                    and replay_shard.assigned_server_id is None
+                    and replay_shard.attempt_count == 2
+                    and [
+                        (attempt.attempt_number, attempt.status)
+                        for attempt in replay_attempts
+                    ]
+                    == [(1, "failed"), (2, "stale")]
+                    and replay_attempts[1].finished_at
+                    == current_finished_at
+                    and replay_scan.status == "stale"
+                    and replay_scan.assigned_server_id is None
+                    and replay_scan.attempt_count == 1
+                )
+
     expected_claim_sequence = [
         {"shard_index": 1, "from_status": "pending", "attempt_count": 1},
         {"shard_index": 1, "from_status": "retrying", "attempt_count": 2},
@@ -2666,6 +2855,7 @@ def build_scheduling_contract() -> dict[str, Any]:
         "scope": [
             "work_shard_claim_attempt_lease_and_fencing",
             "scan_unit_claim_attempt_lease_and_fencing",
+            "server_reregistration_generation_fencing",
             "terminal_replay",
             "stop_and_recovery_finalization",
         ],
@@ -2706,6 +2896,23 @@ def build_scheduling_contract() -> dict[str, Any]:
                 "stale_attempt_status": stale_attempt.status_code,
                 "old_terminal_attempt_status": (
                     fenced_after_terminal.status_code
+                ),
+                "evidence": (
+                    "tests/test_control_scheduling_contracts.py::"
+                    "test_scheduling_contract_is_driven_by_real_service_calls"
+                ),
+            },
+            {
+                "id": "server_reregistration_generation_fencing",
+                "contract": (
+                    "re-registering an existing server fences only its "
+                    "running shard, current running attempt, and scan unit "
+                    "without changing attempt numbers or the parent job"
+                ),
+                "policy_source": restart_fencing_policy_source,
+                "state_after_first_registration": restart_state,
+                "repeated_registration_unchanged": (
+                    restart_replay_unchanged
                 ),
                 "evidence": (
                     "tests/test_control_scheduling_contracts.py::"
@@ -2903,6 +3110,7 @@ def validate_scheduling_contract(contract: dict[str, Any]) -> None:
         "claim_ordering",
         "attempt_number_increment_and_uniqueness",
         "server_and_attempt_fencing",
+        "server_reregistration_generation_fencing",
         "work_shard_lease_lifecycle",
         "terminal_monotonicity_and_replay",
         "scan_unit_claim_lease_and_fencing",
@@ -2940,6 +3148,48 @@ def validate_scheduling_contract(contract: dict[str, Any]) -> None:
         fencing.get("old_terminal_attempt_status"),
     } != {409}:
         raise ValueError("work shard fencing changed")
+    restart_fencing = invariants[
+        "server_reregistration_generation_fencing"
+    ]
+    if (
+        not str(restart_fencing.get("policy_source", "")).startswith(
+            "ocr_platform/control/scheduling.py:"
+        )
+        or restart_fencing.get("state_after_first_registration")
+        != {
+            "shard": {
+                "status": "stale",
+                "assigned_server_id": None,
+                "attempt_count": 2,
+                "failure_category": "process_killed",
+                "lease_cleared": True,
+            },
+            "attempts": [
+                {
+                    "attempt_number": 1,
+                    "status": "failed",
+                    "failure_category": "model_error",
+                },
+                {
+                    "attempt_number": 2,
+                    "status": "stale",
+                    "failure_category": "process_killed",
+                },
+            ],
+            "current_attempt_finished": True,
+            "scan_unit": {
+                "status": "stale",
+                "assigned_server_id": None,
+                "attempt_count": 1,
+                "failure_category": "process_killed",
+                "lease_cleared": True,
+            },
+            "job_status": "running",
+        }
+        or restart_fencing.get("repeated_registration_unchanged")
+        is not True
+    ):
+        raise ValueError("server re-registration generation fencing changed")
     lease = invariants["work_shard_lease_lifecycle"]
     if (
         lease.get("heartbeat_extended_lease") is not True

@@ -876,6 +876,13 @@ def test_status_contract_distinguishes_closed_and_open_strings() -> None:
         item["source"].split(":", 1)[0]
         for item in scan_stopped_evidence
     } == {"ocr_platform/control/scheduling.py"}
+    scan_stale_evidence = entities["ScanUnit"]["authority"][
+        "value_evidence"
+    ]["stale"]
+    assert {
+        item["source"].split(":", 1)[0]
+        for item in scan_stale_evidence
+    } == {"ocr_platform/control/scheduling.py"}
     attempt_projection_evidence = [
         item
         for evidence in entities["ShardAttempt"]["authority"][

@@ -74,6 +74,43 @@
       "wrong_server_status": 409
     },
     {
+      "contract": "re-registering an existing server fences only its running shard, current running attempt, and scan unit without changing attempt numbers or the parent job",
+      "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
+      "id": "server_reregistration_generation_fencing",
+      "policy_source": "ocr_platform/control/scheduling.py:731",
+      "repeated_registration_unchanged": true,
+      "state_after_first_registration": {
+        "attempts": [
+          {
+            "attempt_number": 1,
+            "failure_category": "model_error",
+            "status": "failed"
+          },
+          {
+            "attempt_number": 2,
+            "failure_category": "process_killed",
+            "status": "stale"
+          }
+        ],
+        "current_attempt_finished": true,
+        "job_status": "running",
+        "scan_unit": {
+          "assigned_server_id": null,
+          "attempt_count": 1,
+          "failure_category": "process_killed",
+          "lease_cleared": true,
+          "status": "stale"
+        },
+        "shard": {
+          "assigned_server_id": null,
+          "attempt_count": 2,
+          "failure_category": "process_killed",
+          "lease_cleared": true,
+          "status": "stale"
+        }
+      }
+    },
+    {
       "contract": "busy heartbeat renews a live lease; expiry makes the shard stale and reclaim creates a new attempt",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "expired_status": "stale",
@@ -141,7 +178,7 @@
       "contract": "stop immediately closes reclaimable work, preserves running work until its attempt stops or lease expires, and prevents late updates from regressing terminal state",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "stop_state_results",
-      "policy_source": "ocr_platform/control/scheduling.py:750",
+      "policy_source": "ocr_platform/control/scheduling.py:809",
       "scan_units": {
         "after_request_stop": {
           "pending": "stopped",
@@ -213,6 +250,7 @@
   "scope": [
     "work_shard_claim_attempt_lease_and_fencing",
     "scan_unit_claim_attempt_lease_and_fencing",
+    "server_reregistration_generation_fencing",
     "terminal_replay",
     "stop_and_recovery_finalization"
   ]
