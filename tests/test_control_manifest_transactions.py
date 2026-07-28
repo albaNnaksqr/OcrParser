@@ -13,6 +13,8 @@ from sqlalchemy.orm import sessionmaker
 from ocr_platform.control.database import init_db
 from ocr_platform.control.domains.manifests import commands, core
 from ocr_platform.control.domains.manifests.commands import (
+    COMPLETE_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
+    FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
     ManifestCommandTransactionError,
     REGISTER_REMOTE_MANIFEST_ACTIVE_TRANSACTION_ERROR,
 )
@@ -20,12 +22,15 @@ from ocr_platform.control.models import (
     Job,
     JobLog,
     Manifest,
+    ScanUnit,
     Server,
     WorkShard,
 )
 from ocr_platform.control.schemas import (
     RemoteManifestRegisterRequest,
     RemoteManifestShardRequest,
+    ScanUnitCompleteRequest,
+    ScanUnitFailRequest,
 )
 
 
@@ -69,6 +74,36 @@ def _seed_job(session_factory, *, job_id: str = "job-a") -> None:
             )
 
 
+def _seed_running_scan_unit(
+    session_factory,
+    *,
+    job_id: str = "job-a",
+) -> int:
+    _seed_job(session_factory, job_id=job_id)
+    with session_factory() as session:
+        with session.begin():
+            session.add(
+                Manifest(
+                    job_id=job_id,
+                    input_mode="distributed_remote_folder_snapshot",
+                    input_root="/shared/input",
+                    manifest_path=f"/shared/manifests/{job_id}/manifest.jsonl",
+                    meta_path=f"/shared/manifests/{job_id}/manifest.meta.json",
+                    status="scanning",
+                )
+            )
+            unit = ScanUnit(
+                job_id=job_id,
+                path="/shared/input",
+                status="running",
+                assigned_server_id="server-a",
+                attempt_count=2,
+            )
+            session.add(unit)
+            session.flush()
+            return unit.id
+
+
 def _request(
     *,
     manifest_path: str = "/shared/manifests/job-a/manifest.jsonl",
@@ -89,6 +124,28 @@ def _request(
                 file_count=1,
             )
             for index in range(1, shard_count + 1)
+        ],
+    )
+
+
+def _scan_complete_request(
+    *,
+    child_paths: list[str] | None = None,
+) -> ScanUnitCompleteRequest:
+    return ScanUnitCompleteRequest(
+        assigned_server_id="server-a",
+        attempt_count=2,
+        manifest_path="/shared/manifests/job-a/scan/manifest.jsonl",
+        meta_path="/shared/manifests/job-a/scan/manifest.meta.json",
+        file_count=2,
+        total_bytes=12,
+        child_paths=child_paths or [],
+        shards=[
+            RemoteManifestShardRequest(
+                shard_index=99,
+                shard_path="/shared/manifests/job-a/shards/shard-local.jsonl",
+                file_count=2,
+            )
         ],
     )
 
@@ -148,6 +205,311 @@ def test_register_manifest_command_commits_exactly_once(tmp_path) -> None:
             assert persisted.id == manifest.id
             assert [shard.shard_index for shard in shards] == [1, 2]
             assert [shard.file_count for shard in shards] == [1, 1]
+    finally:
+        engine.dispose()
+
+
+def test_complete_scan_unit_command_commits_once_and_replay_is_idempotent(
+    tmp_path,
+) -> None:
+    session_factory, engine = _database(
+        tmp_path,
+        expire_on_commit=True,
+    )
+    unit_id = _seed_running_scan_unit(session_factory)
+    request = _scan_complete_request(
+        child_paths=["/shared/input/child", "/shared/input/child"],
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            completed = commands.complete_scan_unit(
+                session,
+                unit_id,
+                request,
+            )
+
+            assert completed.status == "succeeded"
+            assert completed.manifest_path == request.manifest_path
+            assert session.expire_on_commit is True
+            assert session.in_transaction() is False
+            assert commits == [1]
+            assert rollbacks == []
+
+            replayed = commands.complete_scan_unit(
+                session,
+                unit_id,
+                request,
+            )
+
+            assert replayed.status == "succeeded"
+            assert session.expire_on_commit is True
+            assert session.in_transaction() is False
+            assert commits == [1, 1]
+            assert rollbacks == []
+
+        with session_factory() as session:
+            manifest = session.scalar(
+                select(Manifest).where(Manifest.job_id == "job-a")
+            )
+            units = list(
+                session.scalars(
+                    select(ScanUnit)
+                    .where(ScanUnit.job_id == "job-a")
+                    .order_by(ScanUnit.id)
+                )
+            )
+            shards = list(
+                session.scalars(
+                    select(WorkShard)
+                    .where(WorkShard.job_id == "job-a")
+                    .order_by(WorkShard.shard_index)
+                )
+            )
+            assert manifest is not None
+            assert manifest.status == "scanning"
+            assert manifest.file_count == 2
+            assert manifest.total_bytes == 12
+            assert manifest.next_shard_index == 2
+            assert [unit.path for unit in units] == [
+                "/shared/input",
+                "/shared/input/child",
+            ]
+            assert [unit.status for unit in units] == [
+                "succeeded",
+                "pending",
+            ]
+            assert [shard.shard_index for shard in shards] == [1]
+            assert [shard.file_count for shard in shards] == [2]
+    finally:
+        engine.dispose()
+
+
+def test_complete_scan_unit_failure_rolls_back_all_manifest_side_effects(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    unit_id = _seed_running_scan_unit(session_factory)
+
+    def fail_freeze(*args, **kwargs):
+        raise RuntimeError("freeze failed")
+
+    monkeypatch.setattr(core, "freeze_manifest_if_scan_complete", fail_freeze)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            with pytest.raises(RuntimeError, match="freeze failed"):
+                commands.complete_scan_unit(
+                    session,
+                    unit_id,
+                    _scan_complete_request(),
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            unit = session.get(ScanUnit, unit_id)
+            manifest = session.scalar(
+                select(Manifest).where(Manifest.job_id == "job-a")
+            )
+            assert unit is not None
+            assert unit.status == "running"
+            assert unit.manifest_path is None
+            assert unit.file_count == 0
+            assert manifest is not None
+            assert manifest.status == "scanning"
+            assert manifest.file_count == 0
+            assert manifest.total_bytes == 0
+            assert manifest.next_shard_index == 1
+            assert session.scalar(
+                select(WorkShard).where(WorkShard.job_id == "job-a")
+            ) is None
+    finally:
+        engine.dispose()
+
+
+def test_fail_scan_unit_command_commits_once_and_replay_is_idempotent(
+    tmp_path,
+) -> None:
+    session_factory, engine = _database(
+        tmp_path,
+        expire_on_commit=True,
+    )
+    unit_id = _seed_running_scan_unit(session_factory)
+    request = ScanUnitFailRequest(
+        assigned_server_id="server-a",
+        attempt_count=2,
+        error_message="permission denied",
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            failed = commands.fail_scan_unit(session, unit_id, request)
+
+            assert failed.status == "failed"
+            assert failed.failure_category == "input_invalid"
+            assert session.expire_on_commit is True
+            assert session.in_transaction() is False
+            assert commits == [1]
+            assert rollbacks == []
+
+            replayed = commands.fail_scan_unit(session, unit_id, request)
+
+            assert replayed.status == "failed"
+            assert session.expire_on_commit is True
+            assert session.in_transaction() is False
+            assert commits == [1, 1]
+            assert rollbacks == []
+
+        with session_factory() as session:
+            unit = session.get(ScanUnit, unit_id)
+            manifest = session.scalar(
+                select(Manifest).where(Manifest.job_id == "job-a")
+            )
+            assert unit is not None
+            assert unit.status == "failed"
+            assert unit.error_message == "permission denied"
+            assert manifest is not None
+            assert manifest.status == "failed"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("transaction_mode", ["explicit", "autobegin"])
+@pytest.mark.parametrize(
+    ("command_name", "expected_error"),
+    [
+        (
+            "complete_scan_unit",
+            COMPLETE_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
+        ),
+        (
+            "fail_scan_unit",
+            FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
+        ),
+    ],
+)
+def test_scan_unit_commands_reject_active_transaction_without_outer_pollution(
+    tmp_path,
+    transaction_mode,
+    command_name,
+    expected_error,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    unit_id = _seed_running_scan_unit(session_factory)
+    request = (
+        _scan_complete_request()
+        if command_name == "complete_scan_unit"
+        else ScanUnitFailRequest(error_message="failed")
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            if transaction_mode == "explicit":
+                session.begin()
+            else:
+                assert session.get(ScanUnit, unit_id) is not None
+            outer_row = JobLog(
+                job_id="job-a",
+                server_id="outer",
+                stream="stdout",
+                line=f"{command_name}-{transaction_mode}",
+            )
+            session.add(outer_row)
+
+            with pytest.raises(
+                ManifestCommandTransactionError,
+                match="^" + re.escape(expected_error) + "$",
+            ):
+                getattr(commands, command_name)(
+                    session,
+                    unit_id,
+                    request,
+                )
+
+            assert session.in_transaction() is True
+            assert outer_row in session.new
+            assert commits == []
+            assert rollbacks == []
+            session.rollback()
+            assert commits == []
+            assert rollbacks == [1]
+
+        with session_factory() as session:
+            unit = session.get(ScanUnit, unit_id)
+            assert unit is not None
+            assert unit.status == "running"
+            assert session.scalar(
+                select(JobLog).where(JobLog.server_id == "outer")
+            ) is None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("command_name", "payload"),
+    [
+        (
+            "complete_scan_unit",
+            ScanUnitCompleteRequest(
+                assigned_server_id="server-b",
+                attempt_count=1,
+            ),
+        ),
+        (
+            "fail_scan_unit",
+            ScanUnitFailRequest(
+                assigned_server_id="server-b",
+                attempt_count=1,
+                error_message="late failure",
+            ),
+        ),
+    ],
+)
+def test_scan_unit_attempt_conflict_rolls_back_once(
+    tmp_path,
+    command_name,
+    payload,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    unit_id = _seed_running_scan_unit(session_factory)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            with pytest.raises(commands.ScanUnitAttemptConflictError):
+                getattr(commands, command_name)(
+                    session,
+                    unit_id,
+                    payload,
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            unit = session.get(ScanUnit, unit_id)
+            manifest = session.scalar(
+                select(Manifest).where(Manifest.job_id == "job-a")
+            )
+            assert unit is not None
+            assert unit.status == "running"
+            assert unit.assigned_server_id == "server-a"
+            assert unit.attempt_count == 2
+            assert manifest is not None
+            assert manifest.status == "scanning"
     finally:
         engine.dispose()
 
@@ -525,17 +887,21 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "commit": 1,
         "rollback": 2,
     }
-    assert session_calls(core_path, "complete_scan_unit") == {
+    assert session_calls(commands_path, "complete_scan_unit") == {
+        "begin": 1,
+    }
+    assert session_calls(core_path, "complete_scan_unit") == {}
+    assert session_calls(core_path, "_complete_scan_unit") == {
         "execute": 2,
         "flush": 1,
-        "commit": 2,
-        "refresh": 2,
     }
-    assert session_calls(core_path, "fail_scan_unit") == {
+    assert session_calls(commands_path, "fail_scan_unit") == {
+        "begin": 1,
+    }
+    assert session_calls(core_path, "fail_scan_unit") == {}
+    assert session_calls(core_path, "_fail_scan_unit") == {
         "execute": 3,
         "flush": 1,
-        "commit": 2,
-        "refresh": 2,
     }
     assert session_calls(
         core_path,

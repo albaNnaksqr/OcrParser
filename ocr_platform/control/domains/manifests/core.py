@@ -462,6 +462,23 @@ def complete_scan_unit(
     *,
     limits: __ControlLimits | None = None,
 ) -> ScanUnit:
+    from .commands import complete_scan_unit as target
+
+    return target(
+        session,
+        scan_unit_id,
+        request,
+        limits=limits,
+    )
+
+
+def _complete_scan_unit(
+    session: Session,
+    scan_unit_id: int,
+    request: ScanUnitCompleteRequest,
+    *,
+    limits: __ControlLimits | None = None,
+) -> ScanUnit:
     control_limits = (
         limits if limits is not None else __legacy_control_limits()
     )
@@ -481,8 +498,6 @@ def complete_scan_unit(
             "scan unit completion belongs to a stale attempt"
         )
     if unit.status == "succeeded":
-        session.commit()
-        session.refresh(unit)
         return unit
     if unit.status != "running":
         raise ScanUnitAttemptConflictError(
@@ -525,11 +540,20 @@ def complete_scan_unit(
         manifest,
         limits=control_limits,
     )
-    session.commit()
-    session.refresh(unit)
     return unit
 
+
 def fail_scan_unit(
+    session: Session,
+    scan_unit_id: int,
+    request: ScanUnitFailRequest,
+) -> ScanUnit:
+    from .commands import fail_scan_unit as target
+
+    return target(session, scan_unit_id, request)
+
+
+def _fail_scan_unit(
     session: Session,
     scan_unit_id: int,
     request: ScanUnitFailRequest,
@@ -550,8 +574,6 @@ def fail_scan_unit(
             "scan unit failure belongs to a stale attempt"
         )
     if unit.status == "failed":
-        session.commit()
-        session.refresh(unit)
         return unit
     if unit.status != "running":
         raise ScanUnitAttemptConflictError(
@@ -580,8 +602,6 @@ def fail_scan_unit(
         ).scalar_one_or_none()
         if manifest is not None:
             manifest.status = "failed"
-    session.commit()
-    session.refresh(unit)
     return unit
 
 def _normalized_shard_status_filter(status: str | None) -> str:
@@ -2366,6 +2386,8 @@ __all__ = [
     if not name.startswith("__")
     and name not in {
         "_claim_parent_job_for_key_share_select",
+        "_complete_scan_unit",
+        "_fail_scan_unit",
         "_finalize_job_after_shard_change",
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",

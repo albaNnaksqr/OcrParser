@@ -1485,6 +1485,7 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
         {
             "_create_static_shards_for_job",
             "complete_scan_unit",
+            "_complete_scan_unit",
             "_build_manifest_freeze_report",
             "freeze_manifest_if_scan_complete",
             "get_manifest_freeze_report",
@@ -1496,10 +1497,9 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
             "add": 2,
             "flush": 2,
         },
-        "complete_scan_unit": {
+        "complete_scan_unit": {},
+        "_complete_scan_unit": {
             "flush": 1,
-            "commit": 2,
-            "refresh": 2,
             "add": 2,
             "execute": 2,
         },
