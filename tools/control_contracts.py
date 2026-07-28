@@ -3678,6 +3678,7 @@ def build_status_contract() -> dict[str, Any]:
     jobs_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
     )
+    scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
     metadata_path = ROOT / "ocr_parser" / "domain" / "metadata.py"
 
     job_values = sorted(str(value) for value in JOB_STATUS_FILTERS)
@@ -3736,7 +3737,7 @@ def build_status_contract() -> dict[str, Any]:
         )
 
     scan_evidence = _status_transition_evidence(
-        [manifests_path, workers_path],
+        [manifests_path, scheduling_path, workers_path],
         constructor="ScanUnit",
         sql_model="ScanUnit",
         instance_field=("unit", "status"),
@@ -3943,7 +3944,14 @@ def build_status_contract() -> dict[str, Any]:
             "values": sorted(scan_evidence),
             "authority": _authority(
                 "ast_domain_transitions",
-                [str(path.relative_to(ROOT)) for path in [manifests_path, workers_path]],
+                [
+                    str(path.relative_to(ROOT))
+                    for path in [
+                        manifests_path,
+                        scheduling_path,
+                        workers_path,
+                    ]
+                ],
                 scan_evidence,
             ),
             "behavior_observed_values": [],

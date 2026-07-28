@@ -18,6 +18,7 @@ from ocr_platform.control.domains.common import POOL_SERVER_ID
 from ocr_platform.control.domains.jobs.commands import request_stop
 from ocr_platform.control.domains.manifests.commands import (
     claim_next_pending_shard,
+    claim_next_scan_unit,
     update_work_shard,
 )
 from ocr_platform.control.domains.workers.commands import (
@@ -28,6 +29,7 @@ from ocr_platform.control.domains.workers import core as workers_core
 from ocr_platform.control.models import (
     Job,
     Manifest,
+    ScanUnit,
     Server,
     ShardAttempt,
     WorkShard,
@@ -56,6 +58,15 @@ class PostgresShardCase:
     job_id: str
     server_ids: tuple[str, ...]
     shard_ids: tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class PostgresScanUnitCase:
+    session_factory: object
+    engine: object
+    job_id: str
+    server_ids: tuple[str, ...]
+    scan_unit_id: int
 
 
 def _set_timeouts(session) -> int:
@@ -199,6 +210,85 @@ def _cleanup_case(case: PostgresShardCase) -> None:
         case.engine.dispose()
 
 
+def _seed_scan_unit_case() -> PostgresScanUnitCase:
+    session_factory, engine = create_session_factory(POSTGRES_URL)
+    suffix = uuid.uuid4().hex
+    server_ids = tuple(f"pg-scan-{suffix}-{index}" for index in range(2))
+    job_id = str(uuid.uuid4())
+    with session_factory() as session:
+        _set_timeouts(session)
+        session.add_all(
+            [
+                Server(
+                    id=server_id,
+                    name=server_id,
+                    host="localhost",
+                    status="online",
+                    capabilities_json=json.dumps(
+                        {
+                            "shared_paths": [
+                                {
+                                    "path": "/shared",
+                                    "exists": True,
+                                    "is_dir": True,
+                                    "readable": True,
+                                    "writable": True,
+                                }
+                            ]
+                        }
+                    ),
+                    last_heartbeat_at=utcnow(),
+                )
+                for server_id in server_ids
+            ]
+        )
+        workers_core.ensure_pool_server(session)
+        session.add(
+            Job(
+                id=job_id,
+                input_dir="/shared/input",
+                output_dir="/shared/output",
+                engine="dotsocr",
+                input_mode="distributed_remote_folder_snapshot",
+                assigned_server_id=POOL_SERVER_ID,
+                status="running",
+                started_at=utcnow(),
+            )
+        )
+        unit = ScanUnit(
+            job_id=job_id,
+            path="/shared/input",
+            status="running",
+            assigned_server_id=server_ids[0],
+            attempt_count=1,
+            started_at=utcnow(),
+            lease_expires_at=utcnow() - timedelta(seconds=1),
+        )
+        session.add(unit)
+        session.commit()
+        scan_unit_id = unit.id
+    return PostgresScanUnitCase(
+        session_factory=session_factory,
+        engine=engine,
+        job_id=job_id,
+        server_ids=server_ids,
+        scan_unit_id=scan_unit_id,
+    )
+
+
+def _cleanup_scan_unit_case(case: PostgresScanUnitCase) -> None:
+    try:
+        with case.session_factory() as session:
+            _set_timeouts(session)
+            session.execute(delete(Job).where(Job.id == case.job_id))
+            session.execute(
+                delete(Server).where(Server.id.in_(case.server_ids))
+            )
+            session.commit()
+    finally:
+        case.engine.dispose()
+
+
 def _claim(case: PostgresShardCase, server_id: str):
     with case.session_factory() as session:
         _set_timeouts(session)
@@ -231,6 +321,111 @@ def _run_with_paused_commit(case, operation):
             return operation(session)
 
     return entered_commit, release_commit, primary
+
+
+def test_postgres_scan_unit_expiry_wins_against_busy_heartbeat():
+    case = _seed_scan_unit_case()
+
+    def reconcile_and_commit(session):
+        scheduling_core.reconcile_expired_scan_unit_leases(
+            session,
+            job_id=case.job_id,
+        )
+        session.commit()
+        return True
+
+    entered, release, primary = _run_with_paused_commit(
+        case,
+        reconcile_and_commit,
+    )
+    heartbeat_pid: list[int] = []
+    heartbeat_started = threading.Event()
+
+    def heartbeat():
+        with case.session_factory() as session:
+            heartbeat_pid.append(_set_timeouts(session))
+            heartbeat_started.set()
+            return heartbeat_server(
+                session,
+                case.server_ids[0],
+                ServerHeartbeatRequest(
+                    status="busy",
+                    current_job_id=case.job_id,
+                ),
+            ).id
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            expired = executor.submit(primary)
+            assert entered.wait(FUTURE_TIMEOUT_SECONDS)
+            heartbeated = executor.submit(heartbeat)
+            assert heartbeat_started.wait(FUTURE_TIMEOUT_SECONDS)
+            _wait_until_blocked(case.engine, heartbeat_pid[0])
+            release.set()
+            assert expired.result(timeout=FUTURE_TIMEOUT_SECONDS) is True
+            assert heartbeated.result(timeout=FUTURE_TIMEOUT_SECONDS)
+        with case.session_factory() as session:
+            _set_timeouts(session)
+            unit = session.get(ScanUnit, case.scan_unit_id)
+            assert unit.status == "stale"
+            assert unit.lease_expires_at is None
+            assert unit.failure_category == "lease_expired"
+    finally:
+        release.set()
+        _cleanup_scan_unit_case(case)
+
+
+def test_postgres_scan_unit_claim_reclaims_after_concurrent_expiry():
+    case = _seed_scan_unit_case()
+
+    def reconcile_and_commit(session):
+        scheduling_core.reconcile_expired_scan_unit_leases(
+            session,
+            job_id=case.job_id,
+        )
+        session.commit()
+        return True
+
+    entered, release, primary = _run_with_paused_commit(
+        case,
+        reconcile_and_commit,
+    )
+    claim_pid: list[int] = []
+    claim_started = threading.Event()
+
+    def claim():
+        with case.session_factory() as session:
+            claim_pid.append(_set_timeouts(session))
+            claim_started.set()
+            unit = claim_next_scan_unit(session, case.server_ids[1])
+            if unit is None:
+                return None
+            return unit.id, unit.attempt_count, unit.assigned_server_id
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            expired = executor.submit(primary)
+            assert entered.wait(FUTURE_TIMEOUT_SECONDS)
+            claimed = executor.submit(claim)
+            assert claim_started.wait(FUTURE_TIMEOUT_SECONDS)
+            _wait_until_blocked(case.engine, claim_pid[0])
+            release.set()
+            assert expired.result(timeout=FUTURE_TIMEOUT_SECONDS) is True
+            assert claimed.result(timeout=FUTURE_TIMEOUT_SECONDS) == (
+                case.scan_unit_id,
+                2,
+                case.server_ids[1],
+            )
+        with case.session_factory() as session:
+            _set_timeouts(session)
+            unit = session.get(ScanUnit, case.scan_unit_id)
+            assert unit.status == "running"
+            assert unit.attempt_count == 2
+            assert unit.assigned_server_id == case.server_ids[1]
+            assert unit.lease_expires_at is not None
+    finally:
+        release.set()
+        _cleanup_scan_unit_case(case)
 
 
 def test_postgres_two_pending_shards_claim_with_skip_locked():

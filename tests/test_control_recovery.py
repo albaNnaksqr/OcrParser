@@ -10,8 +10,10 @@ from ocr_platform.control.domains.manifests.commands import (
     claim_next_pending_shard,
 )
 from ocr_platform.control.domains.workers import core as workers_core
+from ocr_platform.control.domains.jobs import core as jobs_core
+from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
-from ocr_platform.control import service
+from ocr_platform.control import scheduling, service
 from sqlalchemy.dialects import postgresql
 
 
@@ -137,6 +139,58 @@ def test_public_reconcile_expired_shard_leases_keeps_none_return(tmp_path):
         session.commit()
     with session_factory() as session:
         assert session.get(WorkShard, claim["id"]).status == "stale"
+
+
+@pytest.mark.parametrize(
+    "reconcile",
+    [
+        scheduling.reconcile_expired_shard_leases,
+        jobs_core.reconcile_expired_shard_leases,
+        manifests_core.reconcile_expired_shard_leases,
+        workers_core.reconcile_expired_shard_leases,
+    ],
+)
+def test_all_public_shard_reconcile_paths_keep_none_return(
+    tmp_path,
+    reconcile,
+):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client, max_shard_attempts=2)
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job['id']}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+    with session_factory() as session:
+        assert reconcile(session, job_id=job["id"]) is None
+        session.commit()
+    with session_factory() as session:
+        assert session.get(WorkShard, claim["id"]).status == "stale"
+
+
+def test_private_shard_reconcile_keeps_internal_result(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = create_remote_shard_job(client, max_shard_attempts=2)
+    client.post("/api/agents/worker-a/next-job")
+    claim = client.post(
+        f"/api/jobs/{job['id']}/shards/claim?server_id=worker-a"
+    ).json()
+    with session_factory() as session:
+        shard = session.get(WorkShard, claim["id"])
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
+        session.commit()
+    with session_factory() as session:
+        result = scheduling._reconcile_expired_shard_leases(
+            session,
+            job_id=job["id"],
+        )
+        assert result.changed is True
+        assert result.exhausted_shard_ids == ()
 
 
 def test_expired_running_shard_at_attempt_cap_fails_without_reclaim(tmp_path):
@@ -693,6 +747,48 @@ def test_same_server_restart_prioritizes_orphaned_scan_unit(tmp_path):
         },
     )
     assert late.status_code == 409
+
+
+def test_expired_scan_unit_lease_is_not_revived_by_busy_heartbeat(tmp_path):
+    client, session_factory = make_client_with_session(tmp_path)
+    heartbeat_worker(client, "worker-a")
+    job = client.post(
+        "/api/jobs",
+        json={
+            "input_dir": "/shared/input",
+            "output_dir": "/shared/output",
+            "engine": "dotsocr",
+            "input_mode": "distributed_remote_folder_snapshot",
+            "manifest_root": "/shared/manifests",
+        },
+    ).json()
+    claimed = client.post(
+        "/api/scan-units/claim?server_id=worker-a"
+    ).json()
+    expired_at = utcnow() - timedelta(seconds=1)
+    with session_factory() as session:
+        unit = session.get(ScanUnit, claimed["id"])
+        unit.lease_expires_at = expired_at
+        session.commit()
+
+    response = heartbeat_worker(
+        client,
+        "worker-a",
+        status="busy",
+        current_job_id=job["id"],
+    )
+    assert response.status_code == 200
+    with session_factory() as session:
+        unit = session.get(ScanUnit, claimed["id"])
+        assert unit.status == "running"
+        assert unit.lease_expires_at == expired_at
+
+    reclaimed = client.post(
+        "/api/scan-units/claim?server_id=worker-a"
+    ).json()
+    assert reclaimed["id"] == claimed["id"]
+    assert reclaimed["status"] == "running"
+    assert reclaimed["attempt_count"] == 2
 
 
 def test_concurrent_shard_claims_do_not_duplicate_recovery_attempt(tmp_path):

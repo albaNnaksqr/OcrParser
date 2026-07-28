@@ -77,11 +77,11 @@ def list_servers(*args, **kwargs):
     return target(*args, **kwargs)
 
 def reconcile_expired_scan_unit_leases(*args, **kwargs):
-    from ..workers.core import reconcile_expired_scan_unit_leases as target
+    from ...scheduling import reconcile_expired_scan_unit_leases as target
     return target(*args, **kwargs)
 
 def reconcile_expired_shard_leases(*args, **kwargs):
-    from ..workers.core import reconcile_expired_shard_leases as target
+    from ...scheduling import reconcile_expired_shard_leases as target
     return target(*args, **kwargs)
 
 def _reconcile_expired_shard_leases(*args, **kwargs):
@@ -97,7 +97,7 @@ def _finalize_job_after_shard_change(*args, **kwargs):
     return target(*args, **kwargs)
 
 def scan_unit_lease_deadline(*args, **kwargs):
-    from ..workers.core import scan_unit_lease_deadline as target
+    from ...scheduling import scan_unit_lease_deadline as target
     return target(*args, **kwargs)
 
 def server_is_allowed_for_job(*args, **kwargs):
@@ -105,7 +105,7 @@ def server_is_allowed_for_job(*args, **kwargs):
     return target(*args, **kwargs)
 
 def shard_lease_deadline(*args, **kwargs):
-    from ..workers.core import shard_lease_deadline as target
+    from ...scheduling import shard_lease_deadline as target
     return target(*args, **kwargs)
 
 

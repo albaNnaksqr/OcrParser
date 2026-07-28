@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from .domains.common import (
     RECLAIMABLE_SHARD_STATUSES,
+    SHARD_LEASE_SECONDS,
     TERMINAL_JOB_STATUSES,
     TERMINAL_SHARD_STATUSES,
 )
@@ -25,6 +26,74 @@ _SHARD_LEASE_ATTEMPTS_EXHAUSTED_ERROR = (
 class _ShardLeaseReconcileResult:
     changed: bool = False
     exhausted_shard_ids: tuple[int, ...] = ()
+
+
+def shard_lease_deadline(now: datetime | None = None) -> datetime:
+    return (now or utcnow()) + timedelta(seconds=SHARD_LEASE_SECONDS)
+
+
+def scan_unit_lease_deadline(now: datetime | None = None) -> datetime:
+    return (now or utcnow()) + timedelta(seconds=SHARD_LEASE_SECONDS)
+
+
+def renew_running_shard_leases(
+    session: Session,
+    server_id: str,
+    *,
+    job_id: str,
+    now: datetime,
+) -> None:
+    session.execute(
+        update(WorkShard)
+        .where(WorkShard.assigned_server_id == server_id)
+        .where(WorkShard.job_id == job_id)
+        .where(WorkShard.status == "running")
+        .where(WorkShard.lease_expires_at.is_not(None))
+        .where(WorkShard.lease_expires_at > now)
+        .values(lease_expires_at=shard_lease_deadline(now))
+    )
+
+
+def renew_running_scan_unit_leases(
+    session: Session,
+    server_id: str,
+    *,
+    job_id: str,
+    now: datetime,
+) -> None:
+    session.execute(
+        update(ScanUnit)
+        .where(ScanUnit.assigned_server_id == server_id)
+        .where(ScanUnit.job_id == job_id)
+        .where(ScanUnit.status == "running")
+        .where(ScanUnit.lease_expires_at.is_not(None))
+        .where(ScanUnit.lease_expires_at > now)
+        .values(lease_expires_at=scan_unit_lease_deadline(now))
+    )
+
+
+def reconcile_expired_scan_unit_leases(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    job_id: str | None = None,
+) -> None:
+    current_time = now or utcnow()
+    stmt = (
+        update(ScanUnit)
+        .where(ScanUnit.status == "running")
+        .where(ScanUnit.lease_expires_at.is_not(None))
+        .where(ScanUnit.lease_expires_at <= current_time)
+        .values(
+            status="stale",
+            lease_expires_at=None,
+            failure_category="lease_expired",
+            error_message="scan unit lease expired",
+        )
+    )
+    if job_id is not None:
+        stmt = stmt.where(ScanUnit.job_id == job_id)
+    session.execute(stmt)
 
 
 def _expired_running_shard_filter(now: datetime):
@@ -259,6 +328,15 @@ def _reconcile_expired_shard_leases(
         changed=changed,
         exhausted_shard_ids=tuple(exhausted_shard_ids),
     )
+
+
+def reconcile_expired_shard_leases(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    job_id: str | None = None,
+) -> None:
+    _reconcile_expired_shard_leases(session, now=now, job_id=job_id)
 
 
 def _commit_reconciliation(session):

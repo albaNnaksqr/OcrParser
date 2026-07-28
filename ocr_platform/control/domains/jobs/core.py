@@ -95,11 +95,11 @@ def public_assigned_server_id(*args, **kwargs):
     return target(*args, **kwargs)
 
 def reconcile_expired_scan_unit_leases(*args, **kwargs):
-    from ..workers.core import reconcile_expired_scan_unit_leases as target
+    from ...scheduling import reconcile_expired_scan_unit_leases as target
     return target(*args, **kwargs)
 
 def reconcile_expired_shard_leases(*args, **kwargs):
-    from ..workers.core import reconcile_expired_shard_leases as target
+    from ...scheduling import reconcile_expired_shard_leases as target
     return target(*args, **kwargs)
 
 def stop_reclaimable_work_for_job(*args, **kwargs):

@@ -489,7 +489,8 @@
         ],
         "sources": [
           "ocr_platform/control/domains/manifests/core.py",
-          "ocr_platform/control/domains/workers/core.py"
+          "ocr_platform/control/domains/workers/core.py",
+          "ocr_platform/control/scheduling.py"
         ],
         "type": "ast_domain_transitions",
         "value_evidence": {
@@ -527,7 +528,7 @@
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/workers/core.py:255",
+              "source": "ocr_platform/control/scheduling.py:83",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],

@@ -22,8 +22,8 @@
       },
       {
         "source": "jobs",
-        "statement_count": 9,
-        "symbol_count": 9,
+        "statement_count": 7,
+        "symbol_count": 7,
         "target": "workers"
       },
       {
@@ -34,8 +34,8 @@
       },
       {
         "source": "manifests",
-        "statement_count": 10,
-        "symbol_count": 10,
+        "statement_count": 6,
+        "symbol_count": 6,
         "target": "workers"
       },
       {
@@ -51,7 +51,7 @@
         "target": "model_profiles"
       }
     ],
-    "lazy_wrapper_count": 37,
+    "lazy_wrapper_count": 31,
     "private_symbol_count": 17,
     "sites": [
       {
@@ -243,30 +243,6 @@
         "source": "ocr_platform/control/domains/jobs/core.py:94",
         "source_domain": "jobs",
         "symbol": "public_assigned_server_id",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "d164aca2fa0820f8adda6ba0a8697227df2ea0cf5553c16268a6214d470ff865",
-        "id": "ocr_platform.control.domains.jobs.core:reconcile_expired_scan_unit_leases:import[ocr_platform.control.domains.workers.core.reconcile_expired_scan_unit_leases as target]@d164aca2fa08:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:98",
-        "source_domain": "jobs",
-        "symbol": "reconcile_expired_scan_unit_leases",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "decc77a33596c271d619b8ce05030913aa6437f19005f9c3320225a3aa7287e2",
-        "id": "ocr_platform.control.domains.jobs.core:reconcile_expired_shard_leases:import[ocr_platform.control.domains.workers.core.reconcile_expired_shard_leases as target]@decc77a33596:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:102",
-        "source_domain": "jobs",
-        "symbol": "reconcile_expired_shard_leases",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
       },
@@ -464,42 +440,6 @@
       },
       {
         "alias": "target",
-        "fingerprint": "d164aca2fa0820f8adda6ba0a8697227df2ea0cf5553c16268a6214d470ff865",
-        "id": "ocr_platform.control.domains.manifests.core:reconcile_expired_scan_unit_leases:import[ocr_platform.control.domains.workers.core.reconcile_expired_scan_unit_leases as target]@d164aca2fa08:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/manifests/core.py:80",
-        "source_domain": "manifests",
-        "symbol": "reconcile_expired_scan_unit_leases",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "decc77a33596c271d619b8ce05030913aa6437f19005f9c3320225a3aa7287e2",
-        "id": "ocr_platform.control.domains.manifests.core:reconcile_expired_shard_leases:import[ocr_platform.control.domains.workers.core.reconcile_expired_shard_leases as target]@decc77a33596:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/manifests/core.py:84",
-        "source_domain": "manifests",
-        "symbol": "reconcile_expired_shard_leases",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "2005d392f9b6d95a9f9c788ffa9ade0c111a6228461edd2872a0e4a58e5a041a",
-        "id": "ocr_platform.control.domains.manifests.core:scan_unit_lease_deadline:import[ocr_platform.control.domains.workers.core.scan_unit_lease_deadline as target]@2005d392f9b6:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/manifests/core.py:100",
-        "source_domain": "manifests",
-        "symbol": "scan_unit_lease_deadline",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
         "fingerprint": "9c3701383b8f9bd5c05b12307b63aedbcf74abdba7d92f2215cb6637ea5771b9",
         "id": "ocr_platform.control.domains.manifests.core:server_is_allowed_for_job:import[ocr_platform.control.domains.workers.core.server_is_allowed_for_job as target]@9c3701383b8f:1",
         "lazy_wrapper": true,
@@ -507,18 +447,6 @@
         "source": "ocr_platform/control/domains/manifests/core.py:104",
         "source_domain": "manifests",
         "symbol": "server_is_allowed_for_job",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "44ebacf39a91336a63e81b849d6212d44b3003bf25cc022b1bd7d924c623b016",
-        "id": "ocr_platform.control.domains.manifests.core:shard_lease_deadline:import[ocr_platform.control.domains.workers.core.shard_lease_deadline as target]@44ebacf39a91:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/manifests/core.py:108",
-        "source_domain": "manifests",
-        "symbol": "shard_lease_deadline",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
       },
@@ -583,7 +511,7 @@
         "target_module": "ocr_platform.control.domains.manifests.core"
       }
     ],
-    "statement_count": 42,
+    "statement_count": 36,
     "statements": [
       {
         "fingerprint": "2d04069e84cddf5053f776cc0ffa11a0f2c0979007a9ad31b40d6a6a4a3d1c7f",
@@ -707,24 +635,6 @@
         "id": "ocr_platform.control.domains.jobs.core:public_assigned_server_id:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
         "source": "ocr_platform/control/domains/jobs/core.py:94",
-        "source_domain": "jobs",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:reconcile_expired_scan_unit_leases:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:98",
-        "source_domain": "jobs",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:reconcile_expired_shard_leases:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:102",
         "source_domain": "jobs",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
@@ -875,45 +785,9 @@
       },
       {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.manifests.core:reconcile_expired_scan_unit_leases:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:80",
-        "source_domain": "manifests",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.manifests.core:reconcile_expired_shard_leases:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:84",
-        "source_domain": "manifests",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.manifests.core:scan_unit_lease_deadline:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:100",
-        "source_domain": "manifests",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
         "id": "ocr_platform.control.domains.manifests.core:server_is_allowed_for_job:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
         "source": "ocr_platform/control/domains/manifests/core.py:104",
-        "source_domain": "manifests",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.manifests.core:shard_lease_deadline:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:108",
         "source_domain": "manifests",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
@@ -971,7 +845,7 @@
         "workers"
       ]
     ],
-    "symbol_count": 44
+    "symbol_count": 38
   },
   "decreasing_gate": {
     "deletions_allowed": true,
@@ -986,7 +860,7 @@
     "transactions": "commit/rollback/flush are counted only on the conventional session name, a Session-annotated parameter, or an assignment/closure alias of one"
   },
   "policy_external_status_writes": {
-    "count": 32,
+    "count": 31,
     "sites": [
       {
         "field": "status",
@@ -1187,21 +1061,21 @@
         "field": "status",
         "fingerprint": "3d1297ab3a96dc67efc350375e7f0b40a5f006f201716599010026bc575d6c91",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:sql_values[status<-44b64f7d7c54]@3d1297ab3a96:1",
-        "source": "ocr_platform/control/domains/workers/core.py:1005",
+        "source": "ocr_platform/control/domains/workers/core.py:991",
         "write_kind": "sql_values"
       },
       {
         "field": "status",
         "fingerprint": "ff0e7830cbd1e0864d741dd2d01617f963d1d39161ea1546ec591a33d3b9a14f",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:sql_values[status<-44b64f7d7c54]@ff0e7830cbd1:1",
-        "source": "ocr_platform/control/domains/workers/core.py:1052",
+        "source": "ocr_platform/control/domains/workers/core.py:1038",
         "write_kind": "sql_values"
       },
       {
         "field": "status",
         "fingerprint": "ff0e7830cbd1e0864d741dd2d01617f963d1d39161ea1546ec591a33d3b9a14f",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:sql_values[status<-44b64f7d7c54]@ff0e7830cbd1:2",
-        "source": "ocr_platform/control/domains/workers/core.py:1067",
+        "source": "ocr_platform/control/domains/workers/core.py:1053",
         "write_kind": "sql_values"
       },
       {
@@ -1211,13 +1085,6 @@
         "source": "ocr_platform/control/domains/workers/core.py:192",
         "target": "server.status",
         "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "87890b75bddc4a3d454d2fc789ba2c3fa594ea9af318de147151d055c5610d28",
-        "id": "ocr_platform.control.domains.workers.core:reconcile_expired_scan_unit_leases:sql_values[status<-8f39cdbe85f2]@87890b75bddc:1",
-        "source": "ocr_platform/control/domains/workers/core.py:248",
-        "write_kind": "sql_values"
       },
       {
         "field": "status",
@@ -1231,7 +1098,7 @@
         "field": "status",
         "fingerprint": "4fb86b9fa8182fc10508613b58e714ff67eb880c8f41b0f787b156badaa92e32",
         "id": "ocr_platform.control.domains.workers.core:stop_assigned_queued_jobs_for_server:attribute-write[job.status<-25013cd4f200]@4fb86b9fa818:1",
-        "source": "ocr_platform/control/domains/workers/core.py:341",
+        "source": "ocr_platform/control/domains/workers/core.py:327",
         "target": "job.status",
         "write_kind": "attribute_assignment"
       }
@@ -1478,43 +1345,43 @@
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:archive_server:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1096"
+        "source": "ocr_platform/control/domains/workers/core.py:1082"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1015"
+        "source": "ocr_platform/control/domains/workers/core.py:1001"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_job:session.rollback@44dbf1e505b5:1",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1012"
+        "source": "ocr_platform/control/domains/workers/core.py:998"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1061"
+        "source": "ocr_platform/control/domains/workers/core.py:1047"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.commit@809b98bd0ebc:2",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/workers/core.py:1076"
+        "source": "ocr_platform/control/domains/workers/core.py:1062"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.rollback@44dbf1e505b5:1",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1059"
+        "source": "ocr_platform/control/domains/workers/core.py:1045"
       },
       {
         "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
         "id": "ocr_platform.control.domains.workers.core:claim_next_pool_job:session.rollback@44dbf1e505b5:2",
         "operation": "rollback",
-        "source": "ocr_platform/control/domains/workers/core.py:1074"
+        "source": "ocr_platform/control/domains/workers/core.py:1060"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
@@ -1538,7 +1405,7 @@
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
         "id": "ocr_platform.control.domains.workers.core:stop_assigned_queued_jobs_for_server:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/workers/core.py:348"
+        "source": "ocr_platform/control/domains/workers/core.py:334"
       }
     ],
     "total": 44
