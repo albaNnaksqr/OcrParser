@@ -20,8 +20,8 @@ SHA_C = "sha256:" + "c" * 64
 UNSAFE_TEXT_VALUES = [
     "api_key=must-not-be-stored",
     "https://private.example/evidence",
-    "10.200.12.91",
-    "10.200.12.91:31180",
+    "192.0.2.91",
+    "192.0.2.91:31180",
     "2001:db8::1",
     "[fd00::1]:8080",
     "model.internal",
