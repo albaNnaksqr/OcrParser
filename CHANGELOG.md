@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## 0.3.3 - 2026-07-28
+
+- Enforced `max_shard_attempts` when a running shard lease expires: an
+  exhausted shard now fails on its configured final attempt instead of
+  creating an `N+1` attempt.
+- Preserved terminal-state monotonicity and stop precedence across lease
+  reconciliation, concurrent claims, and late worker replay. Repeated terminal
+  reconciliation remains idempotent and fenced by server and attempt.
+- Added PostgreSQL concurrency gates for claim, lease exhaustion, stop,
+  re-registration, heartbeat, and competing terminal updates.
+- Preserved the existing CLI, HTTP/OpenAPI, database schema and migration
+  history, manifest and output formats, and status vocabulary.
+
 ## 0.3.2 - 2026-07-27
 
 - Added migration `0020_model_profile_certification` and a matching optional
