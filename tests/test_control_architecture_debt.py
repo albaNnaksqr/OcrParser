@@ -230,11 +230,11 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
         "list_job_summaries",
         "list_job_summaries_page",
     }
-    assert writes["count"] == 31
+    assert writes["count"] == 27
     assert sum(
         site["write_kind"] == "attribute_assignment"
         for site in writes["sites"]
-    ) == 23
+    ) == 19
     assert sum(
         site["write_kind"] == "sql_values"
         for site in writes["sites"]
@@ -448,7 +448,7 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
         policy_root
     )
     control_architecture_debt.validate_decreasing(policy_actual, baseline)
-    assert policy_actual["policy_external_status_writes"]["count"] == 30
+    assert policy_actual["policy_external_status_writes"]["count"] == 26
 
     duplicate_root = _copy_domains(tmp_path / "duplicate")
     duplicate_core = (
@@ -484,7 +484,7 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
         duplicate_actual,
         baseline,
     )
-    assert duplicate_actual["policy_external_status_writes"]["count"] == 30
+    assert duplicate_actual["policy_external_status_writes"]["count"] == 26
 
 
 def test_line_number_changes_are_evidence_only(tmp_path: Path) -> None:
@@ -597,7 +597,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
         bulk_root
     )
     assert bulk_actual["query_mutations"]["direct_dml_count"] == 1
-    assert bulk_actual["policy_external_status_writes"]["count"] == 32
+    assert bulk_actual["policy_external_status_writes"]["count"] == 28
     with pytest.raises(ValueError, match="direct_dml_sites"):
         control_architecture_debt.validate_decreasing(
             bulk_actual,
@@ -654,7 +654,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
         core_root
     )
     assert core_actual["query_mutations"]["direct_dml_count"] == 0
-    assert core_actual["policy_external_status_writes"]["count"] == 32
+    assert core_actual["policy_external_status_writes"]["count"] == 28
 
 
 def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
@@ -727,7 +727,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
     status_actual = control_architecture_debt.build_architecture_debt(
         status_root
     )
-    assert status_actual["policy_external_status_writes"]["count"] == 33
+    assert status_actual["policy_external_status_writes"]["count"] == 29
     with pytest.raises(
         ValueError,
         match="policy_external_status_writes.sites",
@@ -826,7 +826,7 @@ def test_semantic_query_analysis_uses_the_shared_mutation_sinks(
     actual = control_architecture_debt.build_architecture_debt(root)
 
     assert actual["query_mutations"]["semantic_allowlist_count"] == 4
-    assert actual["policy_external_status_writes"]["count"] == 35
+    assert actual["policy_external_status_writes"]["count"] == 31
     with pytest.raises(
         ValueError,
         match="semantic_allowlist_sites",
@@ -942,7 +942,7 @@ def test_false_positive_exclusions_for_constructor_and_unrelated_flush(
 def hidden_bulk_update(session):
     session.bulk_update_mappings(Job, [{"status": "failed"}])
 """,
-            32,
+            28,
         ),
         (
             "bulk-save",
@@ -950,7 +950,7 @@ def hidden_bulk_update(session):
 def hidden_bulk_save(session):
     session.bulk_save_objects([Job(status="failed")])
 """,
-            32,
+            28,
         ),
         (
             "scalar-returning",
@@ -961,7 +961,7 @@ def hidden_scalar(session):
         local_update(Job).values(label="changed").returning(Job)
     )
 """,
-            31,
+            27,
         ),
         (
             "module-alias-returning",
@@ -970,7 +970,7 @@ def hidden_module_alias(session):
     import sqlalchemy as sa
     session.scalar(sa.update(Job).values(label="changed").returning(Job))
 """,
-            31,
+            27,
         ),
     ],
 )
@@ -1032,7 +1032,7 @@ def hidden_attribute_mutation(job, now):
     actual = control_architecture_debt.build_architecture_debt(root)
 
     assert actual["query_mutations"]["direct_dml_count"] == 2
-    assert actual["policy_external_status_writes"]["count"] == 31
+    assert actual["policy_external_status_writes"]["count"] == 27
     with pytest.raises(ValueError, match="direct_dml_sites"):
         control_architecture_debt.validate_decreasing(
             actual,

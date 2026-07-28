@@ -828,6 +828,7 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         / "core.py"
     )
     commands_path = core_path.with_name("commands.py")
+    ports_path = core_path.with_name("ports.py")
     scheduling_path = (
         ROOT / "ocr_platform" / "control" / "scheduling.py"
     )
@@ -892,17 +893,43 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     }
     assert session_calls(core_path, "complete_scan_unit") == {}
     assert session_calls(core_path, "_complete_scan_unit") == {
-        "execute": 2,
         "flush": 1,
     }
+    assert session_calls(
+        scheduling_path,
+        "_lock_scan_unit_for_transition",
+    ) == {"execute": 1}
+    assert session_calls(
+        ports_path,
+        "lock_manifest_for_scan_unit_completion",
+    ) == {"execute": 1}
+    assert session_calls(
+        ports_path,
+        "materialize_scan_unit_completion",
+    ) == {}
+    assert session_calls(
+        ports_path,
+        "existing_scan_unit_paths",
+    ) == {"execute": 1}
+    assert session_calls(
+        ports_path,
+        "next_manifest_shard_index",
+    ) == {"execute": 2}
+    assert session_calls(
+        ports_path,
+        "freeze_manifest_if_scan_complete",
+    ) == {"execute": 2}
     assert session_calls(commands_path, "fail_scan_unit") == {
         "begin": 1,
     }
     assert session_calls(core_path, "fail_scan_unit") == {}
     assert session_calls(core_path, "_fail_scan_unit") == {
-        "execute": 3,
         "flush": 1,
     }
+    assert session_calls(
+        ports_path,
+        "fail_manifest_if_scan_complete",
+    ) == {"execute": 2}
     assert session_calls(
         core_path,
         "claim_worker_manifest_integrity_check",

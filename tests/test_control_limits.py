@@ -1500,11 +1500,9 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
         "complete_scan_unit": {},
         "_complete_scan_unit": {
             "flush": 1,
-            "add": 2,
-            "execute": 2,
         },
         "_build_manifest_freeze_report": {"execute": 1},
-        "freeze_manifest_if_scan_complete": {"execute": 2},
+        "freeze_manifest_if_scan_complete": {},
         "get_manifest_freeze_report": {"execute": 1},
         "complete_worker_manifest_integrity_check": {
             "get": 1,

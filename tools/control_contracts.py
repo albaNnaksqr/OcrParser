@@ -3672,6 +3672,14 @@ def build_status_contract() -> dict[str, Any]:
     manifests_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "manifests" / "core.py"
     )
+    manifests_policy_path = (
+        ROOT
+        / "ocr_platform"
+        / "control"
+        / "domains"
+        / "manifests"
+        / "policy.py"
+    )
     workers_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "workers" / "core.py"
     )
@@ -3743,7 +3751,7 @@ def build_status_contract() -> dict[str, Any]:
         instance_field=("unit", "status"),
     )
     manifest_evidence = _status_transition_evidence(
-        [manifests_path],
+        [manifests_path, manifests_policy_path],
         constructor="Manifest",
         instance_field=("manifest", "status"),
     )
@@ -3892,6 +3900,7 @@ def build_status_contract() -> dict[str, Any]:
         "derived_response_projection",
         [
             str(manifests_path.relative_to(ROOT)),
+            str(manifests_policy_path.relative_to(ROOT)),
             *freeze_projection_sources,
         ],
         freeze_evidence,

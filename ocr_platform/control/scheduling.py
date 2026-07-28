@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from .domains.common import (
     RECLAIMABLE_SHARD_STATUSES,
+    ScanUnitAttemptConflictError,
     SHARD_LEASE_SECONDS,
     TERMINAL_JOB_STATUSES,
     TERMINAL_SHARD_STATUSES,
@@ -26,6 +27,148 @@ _SHARD_LEASE_ATTEMPTS_EXHAUSTED_ERROR = (
 class _ShardLeaseReconcileResult:
     changed: bool = False
     exhausted_shard_ids: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
+class ScanUnitTransitionPlan:
+    unit: ScanUnit
+    should_apply: bool
+
+
+def _scan_unit_transition_plan(
+    unit: ScanUnit,
+    *,
+    assigned_server_id: str | None,
+    attempt_count: int | None,
+    terminal_status: str,
+    operation: str,
+) -> ScanUnitTransitionPlan:
+    if (
+        assigned_server_id is not None
+        and assigned_server_id != unit.assigned_server_id
+    ):
+        raise ScanUnitAttemptConflictError(
+            f"scan unit {operation} belongs to a different server attempt"
+        )
+    if attempt_count is not None and attempt_count != unit.attempt_count:
+        raise ScanUnitAttemptConflictError(
+            f"scan unit {operation} belongs to a stale attempt"
+        )
+    if unit.status == terminal_status:
+        return ScanUnitTransitionPlan(unit=unit, should_apply=False)
+    if unit.status != "running":
+        raise ScanUnitAttemptConflictError(
+            f"scan unit is not running: {unit.status}"
+        )
+    return ScanUnitTransitionPlan(unit=unit, should_apply=True)
+
+
+def _lock_scan_unit_for_transition(
+    session: Session,
+    scan_unit_id: int,
+) -> ScanUnit:
+    unit = session.execute(
+        select(ScanUnit)
+        .where(ScanUnit.id == scan_unit_id)
+        .with_for_update()
+    ).scalar_one_or_none()
+    if unit is None:
+        raise ValueError(f"unknown scan unit: {scan_unit_id}")
+    return unit
+
+
+def plan_scan_unit_completion(
+    session: Session,
+    scan_unit_id: int,
+    *,
+    assigned_server_id: str | None,
+    attempt_count: int | None,
+) -> ScanUnitTransitionPlan:
+    return _scan_unit_transition_plan(
+        _lock_scan_unit_for_transition(session, scan_unit_id),
+        assigned_server_id=assigned_server_id,
+        attempt_count=attempt_count,
+        terminal_status="succeeded",
+        operation="completion",
+    )
+
+
+def apply_scan_unit_completion(
+    plan: ScanUnitTransitionPlan,
+    *,
+    manifest_path: str | None,
+    meta_path: str | None,
+    file_count: int,
+    total_bytes: int,
+    finished_at: datetime,
+) -> ScanUnit:
+    unit = plan.unit
+    if not plan.should_apply:
+        return unit
+    unit.status = "succeeded"
+    unit.manifest_path = manifest_path
+    unit.meta_path = meta_path
+    unit.file_count = file_count
+    unit.total_bytes = total_bytes
+    unit.finished_at = finished_at
+    unit.lease_expires_at = None
+    return unit
+
+
+def plan_scan_unit_failure(
+    session: Session,
+    scan_unit_id: int,
+    *,
+    assigned_server_id: str | None,
+    attempt_count: int | None,
+) -> ScanUnitTransitionPlan:
+    return _scan_unit_transition_plan(
+        _lock_scan_unit_for_transition(session, scan_unit_id),
+        assigned_server_id=assigned_server_id,
+        attempt_count=attempt_count,
+        terminal_status="failed",
+        operation="failure",
+    )
+
+
+def apply_scan_unit_failure(
+    plan: ScanUnitTransitionPlan,
+    *,
+    failure_category: str | None,
+    error_message: str,
+    finished_at: datetime,
+) -> ScanUnit:
+    unit = plan.unit
+    if not plan.should_apply:
+        return unit
+    unit.status = "failed"
+    unit.failure_category = failure_category
+    unit.error_message = error_message
+    unit.finished_at = finished_at
+    unit.lease_expires_at = None
+    return unit
+
+
+def new_pending_scan_unit(*, job_id: str, path: str) -> ScanUnit:
+    return ScanUnit(job_id=job_id, path=path, status="pending")
+
+
+def new_pending_work_shard(
+    *,
+    job_id: str,
+    manifest_id: int,
+    shard_index: int,
+    shard_path: str,
+    file_count: int,
+) -> WorkShard:
+    return WorkShard(
+        job_id=job_id,
+        manifest_id=manifest_id,
+        shard_index=shard_index,
+        shard_path=shard_path,
+        status="pending",
+        file_count=file_count,
+    )
 
 
 def shard_lease_deadline(now: datetime | None = None) -> datetime:

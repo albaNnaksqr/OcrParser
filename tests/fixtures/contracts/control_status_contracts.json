@@ -128,7 +128,7 @@
           "failed": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:604",
+              "source": "ocr_platform/control/domains/manifests/policy.py:21",
               "symbol": "manifest.status"
             }
           ],
@@ -145,7 +145,7 @@
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:930",
+              "source": "ocr_platform/control/domains/manifests/policy.py:13",
               "symbol": "manifest.status"
             }
           ],
@@ -183,28 +183,28 @@
           "failed": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1207",
+              "source": "ocr_platform/control/domains/manifests/core.py:1128",
               "symbol": "manifest.worker_integrity_status"
             }
           ],
           "ok": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1207",
+              "source": "ocr_platform/control/domains/manifests/core.py:1128",
               "symbol": "manifest.worker_integrity_status"
             }
           ],
           "pending": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1127",
+              "source": "ocr_platform/control/domains/manifests/core.py:1048",
               "symbol": "manifest.worker_integrity_status"
             }
           ],
           "running": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1162",
+              "source": "ocr_platform/control/domains/manifests/core.py:1083",
               "symbol": "manifest.worker_integrity_status"
             }
           ]
@@ -234,8 +234,8 @@
           "keyword": "status",
           "kind": "ast_constructor_keyword",
           "matches": [
-            "ocr_platform/control/domains/manifests/core.py:992",
-            "ocr_platform/control/domains/manifests/core.py:999"
+            "ocr_platform/control/domains/manifests/core.py:913",
+            "ocr_platform/control/domains/manifests/core.py:920"
           ],
           "projected_values": [
             "failed",
@@ -246,32 +246,33 @@
         },
         "sources": [
           "ocr_platform/control/domains/manifests/core.py",
-          "ocr_platform/control/domains/manifests/core.py:992",
-          "ocr_platform/control/domains/manifests/core.py:999"
+          "ocr_platform/control/domains/manifests/core.py:913",
+          "ocr_platform/control/domains/manifests/core.py:920",
+          "ocr_platform/control/domains/manifests/policy.py"
         ],
         "type": "derived_response_projection",
         "value_evidence": {
           "failed": [
             {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:913",
+              "symbol": "status=manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:920",
+              "symbol": "status=manifest.status"
+            },
+            {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:604",
+              "source": "ocr_platform/control/domains/manifests/policy.py:21",
               "symbol": "manifest.status"
-            },
-            {
-              "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:992",
-              "symbol": "status=manifest.status"
-            },
-            {
-              "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:999",
-              "symbol": "status=manifest.status"
             }
           ],
           "missing_manifest": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:960",
+              "source": "ocr_platform/control/domains/manifests/core.py:881",
               "symbol": "ManifestFreezeReportResponse(status=...)"
             }
           ],
@@ -287,19 +288,19 @@
               "symbol": "Manifest(status=...)"
             },
             {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:913",
+              "symbol": "status=manifest.status"
+            },
+            {
+              "kind": "response_projection",
+              "source": "ocr_platform/control/domains/manifests/core.py:920",
+              "symbol": "status=manifest.status"
+            },
+            {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:930",
+              "source": "ocr_platform/control/domains/manifests/policy.py:13",
               "symbol": "manifest.status"
-            },
-            {
-              "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:992",
-              "symbol": "status=manifest.status"
-            },
-            {
-              "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:999",
-              "symbol": "status=manifest.status"
             }
           ],
           "scanning": [
@@ -310,12 +311,12 @@
             },
             {
               "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:992",
+              "source": "ocr_platform/control/domains/manifests/core.py:913",
               "symbol": "status=manifest.status"
             },
             {
               "kind": "response_projection",
-              "source": "ocr_platform/control/domains/manifests/core.py:999",
+              "source": "ocr_platform/control/domains/manifests/core.py:920",
               "symbol": "status=manifest.status"
             }
           ]
@@ -344,28 +345,28 @@
         "failed": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/core.py:1886",
+            "source": "ocr_platform/control/domains/manifests/core.py:1807",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "missing_manifest": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/core.py:1255",
+            "source": "ocr_platform/control/domains/manifests/core.py:1176",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "not_accessible_from_control": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/core.py:1376",
+            "source": "ocr_platform/control/domains/manifests/core.py:1297",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "ok": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/core.py:1886",
+            "source": "ocr_platform/control/domains/manifests/core.py:1807",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ]
@@ -497,7 +498,7 @@
           "failed": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:584",
+              "source": "ocr_platform/control/scheduling.py:144",
               "symbol": "unit.status"
             }
           ],
@@ -509,7 +510,7 @@
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:520",
+              "source": "ocr_platform/control/scheduling.py:153",
               "symbol": "ScanUnit(status=...)"
             }
           ],
@@ -528,21 +529,21 @@
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/scheduling.py:83",
+              "source": "ocr_platform/control/scheduling.py:226",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],
           "stopped": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1992",
+              "source": "ocr_platform/control/domains/manifests/core.py:1913",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],
           "succeeded": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:508",
+              "source": "ocr_platform/control/scheduling.py:108",
               "symbol": "unit.status"
             }
           ]
@@ -591,13 +592,13 @@
           "expected_count": 1,
           "kind": "ast_attribute_assignment",
           "matches": [
-            "ocr_platform/control/domains/manifests/core.py:2280"
+            "ocr_platform/control/domains/manifests/core.py:2201"
           ],
           "source": "shard.status",
           "target": "attempt.status"
         },
         "sources": [
-          "ocr_platform/control/domains/manifests/core.py:2280",
+          "ocr_platform/control/domains/manifests/core.py:2201",
           "ocr_platform/control/schemas.py:214"
         ],
         "type": "derived_domain_transition",
@@ -610,7 +611,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -622,7 +623,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -634,7 +635,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -646,7 +647,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -658,7 +659,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -670,7 +671,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2280",
+              "source": "ocr_platform/control/domains/manifests/core.py:2201",
               "symbol": "attempt.status = shard.status"
             }
           ]

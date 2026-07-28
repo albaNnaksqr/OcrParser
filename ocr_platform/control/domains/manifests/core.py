@@ -418,42 +418,19 @@ def _next_manifest_shard_index(
     manifest: Manifest,
     shard_count: int,
 ) -> int:
-    stored_next = max(int(manifest.next_shard_index or 1), 1)
-    if shard_count <= 0:
-        return stored_next
-    conflicting_index = session.execute(
-        select(WorkShard.shard_index)
-        .where(WorkShard.manifest_id == manifest.id)
-        .where(WorkShard.shard_index >= stored_next)
-        .where(WorkShard.shard_index < stored_next + shard_count)
-        .limit(1)
-    ).scalar_one_or_none()
-    if conflicting_index is None:
-        return stored_next
+    from .ports import next_manifest_shard_index as target
 
-    existing_max = session.execute(
-        select(func.max(WorkShard.shard_index)).where(WorkShard.manifest_id == manifest.id)
-    ).scalar_one()
-    return max(stored_next, int(existing_max or 0) + 1)
+    return target(session, manifest, shard_count)
 
 def _manifest_for_scan_unit_completion_select(job_id: str):
-    return (
-        select(Manifest)
-        .where(Manifest.job_id == job_id)
-        .order_by(Manifest.id.asc())
-        .limit(1)
-        .with_for_update()
-    )
+    from .ports import manifest_for_scan_unit_completion_select as target
+
+    return target(job_id)
 
 def _existing_scan_unit_paths(session: Session, job_id: str, paths: list[str]) -> set[str]:
-    if not paths:
-        return set()
-    rows = session.execute(
-        select(ScanUnit.path)
-        .where(ScanUnit.job_id == job_id)
-        .where(ScanUnit.path.in_(paths))
-    ).scalars().all()
-    return {str(path) for path in rows}
+    from .ports import existing_scan_unit_paths as target
+
+    return target(session, job_id, paths)
 
 def complete_scan_unit(
     session: Session,
@@ -479,60 +456,42 @@ def _complete_scan_unit(
     *,
     limits: __ControlLimits | None = None,
 ) -> ScanUnit:
+    from ... import scheduling as scheduling_policy
+    from . import ports as manifest_ports
+
     control_limits = (
         limits if limits is not None else __legacy_control_limits()
     )
-    unit = session.execute(
-        select(ScanUnit)
-        .where(ScanUnit.id == scan_unit_id)
-        .with_for_update()
-    ).scalar_one_or_none()
-    if unit is None:
-        raise ValueError(f"unknown scan unit: {scan_unit_id}")
-    if request.assigned_server_id is not None and request.assigned_server_id != unit.assigned_server_id:
-        raise ScanUnitAttemptConflictError(
-            "scan unit completion belongs to a different server attempt"
-        )
-    if request.attempt_count is not None and request.attempt_count != unit.attempt_count:
-        raise ScanUnitAttemptConflictError(
-            "scan unit completion belongs to a stale attempt"
-        )
-    if unit.status == "succeeded":
-        return unit
-    if unit.status != "running":
-        raise ScanUnitAttemptConflictError(
-            f"scan unit is not running: {unit.status}"
-        )
-    job = get_job_or_raise(session, unit.job_id)
-    manifest = session.execute(_manifest_for_scan_unit_completion_select(job.id)).scalar_one()
-    unit.status = "succeeded"
-    unit.manifest_path = request.manifest_path
-    unit.meta_path = request.meta_path
-    unit.file_count = request.file_count
-    unit.total_bytes = request.total_bytes
-    unit.finished_at = utcnow()
-    unit.lease_expires_at = None
-    child_paths = list(dict.fromkeys(request.child_paths))
-    existing_child_paths = _existing_scan_unit_paths(session, job.id, child_paths)
-    for child_path in child_paths:
-        if child_path in existing_child_paths:
-            continue
-        session.add(ScanUnit(job_id=job.id, path=child_path, status="pending"))
-    next_shard_index = _next_manifest_shard_index(session, manifest, len(request.shards))
-    for offset, shard in enumerate(request.shards, start=1):
-        session.add(
-            WorkShard(
-                job_id=job.id,
-                manifest_id=manifest.id,
-                shard_index=next_shard_index + offset - 1,
-                shard_path=shard.shard_path,
-                status="pending",
-                file_count=shard.file_count,
-            )
-        )
-    manifest.next_shard_index = next_shard_index + len(request.shards)
-    manifest.file_count = int(manifest.file_count or 0) + request.file_count
-    manifest.total_bytes = int(manifest.total_bytes or 0) + request.total_bytes
+    plan = scheduling_policy.plan_scan_unit_completion(
+        session,
+        scan_unit_id,
+        assigned_server_id=request.assigned_server_id,
+        attempt_count=request.attempt_count,
+    )
+    if not plan.should_apply:
+        return plan.unit
+    job = get_job_or_raise(session, plan.unit.job_id)
+    manifest = manifest_ports.lock_manifest_for_scan_unit_completion(
+        session,
+        job.id,
+    )
+    unit = scheduling_policy.apply_scan_unit_completion(
+        plan,
+        manifest_path=request.manifest_path,
+        meta_path=request.meta_path,
+        file_count=request.file_count,
+        total_bytes=request.total_bytes,
+        finished_at=utcnow(),
+    )
+    manifest_ports.materialize_scan_unit_completion(
+        session,
+        job_id=job.id,
+        manifest=manifest,
+        child_paths=request.child_paths,
+        shards=request.shards,
+        file_count=request.file_count,
+        total_bytes=request.total_bytes,
+    )
     session.flush()
     freeze_manifest_if_scan_complete(
         session,
@@ -558,50 +517,27 @@ def _fail_scan_unit(
     scan_unit_id: int,
     request: ScanUnitFailRequest,
 ) -> ScanUnit:
-    unit = session.execute(
-        select(ScanUnit)
-        .where(ScanUnit.id == scan_unit_id)
-        .with_for_update()
-    ).scalar_one_or_none()
-    if unit is None:
-        raise ValueError(f"unknown scan unit: {scan_unit_id}")
-    if request.assigned_server_id is not None and request.assigned_server_id != unit.assigned_server_id:
-        raise ScanUnitAttemptConflictError(
-            "scan unit failure belongs to a different server attempt"
-        )
-    if request.attempt_count is not None and request.attempt_count != unit.attempt_count:
-        raise ScanUnitAttemptConflictError(
-            "scan unit failure belongs to a stale attempt"
-        )
-    if unit.status == "failed":
-        return unit
-    if unit.status != "running":
-        raise ScanUnitAttemptConflictError(
-            f"scan unit is not running: {unit.status}"
-        )
-    job = get_job_or_raise(session, unit.job_id)
-    now = utcnow()
-    unit.status = "failed"
-    unit.failure_category = _scan_unit_failure_category(request)
-    unit.error_message = request.error_message
-    unit.finished_at = now
-    unit.lease_expires_at = None
-    session.flush()
+    from ... import scheduling as scheduling_policy
+    from . import ports as manifest_ports
 
-    active_units = session.execute(
-        select(func.count(ScanUnit.id))
-        .where(ScanUnit.job_id == job.id)
-        .where(ScanUnit.status.in_({"pending", "running", "stale"}))
-    ).scalar_one()
-    if int(active_units or 0) == 0:
-        manifest = session.execute(
-            select(Manifest)
-            .where(Manifest.job_id == job.id)
-            .order_by(Manifest.id.asc())
-            .limit(1)
-        ).scalar_one_or_none()
-        if manifest is not None:
-            manifest.status = "failed"
+    plan = scheduling_policy.plan_scan_unit_failure(
+        session,
+        scan_unit_id,
+        assigned_server_id=request.assigned_server_id,
+        attempt_count=request.attempt_count,
+    )
+    if not plan.should_apply:
+        return plan.unit
+    job = get_job_or_raise(session, plan.unit.job_id)
+    now = utcnow()
+    unit = scheduling_policy.apply_scan_unit_failure(
+        plan,
+        failure_category=_scan_unit_failure_category(request),
+        error_message=request.error_message,
+        finished_at=now,
+    )
+    session.flush()
+    manifest_ports.fail_manifest_if_scan_complete(session, job.id)
     return unit
 
 def _normalized_shard_status_filter(status: str | None) -> str:
@@ -912,33 +848,18 @@ def freeze_manifest_if_scan_complete(
     *,
     limits: __ControlLimits | None = None,
 ) -> None:
+    from .ports import freeze_manifest_if_scan_complete as target
+
     control_limits = (
         limits if limits is not None else __legacy_control_limits()
     )
-    active_units = session.execute(
-        select(func.count(ScanUnit.id))
-        .where(ScanUnit.job_id == job.id)
-        .where(ScanUnit.status.in_({"pending", "running", "stale"}))
-    ).scalar_one()
-    failed_units = session.execute(
-        select(func.count(ScanUnit.id))
-        .where(ScanUnit.job_id == job.id)
-        .where(ScanUnit.status == "failed")
-    ).scalar_one()
-    if int(active_units or 0) != 0 or int(failed_units or 0) != 0:
-        return
-    manifest.status = "ready"
-    if manifest.frozen_at is None:
-        manifest.frozen_at = utcnow()
-        report = _build_manifest_freeze_report(
-            session,
-            job,
-            manifest,
-            limits=control_limits,
-        )
-        report["frozen"] = True
-        report["frozen_at"] = manifest.frozen_at.isoformat()
-        manifest.freeze_report_json = json_dumps(report)
+    target(
+        session,
+        job,
+        manifest,
+        limits=control_limits,
+        build_report=_build_manifest_freeze_report,
+    )
 
 def get_manifest_freeze_report(
     session: Session,
