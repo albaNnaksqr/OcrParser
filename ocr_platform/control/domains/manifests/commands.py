@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select as _select
 from sqlalchemy.orm import Session as _Session
 
+from ... import scheduling as _scheduling
 from ...limits import ControlLimits as _ControlLimits
 from ...models import Manifest as _Manifest
 from ...models import ScanUnit as _ScanUnit
@@ -235,10 +236,30 @@ def update_work_shard(
     session.expire_on_commit = False
     try:
         with session.begin():
-            shard = _core._update_work_shard(
+            snapshot = _scheduling.get_work_shard_update_snapshot(
                 session,
                 shard_id,
-                request,
+            )
+            job = None
+            if _scheduling.work_shard_update_requires_job_lock(
+                requested_status=request.status,
+                observed_status=snapshot.status,
+            ):
+                job = _scheduling._lock_job_for_shard_change(
+                    session,
+                    snapshot.job_id,
+                )
+                if job is None:
+                    raise ValueError(f"unknown shard: {shard_id}")
+            shard = _scheduling.lock_work_shard_for_update(
+                session,
+                shard_id,
+            )
+            shard = _scheduling.apply_work_shard_update(
+                session,
+                shard=shard,
+                job=job,
+                request=request,
             )
     finally:
         session.expire_on_commit = previous_expire_on_commit

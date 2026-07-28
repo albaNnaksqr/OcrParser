@@ -953,8 +953,8 @@ def test_update_shard_attempt_lookup_failure_rolls_back_shard_fields(
         raise RuntimeError("injected attempt lookup failure")
 
     monkeypatch.setattr(
-        core,
-        "_latest_shard_attempt",
+        scheduling,
+        "_latest_current_shard_attempt",
         fail_attempt_lookup,
     )
 
@@ -1015,14 +1015,14 @@ def test_update_shard_finalization_failure_rolls_back_all_models(
         session_factory,
         max_attempts=1,
     )
-    original_finalize = core._finalize_job_after_shard_change
+    original_finalize = scheduling._finalize_job_after_shard_change
 
     def fail_after_finalization(*args, **kwargs):
         original_finalize(*args, **kwargs)
         raise RuntimeError("injected finalization failure")
 
     monkeypatch.setattr(
-        core,
+        scheduling,
         "_finalize_job_after_shard_change",
         fail_after_finalization,
     )
@@ -2242,27 +2242,96 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "begin": 1,
     }
     assert session_calls(core_path, "update_work_shard") == {}
-    assert session_calls(core_path, "_update_work_shard") == {
-        "execute": 2,
+    assert session_calls(
+        scheduling_path,
+        "get_work_shard_update_snapshot",
+    ) == {
+        "execute": 1,
+    }
+    assert session_calls(
+        scheduling_path,
+        "_lock_job_for_shard_change",
+    ) == {
+        "execute": 1,
+    }
+    assert session_calls(
+        scheduling_path,
+        "lock_work_shard_for_update",
+    ) == {
+        "execute": 1,
+    }
+    assert session_calls(
+        scheduling_path,
+        "_latest_current_shard_attempt",
+    ) == {
+        "execute": 1,
     }
     core_source = core_path.read_text(encoding="utf-8")
     core_tree = ast.parse(core_source)
-    update_leaf = next(
+    assert not any(
         node
         for node in core_tree.body
         if isinstance(node, ast.FunctionDef)
         and node.name == "_update_work_shard"
     )
-    update_source = ast.get_source_segment(core_source, update_leaf)
-    assert update_source.index("shard_snapshot = session.execute(") < (
-        update_source.index("job = _lock_job_for_shard_change(")
+
+    commands_source = commands_path.read_text(encoding="utf-8")
+    commands_tree = ast.parse(commands_source)
+    update_command = next(
+        node
+        for node in commands_tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "update_work_shard"
     )
-    assert update_source.index("job = _lock_job_for_shard_change(") < (
-        update_source.index("shard = session.execute(")
+    update_command_source = ast.get_source_segment(
+        commands_source,
+        update_command,
     )
-    assert update_source.index("request.assigned_server_id") < (
-        update_source.index("if shard.status in TERMINAL_SHARD_STATUSES:")
+    assert update_command_source.index(
+        "_scheduling.get_work_shard_update_snapshot("
+    ) < update_command_source.index(
+        "_scheduling._lock_job_for_shard_change("
     )
-    assert update_source.index("request.attempt_count") < (
-        update_source.index("if shard.status in TERMINAL_SHARD_STATUSES:")
+    assert update_command_source.index(
+        "_scheduling._lock_job_for_shard_change("
+    ) < update_command_source.index(
+        "_scheduling.lock_work_shard_for_update("
     )
+    assert update_command_source.index(
+        "_scheduling.lock_work_shard_for_update("
+    ) < update_command_source.index(
+        "_scheduling.apply_work_shard_update("
+    )
+    assert "shard.status =" not in update_command_source
+    assert "attempt.status =" not in update_command_source
+
+    scheduling_source = scheduling_path.read_text(encoding="utf-8")
+    scheduling_tree = ast.parse(scheduling_source)
+    update_policy = next(
+        node
+        for node in scheduling_tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "apply_work_shard_update"
+    )
+    update_policy_source = ast.get_source_segment(
+        scheduling_source,
+        update_policy,
+    )
+    terminal_guard = (
+        "if shard.status in TERMINAL_SHARD_STATUSES:"
+    )
+    retrying_guard = 'shard.status in {"retrying", "stale"}'
+    assert update_policy_source.index(
+        "request.assigned_server_id"
+    ) < update_policy_source.index(terminal_guard)
+    assert update_policy_source.index(
+        "request.attempt_count"
+    ) < update_policy_source.index(terminal_guard)
+    assert update_policy_source.index(terminal_guard) < (
+        update_policy_source.index(retrying_guard)
+    )
+    assert "shard.status = _remaining_retry_status(job, shard)" in (
+        update_policy_source
+    )
+    assert "attempt.status = shard.status" in update_policy_source
+    assert "_finalize_job_after_shard_change(" in update_policy_source

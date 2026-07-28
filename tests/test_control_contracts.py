@@ -869,6 +869,19 @@ def test_status_contract_distinguishes_closed_and_open_strings() -> None:
     assert entities["ModelProfileCertification.status"]["openness"] == (
         "closed_database_check"
     )
+    attempt_projection_evidence = [
+        item
+        for evidence in entities["ShardAttempt"]["authority"][
+            "value_evidence"
+        ].values()
+        for item in evidence
+        if item["symbol"] == "attempt.status = shard.status"
+    ]
+    assert attempt_projection_evidence
+    assert {
+        item["source"].split(":", 1)[0]
+        for item in attempt_projection_evidence
+    } == {"ocr_platform/control/scheduling.py"}
 
 
 def test_every_closed_status_set_matches_independent_authority_evidence() -> None:
@@ -944,8 +957,11 @@ def test_projection_authorities_are_ast_derived_relationships() -> None:
         / "manifests"
         / "core.py"
     )
+    scheduling_path = (
+        ROOT / "ocr_platform" / "control" / "scheduling.py"
+    )
     attempt_matches = control_contracts._attribute_assignment_sources(
-        manifests_path,
+        scheduling_path,
         target=("attempt", "status"),
         value=("shard", "status"),
         expected_count=1,
@@ -988,7 +1004,7 @@ def test_projection_authorities_are_ast_derived_relationships() -> None:
 def test_projection_ast_guards_reject_source_relationship_mutations(
     tmp_path: Path,
 ) -> None:
-    source = (
+    manifests_source = (
         ROOT
         / "ocr_platform"
         / "control"
@@ -996,10 +1012,13 @@ def test_projection_ast_guards_reject_source_relationship_mutations(
         / "manifests"
         / "core.py"
     ).read_text(encoding="utf-8")
+    scheduling_source = (
+        ROOT / "ocr_platform" / "control" / "scheduling.py"
+    ).read_text(encoding="utf-8")
 
     attempt_mutation = tmp_path / "attempt_projection.py"
     attempt_mutation.write_text(
-        source.replace(
+        scheduling_source.replace(
             "attempt.status = shard.status",
             "attempt.status = request.status",
             1,
@@ -1016,7 +1035,7 @@ def test_projection_ast_guards_reject_source_relationship_mutations(
 
     freeze_mutation = tmp_path / "freeze_projection.py"
     freeze_mutation.write_text(
-        source.replace(
+        manifests_source.replace(
             "status=manifest.status",
             'status="ready"',
             1,

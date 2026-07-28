@@ -259,7 +259,9 @@ def reconcile_expired_scan_unit_leases(session: Session, *, now: datetime | None
     target(session, now=now, job_id=job_id)
 
 def _remaining_retry_status(job: Job, shard: WorkShard) -> str:
-    return "retrying" if shard.attempt_count < job.max_shard_attempts else "failed"
+    from ...scheduling import _remaining_retry_status as target
+
+    return target(job, shard)
 
 def renew_running_shard_leases(
     session: Session,

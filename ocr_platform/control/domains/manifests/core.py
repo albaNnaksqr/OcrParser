@@ -8,7 +8,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from ocr_parser.infra.failure_category import infer_failure_category
 from ocr_parser.config import ParserConfig
 from ocr_platform.manifest.models import ManifestItem
 from ocr_platform.manifest.scanner import scan_folder_snapshot
@@ -57,7 +56,7 @@ def _recent_manifest_scan_error_samples(*args, **kwargs):
     return target(*args, **kwargs)
 
 def _remaining_retry_status(*args, **kwargs):
-    from ..workers.core import _remaining_retry_status as target
+    from ...scheduling import _remaining_retry_status as target
     return target(*args, **kwargs)
 
 def _scan_unit_problem_samples(*args, **kwargs):
@@ -2025,13 +2024,9 @@ def _create_shard_attempt(session: Session, shard: WorkShard, server_id: str) ->
     )
 
 def _latest_shard_attempt(session: Session, shard: WorkShard) -> ShardAttempt | None:
-    return session.execute(
-        select(ShardAttempt)
-        .where(ShardAttempt.shard_id == shard.id)
-        .where(ShardAttempt.attempt_number == shard.attempt_count)
-        .order_by(ShardAttempt.id.desc())
-        .limit(1)
-    ).scalar_one_or_none()
+    from ...scheduling import _latest_current_shard_attempt as target
+
+    return target(session, shard)
 
 class _WorkShardClaimCollision(RuntimeError):
     def __init__(self, claimable_parent) -> None:
@@ -2132,128 +2127,6 @@ def update_work_shard(
 
     return target(session, shard_id, request)
 
-
-def _update_work_shard(
-    session: Session,
-    shard_id: int,
-    request: WorkShardUpdateRequest,
-) -> WorkShard:
-    shard_snapshot = session.execute(
-        select(WorkShard.job_id, WorkShard.status)
-        .where(WorkShard.id == shard_id)
-    ).one_or_none()
-    if shard_snapshot is None:
-        raise ValueError(f"unknown shard: {shard_id}")
-    job_id, observed_status = shard_snapshot
-    needs_job_serialization = (
-        request.status in TERMINAL_SHARD_STATUSES
-        or observed_status in TERMINAL_SHARD_STATUSES
-    )
-    job = None
-    if needs_job_serialization:
-        job = _lock_job_for_shard_change(session, job_id)
-        if job is None:
-            raise ValueError(f"unknown shard: {shard_id}")
-    shard = session.execute(
-        select(WorkShard)
-        .where(WorkShard.id == shard_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).scalar_one_or_none()
-    if shard is None:
-        raise ValueError(f"unknown shard: {shard_id}")
-    if request.assigned_server_id is not None and request.assigned_server_id != shard.assigned_server_id:
-        raise ShardAttemptConflictError(
-            "shard update belongs to a different server attempt"
-        )
-    if request.attempt_count is not None and request.attempt_count != shard.attempt_count:
-        raise ShardAttemptConflictError(
-            "shard update belongs to a stale attempt"
-        )
-    if shard.status in TERMINAL_SHARD_STATUSES:
-        if job is not None:
-            _finalize_job_after_shard_change(
-                session,
-                job,
-                now=utcnow(),
-            )
-        return shard
-    if (
-        shard.status in {"retrying", "stale"}
-        and request.status not in TERMINAL_SHARD_STATUSES
-    ):
-        return shard
-    fields_set = getattr(request, "model_fields_set", None)
-    if fields_set is None:
-        fields_set = getattr(request, "__fields_set__", set())
-
-    shard.status = request.status
-    if "processed_files" in fields_set:
-        shard.processed_files = request.processed_files
-    if "failed_files" in fields_set:
-        shard.failed_files = request.failed_files
-    if "skipped_files" in fields_set:
-        shard.skipped_files = request.skipped_files
-    if "completed_pages" in fields_set:
-        shard.completed_pages = request.completed_pages
-    if request.api_inflight is not None:
-        shard.api_inflight = request.api_inflight
-    if request.api_inflight_peak is not None:
-        shard.api_inflight_peak = request.api_inflight_peak
-    if request.api_waiting is not None:
-        shard.api_waiting = request.api_waiting
-    if request.oldest_api_inflight is not None:
-        shard.oldest_api_inflight = request.oldest_api_inflight
-    if request.execution_paused is not None:
-        shard.execution_paused = request.execution_paused
-    if request.api_concurrency_limit is not None:
-        shard.api_concurrency_limit = request.api_concurrency_limit
-    if request.execution_control_reason is not None:
-        shard.execution_control_reason = request.execution_control_reason
-    failure_category = request.failure_category
-    if failure_category is None and request.status == "failed":
-        failure_category = infer_failure_category(
-            {"error_message": request.error_message}
-        )
-    shard.failure_category = failure_category
-    shard.error_message = request.error_message
-    if request.status == "failed":
-        if job is None:
-            raise RuntimeError("failed shard update requires Job serialization")
-        shard.status = _remaining_retry_status(job, shard)
-    if shard.status in TERMINAL_SHARD_STATUSES:
-        shard.finished_at = utcnow()
-        shard.lease_expires_at = None
-    elif shard.status in {"retrying", "stale"}:
-        shard.finished_at = None
-        shard.lease_expires_at = None
-    attempt = _latest_shard_attempt(session, shard)
-    if attempt is not None:
-        attempt.status = shard.status
-        attempt.processed_files = shard.processed_files
-        attempt.failed_files = shard.failed_files
-        attempt.skipped_files = shard.skipped_files
-        attempt.completed_pages = shard.completed_pages
-        attempt.execution_paused = shard.execution_paused
-        attempt.api_concurrency_limit = shard.api_concurrency_limit
-        attempt.execution_control_reason = shard.execution_control_reason
-        attempt.failure_category = failure_category
-        attempt.error_message = request.error_message
-        if shard.status != "running":
-            attempt.finished_at = utcnow()
-    if shard.status in TERMINAL_SHARD_STATUSES:
-        if job is None:
-            raise RuntimeError("terminal shard update requires Job serialization")
-        _finalize_job_after_shard_change(
-            session,
-            job,
-            now=utcnow(),
-            preferred_failure_shard_id=(
-                shard.id if shard.status == "failed" else None
-            ),
-        )
-    return shard
-
 def list_shard_attempts(
     session: Session,
     job_id: str,
@@ -2344,7 +2217,6 @@ __all__ = [
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
-        "_update_work_shard",
         "_ScanUnitClaimCollision",
         "_WorkShardClaimCollision",
     }

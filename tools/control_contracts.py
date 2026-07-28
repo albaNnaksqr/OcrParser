@@ -3730,7 +3730,7 @@ def build_status_contract() -> dict[str, Any]:
         symbol="WorkShardUpdateRequest.status excluding pre-claim pending",
     )
     attempt_projection_sources = _attribute_assignment_sources(
-        manifests_path,
+        scheduling_path,
         target=("attempt", "status"),
         value=("shard", "status"),
         expected_count=1,
