@@ -1956,6 +1956,28 @@ def build_scheduling_contract() -> dict[str, Any]:
         ROOT / "ocr_platform" / "control" / "scheduling.py",
         "_claim_scan_unit_candidate",
     )
+    work_shard_claim_sources = {
+        "selector": _function_definition_source(
+            ROOT / "ocr_platform" / "control" / "scheduling.py",
+            "_claimable_shard_id_select",
+        ),
+        "parent_select": _function_definition_source(
+            ROOT / "ocr_platform" / "control" / "scheduling.py",
+            "_claim_parent_job_for_key_share_select",
+        ),
+        "parent_lock": _function_definition_source(
+            ROOT / "ocr_platform" / "control" / "scheduling.py",
+            "_lock_claim_parent_job",
+        ),
+        "compare_and_set_and_attempt": _function_definition_source(
+            ROOT / "ocr_platform" / "control" / "scheduling.py",
+            "_claim_work_shard",
+        ),
+        "attempt_snapshot": _function_definition_source(
+            ROOT / "ocr_platform" / "control" / "scheduling.py",
+            "_add_running_shard_attempt_snapshot",
+        ),
+    }
 
     def require_ok(response: Any, context: str) -> dict[str, Any]:
         if response.status_code != 200:
@@ -2875,6 +2897,7 @@ def build_scheduling_contract() -> dict[str, Any]:
                     "work; equal-priority pending work uses shard_index order"
                 ),
                 "observed_claim_sequence": claim_sequence,
+                "claim_policy_sources": work_shard_claim_sources,
                 "evidence": (
                     "tests/test_control_scheduling_contracts.py::"
                     "test_scheduling_contract_is_driven_by_real_service_calls"
@@ -3142,10 +3165,30 @@ def validate_scheduling_contract(contract: dict[str, Any]) -> None:
         {"shard_index": 2, "from_status": "stale", "attempt_count": 2},
         {"shard_index": 3, "from_status": "pending", "attempt_count": 1},
     ]
-    if invariants["claim_ordering"].get(
-        "observed_claim_sequence"
-    ) != expected_claims:
+    claim_ordering = invariants["claim_ordering"]
+    work_shard_claim_sources = claim_ordering.get(
+        "claim_policy_sources"
+    )
+    if claim_ordering.get("observed_claim_sequence") != expected_claims:
         raise ValueError("work shard claim ordering changed")
+    if (
+        not isinstance(work_shard_claim_sources, dict)
+        or set(work_shard_claim_sources)
+        != {
+            "selector",
+            "parent_select",
+            "parent_lock",
+            "compare_and_set_and_attempt",
+            "attempt_snapshot",
+        }
+        or any(
+            not str(source).startswith(
+                "ocr_platform/control/scheduling.py:"
+            )
+            for source in work_shard_claim_sources.values()
+        )
+    ):
+        raise ValueError("work shard claim policy ownership changed")
     attempts = invariants["attempt_number_increment_and_uniqueness"]
     if attempts.get("attempt_numbers_by_shard_index") != {
         "1": [1, 2],

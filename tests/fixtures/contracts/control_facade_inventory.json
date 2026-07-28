@@ -740,13 +740,13 @@
   },
   "exports": {
     "classification_counts": {
-      "internal_no_compat": 136,
+      "internal_no_compat": 135,
       "scheduling_application_pending": 43,
       "settings_pending": 7,
       "supported_explicit_target": 76,
       "unsupported_leaked": 24
     },
-    "count": 286,
+    "count": 285,
     "symbols": [
       {
         "classification": "internal_no_compat",
@@ -2491,19 +2491,6 @@
         ],
         "reason": "Internal Control implementation detail; no compatibility target.",
         "symbol": "_create_distributed_scan_for_job",
-        "target": null,
-        "wave": "PR 8"
-      },
-      {
-        "classification": "internal_no_compat",
-        "consumed": false,
-        "defining_module": "ocr_platform.control.domains.manifests.core",
-        "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.manifests.core"
-        ],
-        "reason": "Internal Control implementation detail; no compatibility target.",
-        "symbol": "_create_shard_attempt",
         "target": null,
         "wave": "PR 8"
       },

@@ -529,14 +529,14 @@
             },
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/scheduling.py:849",
+              "source": "ocr_platform/control/scheduling.py:858",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],
           "stopped": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/scheduling.py:882",
+              "source": "ocr_platform/control/scheduling.py:891",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],

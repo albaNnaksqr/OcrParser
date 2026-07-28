@@ -57,14 +57,15 @@ def test_facade_inventory_counts_match_independent_audit() -> None:
         item["symbol"]: item for item in inventory["exports"]["symbols"]
     }
 
-    assert inventory["exports"]["count"] == 286
+    assert inventory["exports"]["count"] == 285
     assert inventory["exports"]["classification_counts"] == {
-        "internal_no_compat": 136,
+        "internal_no_compat": 135,
         "scheduling_application_pending": 43,
         "settings_pending": 7,
         "supported_explicit_target": 76,
         "unsupported_leaked": 24,
     }
+    assert "_create_shard_attempt" not in exports
     assert exports["upsert_model_profile"]["defining_module"] == (
         "ocr_platform.control.domains.model_profiles.commands"
     )

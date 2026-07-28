@@ -751,7 +751,7 @@ def _claim_work_shard(
     lease_expires_at: datetime,
     reclaimable_statuses: set[str],
     non_claimable_job_statuses: set[str],
-):
+) -> WorkShard | None:
     claimable_parent = (
         select(Job.id)
         .where(Job.id == job_id)
@@ -781,7 +781,16 @@ def _claim_work_shard(
             lease_expires_at=lease_expires_at,
         )
     )
-    return session.execute(statement), claimable_parent
+    result = session.execute(statement)
+    if result.rowcount != 1:
+        raise _WorkShardClaimCollision(claimable_parent)
+
+    shard = session.get(WorkShard, shard_id)
+    if shard is None:
+        return None
+    session.refresh(shard)
+    _add_running_shard_attempt_snapshot(session, shard, server_id)
+    return shard
 
 
 def _fence_running_work_for_restarted_server(
@@ -887,5 +896,70 @@ def stop_reclaimable_work_for_job(
             failure_category="operator_stopped",
             lease_expires_at=None,
             finished_at=current_time,
+        )
+    )
+
+
+def _claimable_shard_id_select(job_id: str):
+    recovery_priority = case(
+        (WorkShard.status.in_({"retrying", "stale"}), 0),
+        else_=1,
+    )
+    return (
+        select(WorkShard.id)
+        .join(Job, Job.id == WorkShard.job_id)
+        .where(WorkShard.job_id == job_id)
+        .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
+        .where(WorkShard.attempt_count < Job.max_shard_attempts)
+        .order_by(recovery_priority, WorkShard.shard_index.asc())
+        .limit(1)
+        .with_for_update(skip_locked=True, of=WorkShard)
+    )
+
+
+def _claim_parent_job_for_key_share_select(job_id: str):
+    return (
+        select(Job)
+        .where(Job.id == job_id)
+        .with_for_update(read=True, key_share=True)
+    )
+
+
+def _lock_claim_parent_job(
+    session: Session,
+    job_id: str,
+) -> Job | None:
+    return session.execute(
+        _claim_parent_job_for_key_share_select(job_id)
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+
+
+class _WorkShardClaimCollision(RuntimeError):
+    def __init__(self, claimable_parent) -> None:
+        super().__init__("work shard claim lost a compare-and-set race")
+        self.claimable_parent = claimable_parent
+
+
+def _add_running_shard_attempt_snapshot(
+    session: Session,
+    shard: WorkShard,
+    server_id: str,
+) -> None:
+    session.add(
+        ShardAttempt(
+            job_id=shard.job_id,
+            shard_id=shard.id,
+            attempt_number=shard.attempt_count,
+            server_id=server_id,
+            status="running",
+            processed_files=shard.processed_files,
+            failed_files=shard.failed_files,
+            skipped_files=shard.skipped_files,
+            completed_pages=shard.completed_pages,
+            execution_paused=shard.execution_paused,
+            api_concurrency_limit=shard.api_concurrency_limit,
+            execution_control_reason=shard.execution_control_reason,
+            started_at=shard.started_at or utcnow(),
         )
     )

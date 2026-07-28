@@ -2,6 +2,13 @@
   "builder": "tools.control_contracts.build_scheduling_contract",
   "invariants": [
     {
+      "claim_policy_sources": {
+        "attempt_snapshot": "ocr_platform/control/scheduling.py:944",
+        "compare_and_set_and_attempt": "ocr_platform/control/scheduling.py:744",
+        "parent_lock": "ocr_platform/control/scheduling.py:928",
+        "parent_select": "ocr_platform/control/scheduling.py:920",
+        "selector": "ocr_platform/control/scheduling.py:903"
+      },
       "contract": "retrying and stale work is reclaimed before pending work; equal-priority pending work uses shard_index order",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "claim_ordering",
@@ -77,7 +84,7 @@
       "contract": "re-registering an existing server fences only its running shard, current running attempt, and scan unit without changing attempt numbers or the parent job",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "server_reregistration_generation_fencing",
-      "policy_source": "ocr_platform/control/scheduling.py:787",
+      "policy_source": "ocr_platform/control/scheduling.py:796",
       "repeated_registration_unchanged": true,
       "state_after_first_registration": {
         "attempts": [
@@ -182,7 +189,7 @@
       "contract": "stop immediately closes reclaimable work, preserves running work until its attempt stops or lease expires, and prevents late updates from regressing terminal state",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "stop_state_results",
-      "policy_source": "ocr_platform/control/scheduling.py:865",
+      "policy_source": "ocr_platform/control/scheduling.py:874",
       "scan_units": {
         "after_request_stop": {
           "pending": "stopped",

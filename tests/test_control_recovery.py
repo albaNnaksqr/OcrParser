@@ -1009,7 +1009,7 @@ def test_claimable_shard_select_uses_postgresql_skip_locked():
 
 
 def test_shard_claim_parent_select_uses_postgresql_key_share():
-    statement = manifests_core._claim_parent_job_for_key_share_select("job-1")
+    statement = scheduling._claim_parent_job_for_key_share_select("job-1")
 
     compiled = str(
         statement.compile(
@@ -1027,8 +1027,12 @@ def test_shard_claim_locks_parent_before_claimable_shard_selector():
     source = inspect.getsource(manifests_core._claim_next_pending_shard)
 
     reconcile_position = source.index("_reconcile_expired_shard_leases(")
-    parent_lock_position = source.index("_lock_claim_parent_job(")
-    shard_selector_position = source.index("_claimable_shard_id_select(")
+    parent_lock_position = source.index(
+        "scheduling_policy._lock_claim_parent_job("
+    )
+    shard_selector_position = source.index(
+        "scheduling_policy._claimable_shard_id_select("
+    )
     assert reconcile_position < parent_lock_position < shard_selector_position
 
 

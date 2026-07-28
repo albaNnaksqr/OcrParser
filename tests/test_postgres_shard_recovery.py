@@ -916,7 +916,9 @@ def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch)
     release_claim = threading.Event()
     terminal_started = threading.Event()
     terminal_pid: list[int] = []
-    original_create_attempt = manifests_core._create_shard_attempt
+    original_create_attempt = (
+        scheduling_core._add_running_shard_attempt_snapshot
+    )
 
     def paused_create_attempt(session, shard, server_id):
         claim_holds_shard.set()
@@ -925,7 +927,8 @@ def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch)
         return original_create_attempt(session, shard, server_id)
 
     monkeypatch.setattr(
-        "ocr_platform.control.domains.manifests.core._create_shard_attempt",
+        "ocr_platform.control.scheduling."
+        "_add_running_shard_attempt_snapshot",
         paused_create_attempt,
     )
 

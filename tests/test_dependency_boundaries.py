@@ -139,5 +139,5 @@ def test_control_service_facade_symbols_match_v0_3_2() -> None:
         ("\n".join(symbols) + "\n").encode("utf-8")
     ).hexdigest()
 
-    assert len(symbols) == 286
-    assert digest == "df80053e16329620bbb85be1f2d3112807055e084a24d1f623f8ea52cb2ffea7"
+    assert len(symbols) == 285
+    assert digest == "3b52860755bfdbda0fbcdfd04e510cbc4cafb7aedd74192988b9d043a0da4469"

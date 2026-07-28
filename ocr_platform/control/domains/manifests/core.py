@@ -12,7 +12,7 @@ from ocr_parser.config import ParserConfig
 from ocr_platform.manifest.models import ManifestItem
 from ocr_platform.manifest.scanner import scan_folder_snapshot
 from ocr_platform.manifest.sharder import write_manifest_snapshot
-from sqlalchemy import Integer, case, delete, distinct, func, select, update
+from sqlalchemy import Integer, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
 
 from ... import database
@@ -1936,63 +1936,14 @@ def finalize_stopped_job_if_idle(session: Session, job: Job) -> bool:
     )
 
 def _claimable_shard_id_select(job_id: str):
-    recovery_priority = case(
-        (WorkShard.status.in_({"retrying", "stale"}), 0),
-        else_=1,
-    )
-    return (
-        select(WorkShard.id)
-        .join(Job, Job.id == WorkShard.job_id)
-        .where(WorkShard.job_id == job_id)
-        .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
-        .where(WorkShard.attempt_count < Job.max_shard_attempts)
-        .order_by(recovery_priority, WorkShard.shard_index.asc())
-        .limit(1)
-        .with_for_update(skip_locked=True, of=WorkShard)
-    )
+    from ...scheduling import _claimable_shard_id_select as target
 
-def _claim_parent_job_for_key_share_select(job_id: str):
-    return (
-        select(Job)
-        .where(Job.id == job_id)
-        .with_for_update(read=True, key_share=True)
-    )
-
-def _lock_claim_parent_job(session: Session, job_id: str) -> Job | None:
-    return session.execute(
-        _claim_parent_job_for_key_share_select(job_id)
-        .execution_options(populate_existing=True)
-    ).scalar_one_or_none()
-
-def _create_shard_attempt(session: Session, shard: WorkShard, server_id: str) -> None:
-    session.add(
-        ShardAttempt(
-            job_id=shard.job_id,
-            shard_id=shard.id,
-            attempt_number=shard.attempt_count,
-            server_id=server_id,
-            status="running",
-            processed_files=shard.processed_files,
-            failed_files=shard.failed_files,
-            skipped_files=shard.skipped_files,
-            completed_pages=shard.completed_pages,
-            execution_paused=shard.execution_paused,
-            api_concurrency_limit=shard.api_concurrency_limit,
-            execution_control_reason=shard.execution_control_reason,
-            started_at=shard.started_at or utcnow(),
-        )
-    )
+    return target(job_id)
 
 def _latest_shard_attempt(session: Session, shard: WorkShard) -> ShardAttempt | None:
     from ...scheduling import _latest_current_shard_attempt as target
 
     return target(session, shard)
-
-class _WorkShardClaimCollision(RuntimeError):
-    def __init__(self, claimable_parent) -> None:
-        super().__init__("work shard claim lost a compare-and-set race")
-        self.claimable_parent = claimable_parent
-
 
 def claim_next_pending_shard(
     session: Session,
@@ -2009,6 +1960,8 @@ def _claim_next_pending_shard(
     job_id: str,
     server_id: str,
 ) -> WorkShard | None:
+    from ... import scheduling as scheduling_policy
+
     job = get_job_or_raise(session, job_id)
     non_claimable_statuses = {"stopping", *TERMINAL_JOB_STATUSES}
     if job.stop_requested or job.status in non_claimable_statuses:
@@ -2035,7 +1988,7 @@ def _claim_next_pending_shard(
         from ...scheduling import _flush_reconciliation
 
         _flush_reconciliation(session)
-    job = _lock_claim_parent_job(session, job_id)
+    job = scheduling_policy._lock_claim_parent_job(session, job_id)
     if job is None:
         return None
     if job.stop_requested or job.status in non_claimable_statuses:
@@ -2051,15 +2004,15 @@ def _claim_next_pending_shard(
         server_id,
     ):
         return None
-    shard_id = session.execute(_claimable_shard_id_select(job_id)).scalar_one_or_none()
+    shard_id = session.execute(
+        scheduling_policy._claimable_shard_id_select(job_id)
+    ).scalar_one_or_none()
     if shard_id is None:
         return None
 
     started_at = now
     lease_expires_at = shard_lease_deadline(now)
-    from ...scheduling import _claim_work_shard
-
-    result, claimable_parent = _claim_work_shard(
+    return scheduling_policy._claim_work_shard(
         session,
         shard_id=shard_id,
         job_id=job_id,
@@ -2069,14 +2022,6 @@ def _claim_next_pending_shard(
         reclaimable_statuses=RECLAIMABLE_SHARD_STATUSES,
         non_claimable_job_statuses=non_claimable_statuses,
     )
-    if result.rowcount != 1:
-        raise _WorkShardClaimCollision(claimable_parent)
-
-    shard = session.get(WorkShard, shard_id)
-    if shard is not None:
-        session.refresh(shard)
-        _create_shard_attempt(session, shard, server_id)
-    return shard
 
 def update_work_shard(
     session: Session,
@@ -2169,14 +2114,11 @@ __all__ = [
     if not name.startswith("__")
     and name not in {
         "_claim_next_scan_unit_phase",
-        "_claim_parent_job_for_key_share_select",
         "_claim_next_pending_shard",
         "_complete_scan_unit",
         "_fail_scan_unit",
         "_finalize_job_after_shard_change",
-        "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
-        "_WorkShardClaimCollision",
     }
 ]

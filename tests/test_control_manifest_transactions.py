@@ -495,16 +495,25 @@ def test_claim_shard_cas_collision_rolls_back_before_retry(
     original_claim = scheduling._claim_work_shard
     claim_calls = 0
 
-    class _LostRaceResult:
-        rowcount = 0
-
     def collide_once(*args, **kwargs):
         nonlocal claim_calls
         claim_calls += 1
-        result, claimable_parent = original_claim(*args, **kwargs)
         if claim_calls == 1:
-            return _LostRaceResult(), claimable_parent
-        return result, claimable_parent
+            claimable_parent = (
+                select(Job.id)
+                .where(Job.id == kwargs["job_id"])
+                .where(Job.stop_requested.is_(False))
+                .where(
+                    Job.status.not_in(
+                        {"stopping", "succeeded", "failed", "stopped"}
+                    )
+                )
+                .exists()
+            )
+            raise scheduling._WorkShardClaimCollision(
+                claimable_parent
+            )
+        return original_claim(*args, **kwargs)
 
     monkeypatch.setattr(
         scheduling,
@@ -2162,10 +2171,14 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     assert session_calls(core_path, "claim_next_pending_shard") == {}
     assert session_calls(core_path, "_claim_next_pending_shard") == {
         "execute": 1,
-        "refresh": 1,
     }
+    assert session_calls(
+        scheduling_path,
+        "_lock_claim_parent_job",
+    ) == {"execute": 1}
     assert session_calls(scheduling_path, "_claim_work_shard") == {
         "execute": 1,
+        "refresh": 1,
     }
     assert session_calls(
         commands_path,

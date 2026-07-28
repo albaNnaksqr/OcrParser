@@ -161,7 +161,7 @@ def claim_next_pending_shard(
                         server_id,
                     )
                 return shard
-            except _core._WorkShardClaimCollision as exc:
+            except _scheduling._WorkShardClaimCollision as exc:
                 collision_parent = exc.claimable_parent
     finally:
         session.expire_on_commit = previous_expire_on_commit

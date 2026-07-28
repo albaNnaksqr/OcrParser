@@ -58,6 +58,21 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
             "attempt_count": 1,
         },
     ]
+    assert set(
+        invariants["claim_ordering"]["claim_policy_sources"]
+    ) == {
+        "selector",
+        "parent_select",
+        "parent_lock",
+        "compare_and_set_and_attempt",
+        "attempt_snapshot",
+    }
+    assert all(
+        source.startswith("ocr_platform/control/scheduling.py:")
+        for source in invariants["claim_ordering"][
+            "claim_policy_sources"
+        ].values()
+    )
 
     attempts = invariants["attempt_number_increment_and_uniqueness"]
     assert attempts["attempt_numbers_by_shard_index"] == {
@@ -250,6 +265,11 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
             "work_shard_lease_lifecycle",
             ("heartbeat_extended_lease",),
             False,
+        ),
+        (
+            "claim_ordering",
+            ("claim_policy_sources", "attempt_snapshot"),
+            "ocr_platform/control/domains/manifests/core.py:1",
         ),
         (
             "scan_unit_claim_lease_and_fencing",
