@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from sqlalchemy import select as _select
 from sqlalchemy.orm import Session as _Session
 
 from ...limits import ControlLimits as _ControlLimits
 from ...models import Manifest as _Manifest
 from ...models import ScanUnit as _ScanUnit
+from ...models import WorkShard as _WorkShard
 from ...schemas import (
     RemoteManifestRegisterRequest as _RemoteManifestRegisterRequest,
     ScanUnitCompleteRequest as _ScanUnitCompleteRequest,
@@ -13,7 +15,6 @@ from ...schemas import (
 from ..common import ScanUnitAttemptConflictError, ShardAttemptConflictError
 from . import core as _core
 from .core import (
-    claim_next_pending_shard,
     claim_next_scan_unit,
     claim_worker_manifest_integrity_check,
     complete_worker_manifest_integrity_check,
@@ -34,6 +35,9 @@ COMPLETE_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
 )
 FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
     "fail_scan_unit requires a session without an active transaction"
+)
+CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR = (
+    "claim_next_pending_shard requires a session without an active transaction"
 )
 
 
@@ -110,6 +114,44 @@ def fail_scan_unit(
     finally:
         session.expire_on_commit = previous_expire_on_commit
     return unit
+
+
+def claim_next_pending_shard(
+    session: _Session,
+    job_id: str,
+    server_id: str,
+) -> _WorkShard | None:
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR
+        )
+
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    collision_parent = None
+    try:
+        while True:
+            try:
+                with session.begin():
+                    # A lost parent-fenced CAS must leave the previous
+                    # transaction before checking whether a retry is valid.
+                    if collision_parent is not None:
+                        parent_claimable = session.execute(
+                            _select(collision_parent)
+                        ).scalar_one()
+                        if not parent_claimable:
+                            return None
+                        collision_parent = None
+                    shard = _core._claim_next_pending_shard(
+                        session,
+                        job_id,
+                        server_id,
+                    )
+                return shard
+            except _core._WorkShardClaimCollision as exc:
+                collision_parent = exc.claimable_parent
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
 
 
 __all__ = [name for name in globals() if not name.startswith("_")]

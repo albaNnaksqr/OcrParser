@@ -2007,7 +2007,27 @@ def _latest_shard_attempt(session: Session, shard: WorkShard) -> ShardAttempt | 
         .limit(1)
     ).scalar_one_or_none()
 
-def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> WorkShard | None:
+class _WorkShardClaimCollision(RuntimeError):
+    def __init__(self, claimable_parent) -> None:
+        super().__init__("work shard claim lost a compare-and-set race")
+        self.claimable_parent = claimable_parent
+
+
+def claim_next_pending_shard(
+    session: Session,
+    job_id: str,
+    server_id: str,
+) -> WorkShard | None:
+    from .commands import claim_next_pending_shard as target
+
+    return target(session, job_id, server_id)
+
+
+def _claim_next_pending_shard(
+    session: Session,
+    job_id: str,
+    server_id: str,
+) -> WorkShard | None:
     job = get_job_or_raise(session, job_id)
     non_claimable_statuses = {"stopping", *TERMINAL_JOB_STATUSES}
     if job.stop_requested or job.status in non_claimable_statuses:
@@ -2036,42 +2056,22 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
         _flush_reconciliation(session)
     job = _lock_claim_parent_job(session, job_id)
     if job is None:
-        if reconciliation.changed:
-            from ...scheduling import _commit_reconciliation
-
-            _commit_reconciliation(session)
         return None
     if job.stop_requested or job.status in non_claimable_statuses:
-        if reconciliation.changed:
-            from ...scheduling import _commit_reconciliation
-
-            _commit_reconciliation(session)
         return None
     if job.assigned_server_id == POOL_SERVER_ID and not server_can_access_input_dir(
         session,
         server_id,
         job.input_dir,
     ):
-        if reconciliation.changed:
-            from ...scheduling import _commit_reconciliation
-
-            _commit_reconciliation(session)
         return None
     if job.assigned_server_id == POOL_SERVER_ID and not server_is_allowed_for_job(
         job,
         server_id,
     ):
-        if reconciliation.changed:
-            from ...scheduling import _commit_reconciliation
-
-            _commit_reconciliation(session)
         return None
     shard_id = session.execute(_claimable_shard_id_select(job_id)).scalar_one_or_none()
     if shard_id is None:
-        if reconciliation.changed:
-            from ...scheduling import _commit_reconciliation
-
-            _commit_reconciliation(session)
         return None
 
     started_at = now
@@ -2089,18 +2089,13 @@ def claim_next_pending_shard(session: Session, job_id: str, server_id: str) -> W
         non_claimable_job_statuses=non_claimable_statuses,
     )
     if result.rowcount != 1:
-        session.rollback()
-        parent_claimable = session.execute(select(claimable_parent)).scalar_one()
-        if parent_claimable:
-            return claim_next_pending_shard(session, job_id, server_id)
-        return None
+        raise _WorkShardClaimCollision(claimable_parent)
 
     shard = session.get(WorkShard, shard_id)
     if shard is not None:
         session.refresh(shard)
         _create_shard_attempt(session, shard, server_id)
-    session.commit()
-    return session.get(WorkShard, shard_id)
+    return shard
 
 def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateRequest) -> WorkShard:
     shard_snapshot = session.execute(
@@ -2307,11 +2302,13 @@ __all__ = [
     if not name.startswith("__")
     and name not in {
         "_claim_parent_job_for_key_share_select",
+        "_claim_next_pending_shard",
         "_complete_scan_unit",
         "_fail_scan_unit",
         "_finalize_job_after_shard_change",
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
+        "_WorkShardClaimCollision",
     }
 ]

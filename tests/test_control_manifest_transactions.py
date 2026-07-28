@@ -11,8 +11,10 @@ from sqlalchemy import create_engine, event as sa_event, inspect, select
 from sqlalchemy.orm import sessionmaker
 
 from ocr_platform.control.database import init_db
+from ocr_platform.control import scheduling
 from ocr_platform.control.domains.manifests import commands, core
 from ocr_platform.control.domains.manifests.commands import (
+    CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR,
     COMPLETE_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
     FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
     ManifestCommandTransactionError,
@@ -24,6 +26,7 @@ from ocr_platform.control.models import (
     Manifest,
     ScanUnit,
     Server,
+    ShardAttempt,
     WorkShard,
 )
 from ocr_platform.control.schemas import (
@@ -102,6 +105,36 @@ def _seed_running_scan_unit(
             session.add(unit)
             session.flush()
             return unit.id
+
+
+def _seed_pending_shard(
+    session_factory,
+    *,
+    job_id: str = "job-a",
+) -> int:
+    _seed_job(session_factory, job_id=job_id)
+    with session_factory() as session:
+        with session.begin():
+            manifest = Manifest(
+                job_id=job_id,
+                input_mode="remote_folder_snapshot",
+                input_root="/shared/input",
+                manifest_path=f"/shared/manifests/{job_id}/manifest.jsonl",
+                status="ready",
+            )
+            session.add(manifest)
+            session.flush()
+            shard = WorkShard(
+                job_id=job_id,
+                manifest_id=manifest.id,
+                shard_index=1,
+                shard_path=f"/shared/manifests/{job_id}/shard-000001.jsonl",
+                status="pending",
+                file_count=1,
+            )
+            session.add(shard)
+            session.flush()
+            return shard.id
 
 
 def _request(
@@ -205,6 +238,230 @@ def test_register_manifest_command_commits_exactly_once(tmp_path) -> None:
             assert persisted.id == manifest.id
             assert [shard.shard_index for shard in shards] == [1, 2]
             assert [shard.file_count for shard in shards] == [1, 1]
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("expire_on_commit", [False, True])
+def test_claim_shard_command_commits_once_and_returns_readable_result(
+    tmp_path,
+    expire_on_commit,
+) -> None:
+    session_factory, engine = _database(
+        tmp_path,
+        expire_on_commit=expire_on_commit,
+    )
+    shard_id = _seed_pending_shard(session_factory)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            claimed = commands.claim_next_pending_shard(
+                session,
+                "job-a",
+                "server-a",
+            )
+
+            assert claimed is not None
+            assert claimed.id == shard_id
+            assert claimed.status == "running"
+            assert claimed.assigned_server_id == "server-a"
+            assert claimed.attempt_count == 1
+            assert claimed.lease_expires_at is not None
+            assert session.expire_on_commit is expire_on_commit
+            assert session.in_transaction() is False
+            assert commits == [1]
+            assert rollbacks == []
+            detached_values = (
+                claimed.id,
+                claimed.status,
+                claimed.assigned_server_id,
+                claimed.attempt_count,
+            )
+
+        assert inspect(claimed).detached is True
+        assert (
+            claimed.id,
+            claimed.status,
+            claimed.assigned_server_id,
+            claimed.attempt_count,
+        ) == detached_values
+
+        with session_factory() as session:
+            attempts = list(
+                session.scalars(
+                    select(ShardAttempt).where(
+                        ShardAttempt.shard_id == shard_id
+                    )
+                )
+            )
+            assert len(attempts) == 1
+            assert attempts[0].attempt_number == 1
+            assert attempts[0].status == "running"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("transaction_mode", ["explicit", "autobegin"])
+def test_claim_shard_command_rejects_active_transaction_without_pollution(
+    tmp_path,
+    transaction_mode,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_pending_shard(session_factory)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            if transaction_mode == "explicit":
+                session.begin()
+            else:
+                assert session.get(WorkShard, shard_id) is not None
+            outer_row = JobLog(
+                job_id="job-a",
+                server_id="outer",
+                stream="stdout",
+                line=f"claim-{transaction_mode}",
+            )
+            session.add(outer_row)
+
+            with pytest.raises(
+                ManifestCommandTransactionError,
+                match=(
+                    "^"
+                    + re.escape(
+                        CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR
+                    )
+                    + "$"
+                ),
+            ):
+                commands.claim_next_pending_shard(
+                    session,
+                    "job-a",
+                    "server-a",
+                )
+
+            assert session.in_transaction() is True
+            assert outer_row in session.new
+            assert commits == []
+            assert rollbacks == []
+            session.rollback()
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            assert shard is not None
+            assert shard.status == "pending"
+            assert shard.attempt_count == 0
+            assert session.scalar(
+                select(JobLog).where(JobLog.server_id == "outer")
+            ) is None
+    finally:
+        engine.dispose()
+
+
+def test_claim_shard_cas_collision_rolls_back_before_retry(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_pending_shard(session_factory)
+    original_claim = scheduling._claim_work_shard
+    claim_calls = 0
+
+    class _LostRaceResult:
+        rowcount = 0
+
+    def collide_once(*args, **kwargs):
+        nonlocal claim_calls
+        claim_calls += 1
+        result, claimable_parent = original_claim(*args, **kwargs)
+        if claim_calls == 1:
+            return _LostRaceResult(), claimable_parent
+        return result, claimable_parent
+
+    monkeypatch.setattr(
+        scheduling,
+        "_claim_work_shard",
+        collide_once,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            claimed = commands.claim_next_pending_shard(
+                session,
+                "job-a",
+                "server-a",
+            )
+
+            assert claimed is not None
+            assert claimed.id == shard_id
+            assert claimed.attempt_count == 1
+            assert claim_calls == 2
+            assert commits == [1]
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            attempts = list(
+                session.scalars(
+                    select(ShardAttempt).where(
+                        ShardAttempt.shard_id == shard_id
+                    )
+                )
+            )
+            assert len(attempts) == 1
+            assert attempts[0].attempt_number == 1
+    finally:
+        engine.dispose()
+
+
+def test_claim_shard_commit_failure_rolls_back_claim_and_attempt(
+    tmp_path,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_pending_shard(session_factory)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            def fail_commit(current_session):
+                raise RuntimeError("injected claim commit failure")
+
+            sa_event.listen(
+                session,
+                "before_commit",
+                fail_commit,
+                once=True,
+            )
+            with pytest.raises(
+                RuntimeError,
+                match="injected claim commit failure",
+            ):
+                commands.claim_next_pending_shard(
+                    session,
+                    "job-a",
+                    "server-a",
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            assert shard is not None
+            assert shard.status == "pending"
+            assert shard.assigned_server_id is None
+            assert shard.attempt_count == 0
+            assert session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            ) is None
     finally:
         engine.dispose()
 
@@ -874,10 +1131,16 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         core_path,
         "_create_static_shards_for_job",
     ) == {"flush": 2}
-    assert session_calls(core_path, "claim_next_pending_shard") == {
-        "execute": 2,
-        "commit": 1,
-        "rollback": 1,
+    assert session_calls(
+        commands_path,
+        "claim_next_pending_shard",
+    ) == {
+        "begin": 1,
+        "execute": 1,
+    }
+    assert session_calls(core_path, "claim_next_pending_shard") == {}
+    assert session_calls(core_path, "_claim_next_pending_shard") == {
+        "execute": 1,
         "refresh": 1,
     }
     assert session_calls(scheduling_path, "_claim_work_shard") == {

@@ -991,7 +991,7 @@
         "field": "status",
         "fingerprint": "8dcc4243c266b875d31201f9e90a106cb5660b36dce581502fc25fa856a854f2",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:attribute-write[attempt.status<-9f18a2440d2a]@8dcc4243c266:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:2201",
+        "source": "ocr_platform/control/domains/manifests/core.py:2196",
         "target": "attempt.status",
         "write_kind": "attribute_assignment"
       },
@@ -999,7 +999,7 @@
         "field": "status",
         "fingerprint": "0ac7267fbb8e910c0fd86e2ea499681770df01edbe94ebae63f84dde3f4769b2",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:attribute-write[shard.status<-0f9d3160c879]@0ac7267fbb8e:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:2159",
+        "source": "ocr_platform/control/domains/manifests/core.py:2154",
         "target": "shard.status",
         "write_kind": "attribute_assignment"
       },
@@ -1007,7 +1007,7 @@
         "field": "status",
         "fingerprint": "70b6ee3d210f2e605c31d07ab5eb54fbaf75f1e04427c388cbe93c80d2c26e13",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:attribute-write[shard.status<-b589545ffb83]@70b6ee3d210f:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:2192",
+        "source": "ocr_platform/control/domains/manifests/core.py:2187",
         "target": "shard.status",
         "write_kind": "attribute_assignment"
       },
@@ -1106,9 +1106,9 @@
   "schema_version": 1,
   "transactions": {
     "operations": {
-      "commit": 19,
+      "commit": 18,
       "flush": 14,
-      "rollback": 7
+      "rollback": 6
     },
     "sites": [
       {
@@ -1215,18 +1215,6 @@
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.manifests.core:claim_next_pending_shard:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:2102"
-      },
-      {
-        "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
-        "id": "ocr_platform.control.domains.manifests.core:claim_next_pending_shard:session.rollback@44dbf1e505b5:1",
-        "operation": "rollback",
-        "source": "ocr_platform/control/domains/manifests/core.py:2092"
-      },
-      {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:claim_next_scan_unit:session.commit@809b98bd0ebc:1",
         "operation": "commit",
         "source": "ocr_platform/control/domains/manifests/core.py:411"
@@ -1271,19 +1259,19 @@
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:session.commit@809b98bd0ebc:1",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:2145"
+        "source": "ocr_platform/control/domains/manifests/core.py:2140"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:session.commit@809b98bd0ebc:2",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:2152"
+        "source": "ocr_platform/control/domains/manifests/core.py:2147"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
         "id": "ocr_platform.control.domains.manifests.core:update_work_shard:session.commit@809b98bd0ebc:3",
         "operation": "commit",
-        "source": "ocr_platform/control/domains/manifests/core.py:2224"
+        "source": "ocr_platform/control/domains/manifests/core.py:2219"
       },
       {
         "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
@@ -1352,6 +1340,6 @@
         "source": "ocr_platform/control/domains/workers/core.py:334"
       }
     ],
-    "total": 40
+    "total": 38
   }
 }

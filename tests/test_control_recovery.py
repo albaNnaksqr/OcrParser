@@ -14,6 +14,7 @@ from ocr_platform.control.domains.jobs import core as jobs_core
 from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import scheduling, service
+from sqlalchemy import event as sa_event
 from sqlalchemy.dialects import postgresql
 
 
@@ -356,7 +357,6 @@ def test_legacy_exhausted_shard_is_normalized_and_committed(
 
 def test_attempt_cap_reconciliation_rolls_back_if_commit_fails(
     tmp_path,
-    monkeypatch,
 ):
     client, session_factory = make_client_with_session(tmp_path)
     heartbeat_worker(client, "worker-a")
@@ -372,13 +372,18 @@ def test_attempt_cap_reconciliation_rolls_back_if_commit_fails(
         session.commit()
 
     with session_factory() as session:
-        def fail_commit():
+        def fail_commit(current_session):
             raise RuntimeError("injected commit failure")
 
-        monkeypatch.setattr(session, "commit", fail_commit)
+        sa_event.listen(
+            session,
+            "before_commit",
+            fail_commit,
+            once=True,
+        )
         with pytest.raises(RuntimeError, match="injected commit failure"):
             claim_next_pending_shard(session, job_id, "worker-a")
-        session.rollback()
+        assert session.in_transaction() is False
 
     with session_factory() as session:
         shard = session.get(WorkShard, claim["id"])
@@ -1019,7 +1024,7 @@ def test_shard_claim_parent_select_uses_postgresql_key_share():
 def test_shard_claim_locks_parent_before_claimable_shard_selector():
     import inspect
 
-    source = inspect.getsource(manifests_core.claim_next_pending_shard)
+    source = inspect.getsource(manifests_core._claim_next_pending_shard)
 
     reconcile_position = source.index("_reconcile_expired_shard_leases(")
     parent_lock_position = source.index("_lock_claim_parent_job(")

@@ -6,11 +6,12 @@ import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 
 import pytest
-from sqlalchemy import delete, select, text
+from sqlalchemy import delete, event as sa_event, select, text
 
 from ocr_platform.control import scheduling as scheduling_core
 from ocr_platform.control.database import create_session_factory
@@ -70,10 +71,29 @@ class PostgresScanUnitCase:
     scan_unit_id: int
 
 
-def _set_timeouts(session) -> int:
-    session.execute(text("SET LOCAL lock_timeout = '5s'"))
-    session.execute(text("SET LOCAL statement_timeout = '12s'"))
-    return int(session.execute(text("SELECT pg_backend_pid()")).scalar_one())
+@contextmanager
+def _postgres_session(session_factory, engine):
+    with engine.connect() as connection:
+        backend_pid = int(
+            connection.execute(text("SELECT pg_backend_pid()")).scalar_one()
+        )
+        connection.commit()
+
+        def apply_local_timeouts(current_connection):
+            current_connection.exec_driver_sql(
+                "SET LOCAL lock_timeout = '5s'"
+            )
+            current_connection.exec_driver_sql(
+                "SET LOCAL statement_timeout = '12s'"
+            )
+
+        sa_event.listen(connection, "begin", apply_local_timeouts)
+        try:
+            with session_factory(bind=connection) as session:
+                assert not session.in_transaction()
+                yield session, backend_pid
+        finally:
+            sa_event.remove(connection, "begin", apply_local_timeouts)
 
 
 def _wait_until_blocked(engine, backend_pid: int) -> None:
@@ -106,8 +126,7 @@ def _seed_case(
         f"pg-recovery-{suffix}-{index}" for index in range(server_count)
     )
     job_id = str(uuid.uuid4())
-    with session_factory() as session:
-        _set_timeouts(session)
+    with _postgres_session(session_factory, engine) as (session, _):
         session.add_all(
             [
                 Server(
@@ -203,8 +222,10 @@ def _seed_case(
 
 def _cleanup_case(case: PostgresShardCase) -> None:
     try:
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             session.execute(delete(Job).where(Job.id == case.job_id))
             session.execute(
                 delete(Server).where(Server.id.in_(case.server_ids))
@@ -219,8 +240,7 @@ def _seed_scan_unit_case() -> PostgresScanUnitCase:
     suffix = uuid.uuid4().hex
     server_ids = tuple(f"pg-scan-{suffix}-{index}" for index in range(2))
     job_id = str(uuid.uuid4())
-    with session_factory() as session:
-        _set_timeouts(session)
+    with _postgres_session(session_factory, engine) as (session, _):
         session.add_all(
             [
                 Server(
@@ -282,8 +302,10 @@ def _seed_scan_unit_case() -> PostgresScanUnitCase:
 
 def _cleanup_scan_unit_case(case: PostgresScanUnitCase) -> None:
     try:
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             session.execute(delete(Job).where(Job.id == case.job_id))
             session.execute(
                 delete(Server).where(Server.id.in_(case.server_ids))
@@ -294,8 +316,10 @@ def _cleanup_scan_unit_case(case: PostgresScanUnitCase) -> None:
 
 
 def _claim(case: PostgresShardCase, server_id: str):
-    with case.session_factory() as session:
-        _set_timeouts(session)
+    with _postgres_session(
+        case.session_factory,
+        case.engine,
+    ) as (session, _):
         shard = claim_next_pending_shard(
             session,
             case.job_id,
@@ -311,17 +335,22 @@ def _run_with_paused_commit(case, operation):
     release_commit = threading.Event()
 
     def primary():
-        with case.session_factory() as session:
-            _set_timeouts(session)
-            original_commit = session.commit
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
 
-            def paused_commit():
+            def paused_commit(current_session):
                 entered_commit.set()
                 if not release_commit.wait(FUTURE_TIMEOUT_SECONDS):
                     raise TimeoutError("timed out waiting to release commit")
-                original_commit()
 
-            session.commit = paused_commit
+            sa_event.listen(
+                session,
+                "before_commit",
+                paused_commit,
+                once=True,
+            )
             return operation(session)
 
     return entered_commit, release_commit, primary
@@ -345,8 +374,10 @@ def test_postgres_scan_unit_expiry_wins_against_busy_heartbeat():
     heartbeat_started = threading.Event()
 
     def heartbeat():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             heartbeat_started.set()
             return heartbeat_server(
                 session,
@@ -366,8 +397,10 @@ def test_postgres_scan_unit_expiry_wins_against_busy_heartbeat():
             assert heartbeated.result(timeout=3) == case.server_ids[0]
             release.set()
             assert expired.result(timeout=FUTURE_TIMEOUT_SECONDS) is True
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             unit = session.get(ScanUnit, case.scan_unit_id)
             assert unit.status == "stale"
             assert unit.lease_expires_at is None
@@ -396,8 +429,11 @@ def test_postgres_scan_unit_claim_reclaims_after_concurrent_expiry():
     claim_started = threading.Event()
 
     def claim():
-        with case.session_factory() as session:
-            claim_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            claim_pid.append(backend_pid)
             claim_started.set()
             unit = claim_next_scan_unit(session, case.server_ids[1])
             if unit is None:
@@ -418,8 +454,10 @@ def test_postgres_scan_unit_claim_reclaims_after_concurrent_expiry():
                 2,
                 case.server_ids[1],
             )
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             unit = session.get(ScanUnit, case.scan_unit_id)
             assert unit.status == "running"
             assert unit.attempt_count == 2
@@ -458,8 +496,10 @@ def test_postgres_two_pending_shards_claim_with_skip_locked():
             release.set()
             first_claim = first.result(timeout=FUTURE_TIMEOUT_SECONDS)
             assert first_claim.id == case.shard_ids[0]
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             assert session.execute(
                 select(ShardAttempt).where(
                     ShardAttempt.job_id == case.job_id
@@ -520,8 +560,11 @@ def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch)
         return _claim(case, case.server_ids[0])
 
     def terminal_update():
-        with case.session_factory() as session:
-            terminal_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            terminal_pid.append(backend_pid)
             terminal_started.set()
             return update_work_shard(
                 session,
@@ -550,8 +593,10 @@ def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch)
             )
             assert terminal.result(timeout=FUTURE_TIMEOUT_SECONDS) == "succeeded"
 
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             shard = session.get(WorkShard, case.shard_ids[0])
             attempts = list(
                 session.execute(
@@ -587,8 +632,10 @@ def test_postgres_32_shards_8_workers_claim_and_succeed_without_deadlock():
         while time.monotonic() < deadline:
             claimed = _claim(case, server_id)
             if claimed is None:
-                with case.session_factory() as session:
-                    _set_timeouts(session)
+                with _postgres_session(
+                    case.session_factory,
+                    case.engine,
+                ) as (session, _):
                     remaining = session.execute(
                         select(WorkShard.id)
                         .where(WorkShard.job_id == case.job_id)
@@ -604,8 +651,10 @@ def test_postgres_32_shards_8_workers_claim_and_succeed_without_deadlock():
                 time.sleep(0.01)
                 continue
             shard_id, attempt_count, _ = claimed
-            with case.session_factory() as session:
-                _set_timeouts(session)
+            with _postgres_session(
+                case.session_factory,
+                case.engine,
+            ) as (session, _):
                 result = update_work_shard(
                     session,
                     shard_id,
@@ -634,8 +683,10 @@ def test_postgres_32_shards_8_workers_claim_and_succeed_without_deadlock():
 
         assert len(completed) == shard_count
         assert len(set(completed)) == shard_count
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             shards = list(
                 session.execute(
                     select(WorkShard)
@@ -677,8 +728,10 @@ def test_postgres_progress_updates_on_different_shards_do_not_share_job_lock():
     )
 
     def update_second():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             return update_work_shard(
                 session,
                 case.shard_ids[1],
@@ -718,8 +771,10 @@ def test_postgres_at_cap_dual_claimers_fail_once():
     second_started = threading.Event()
 
     def second_claim():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             second_started.set()
             return claim_next_pending_shard(
                 session,
@@ -736,8 +791,10 @@ def test_postgres_at_cap_dual_claimers_fail_once():
             release.set()
             assert first.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
             assert second.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             shard = session.get(WorkShard, case.shard_ids[0])
             attempts = session.execute(
                 select(ShardAttempt).where(
@@ -768,8 +825,10 @@ def test_postgres_below_cap_dual_claimers_create_one_unique_attempt():
     second_started = threading.Event()
 
     def second_claim():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             second_started.set()
             return claim_next_pending_shard(
                 session,
@@ -788,8 +847,10 @@ def test_postgres_below_cap_dual_claimers_create_one_unique_attempt():
             assert claimed is not None
             assert claimed.attempt_count == 2
             assert second.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             attempts = session.execute(
                 select(ShardAttempt)
                 .where(ShardAttempt.shard_id == case.shard_ids[0])
@@ -813,20 +874,26 @@ def test_postgres_no_candidate_reconciliation_persists_after_session_close(
     )
     try:
         if use_pool_path:
-            with case.session_factory() as session:
-                _set_timeouts(session)
+            with _postgres_session(
+                case.session_factory,
+                case.engine,
+            ) as (session, _):
                 workers_core.ensure_pool_server(session)
                 session.commit()
-            with case.session_factory() as session:
-                _set_timeouts(session)
+            with _postgres_session(
+                case.session_factory,
+                case.engine,
+            ) as (session, _):
                 assert workers_core.claim_next_pool_job(
                     session,
                     case.server_ids[1],
                 ) is None
         else:
             assert _claim(case, case.server_ids[1]) is None
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             assert session.get(WorkShard, case.shard_ids[0]).status == "failed"
             assert session.get(Job, case.job_id).status == "failed"
     finally:
@@ -843,8 +910,11 @@ def test_postgres_stop_serializes_before_lease_exhaustion():
     second_started = threading.Event()
 
     def exhaust():
-        with case.session_factory() as session:
-            second_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            second_pid.append(backend_pid)
             second_started.set()
             result = workers_core.reconcile_expired_shard_leases(
                 session,
@@ -863,8 +933,10 @@ def test_postgres_stop_serializes_before_lease_exhaustion():
             release.set()
             assert stopped.result(timeout=FUTURE_TIMEOUT_SECONDS).status == "stopping"
             assert exhausted.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             assert session.get(WorkShard, case.shard_ids[0]).status == "stopped"
             assert session.get(Job, case.job_id).status == "stopped"
     finally:
@@ -899,8 +971,11 @@ def test_postgres_reregister_and_reconcile_complete_without_deadlock(
     reregister_started = threading.Event()
 
     def reregister():
-        with case.session_factory() as session:
-            reregister_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            reregister_pid.append(backend_pid)
             reregister_started.set()
             return register_server(
                 session,
@@ -912,8 +987,10 @@ def test_postgres_reregister_and_reconcile_complete_without_deadlock(
             ).id
 
     def reconcile():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             workers_core.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
@@ -931,8 +1008,10 @@ def test_postgres_reregister_and_reconcile_complete_without_deadlock(
             release_reconcile.set()
             assert reconciled.result(timeout=FUTURE_TIMEOUT_SECONDS) is True
             assert reregistered.result(timeout=FUTURE_TIMEOUT_SECONDS)
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             assert session.get(WorkShard, case.shard_ids[0]).status in {
                 "stale",
                 "failed",
@@ -946,8 +1025,10 @@ def test_postgres_heartbeat_waits_for_server_before_reregistered_shards(
     monkeypatch,
 ):
     case = _seed_case(max_attempts=3)
-    with case.session_factory() as session:
-        _set_timeouts(session)
+    with _postgres_session(
+        case.session_factory,
+        case.engine,
+    ) as (session, _):
         shard = session.get(WorkShard, case.shard_ids[0])
         shard.lease_expires_at = utcnow() + timedelta(hours=1)
         session.commit()
@@ -970,8 +1051,10 @@ def test_postgres_heartbeat_waits_for_server_before_reregistered_shards(
     heartbeat_started = threading.Event()
 
     def reregister():
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             return register_server(
                 session,
                 ServerRegisterRequest(
@@ -982,8 +1065,11 @@ def test_postgres_heartbeat_waits_for_server_before_reregistered_shards(
             ).id
 
     def heartbeat():
-        with case.session_factory() as session:
-            heartbeat_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            heartbeat_pid.append(backend_pid)
             heartbeat_started.set()
             return heartbeat_server(
                 session,
@@ -1028,8 +1114,11 @@ def test_postgres_late_success_first_prevents_lease_exhaustion():
     exhaust_started = threading.Event()
 
     def exhaust():
-        with case.session_factory() as session:
-            exhaust_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            exhaust_pid.append(backend_pid)
             exhaust_started.set()
             shard = claim_next_pending_shard(
                 session,
@@ -1048,8 +1137,10 @@ def test_postgres_late_success_first_prevents_lease_exhaustion():
             release.set()
             assert succeeded.result(timeout=FUTURE_TIMEOUT_SECONDS).status == "succeeded"
             assert exhausted.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             shard = session.get(WorkShard, case.shard_ids[0])
             job = session.get(Job, case.job_id)
             assert shard.status == "succeeded"
@@ -1073,8 +1164,11 @@ def test_postgres_lease_exhaustion_first_fences_late_success():
     update_started = threading.Event()
 
     def late_success():
-        with case.session_factory() as session:
-            update_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            update_pid.append(backend_pid)
             update_started.set()
             return update_work_shard(
                 session,
@@ -1097,8 +1191,10 @@ def test_postgres_lease_exhaustion_first_fences_late_success():
             release.set()
             assert exhausted.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
             assert succeeded.result(timeout=FUTURE_TIMEOUT_SECONDS) == "failed"
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             shard = session.get(WorkShard, case.shard_ids[0])
             job = session.get(Job, case.job_id)
             assert shard.status == "failed"
@@ -1129,8 +1225,11 @@ def test_postgres_dual_terminal_shards_use_last_explicit_failure():
     second_started = threading.Event()
 
     def second_failure():
-        with case.session_factory() as session:
-            second_pid.append(_set_timeouts(session))
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            second_pid.append(backend_pid)
             second_started.set()
             return update_work_shard(
                 session,
@@ -1154,8 +1253,10 @@ def test_postgres_dual_terminal_shards_use_last_explicit_failure():
             release.set()
             assert first.result(timeout=FUTURE_TIMEOUT_SECONDS).status == "failed"
             assert second.result(timeout=FUTURE_TIMEOUT_SECONDS).status == "failed"
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             job = session.get(Job, case.job_id)
             assert job.status == "failed"
             assert job.failure_category == "output_error"
@@ -1168,27 +1269,35 @@ def test_postgres_dual_terminal_shards_use_last_explicit_failure():
 def test_postgres_exhaustion_then_success_uses_lease_failure():
     case = _seed_case(max_attempts=1, shard_count=2)
     try:
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             success_shard = session.get(WorkShard, case.shard_ids[1])
             success_shard.lease_expires_at = utcnow() + timedelta(hours=1)
             session.commit()
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             workers_core.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )
             session.commit()
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             first = session.get(WorkShard, case.shard_ids[0])
             second = session.get(WorkShard, case.shard_ids[1])
             assert first.status == "failed"
             assert second.status == "running"
             assert session.get(Job, case.job_id).status == "running"
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             result = update_work_shard(
                 session,
                 case.shard_ids[1],
@@ -1200,8 +1309,10 @@ def test_postgres_exhaustion_then_success_uses_lease_failure():
                 ),
             )
             assert result.status == "succeeded"
-        with case.session_factory() as session:
-            _set_timeouts(session)
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
             job = session.get(Job, case.job_id)
             assert job.status == "failed"
             assert job.failure_category == "lease_expired"
