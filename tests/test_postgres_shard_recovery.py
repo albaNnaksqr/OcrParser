@@ -338,12 +338,11 @@ def test_postgres_scan_unit_expiry_wins_against_busy_heartbeat():
         case,
         reconcile_and_commit,
     )
-    heartbeat_pid: list[int] = []
     heartbeat_started = threading.Event()
 
     def heartbeat():
         with case.session_factory() as session:
-            heartbeat_pid.append(_set_timeouts(session))
+            _set_timeouts(session)
             heartbeat_started.set()
             return heartbeat_server(
                 session,
@@ -360,10 +359,9 @@ def test_postgres_scan_unit_expiry_wins_against_busy_heartbeat():
             assert entered.wait(FUTURE_TIMEOUT_SECONDS)
             heartbeated = executor.submit(heartbeat)
             assert heartbeat_started.wait(FUTURE_TIMEOUT_SECONDS)
-            _wait_until_blocked(case.engine, heartbeat_pid[0])
+            assert heartbeated.result(timeout=3) == case.server_ids[0]
             release.set()
             assert expired.result(timeout=FUTURE_TIMEOUT_SECONDS) is True
-            assert heartbeated.result(timeout=FUTURE_TIMEOUT_SECONDS)
         with case.session_factory() as session:
             _set_timeouts(session)
             unit = session.get(ScanUnit, case.scan_unit_id)
