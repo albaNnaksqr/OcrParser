@@ -360,58 +360,84 @@ def _claimable_scan_unit_id_select(
         .with_only_columns(ScanUnit.id)
     )
 
-def claim_next_scan_unit(session: Session, server_id: str) -> ScanUnit | None:
-    server = session.get(Server, server_id)
-    if server is None or server.archived_at is not None:
-        return None
-    now = utcnow()
-    reconcile_expired_scan_unit_leases(session, now=now)
-    for claim_statuses in ({"stale"}, {"pending"}):
-        after_id: int | None = None
-        while True:
-            candidate_ids = session.execute(
-                _claimable_scan_unit_id_select(
-                    limit=SCAN_UNIT_CLAIM_BATCH_SIZE,
-                    after_id=after_id,
-                    statuses=claim_statuses,
+class _ScanUnitClaimCollision(RuntimeError):
+    pass
+
+
+def claim_next_scan_unit(
+    session: Session,
+    server_id: str,
+) -> ScanUnit | None:
+    from .commands import claim_next_scan_unit as target
+
+    return target(session, server_id)
+
+
+def _claim_next_scan_unit_phase(
+    session: Session,
+    server_id: str,
+    *,
+    claim_statuses: set[str],
+    now: datetime | None,
+    reconcile: bool,
+) -> tuple[ScanUnit | None, datetime | None, bool]:
+    if reconcile:
+        server = session.get(Server, server_id)
+        if server is None or server.archived_at is not None:
+            return None, None, False
+        now = utcnow()
+        reconcile_expired_scan_unit_leases(session, now=now)
+    if now is None:
+        raise RuntimeError("scan unit claim phase requires a claim timestamp")
+
+    after_id: int | None = None
+    while True:
+        candidate_ids = session.execute(
+            _claimable_scan_unit_id_select(
+                limit=SCAN_UNIT_CLAIM_BATCH_SIZE,
+                after_id=after_id,
+                statuses=claim_statuses,
+            )
+        ).scalars().all()
+        if not candidate_ids:
+            return None, now, True
+        after_id = max(candidate_ids)
+        for unit_id in candidate_ids:
+            unit = session.get(ScanUnit, unit_id)
+            if unit is None:
+                continue
+            job = unit.job
+            if not server_is_allowed_for_job(job, server_id):
+                continue
+            if not server_can_access_input_dir(
+                session,
+                server_id,
+                unit.path,
+            ):
+                continue
+            result = session.execute(
+                update(ScanUnit)
+                .where(ScanUnit.id == unit.id)
+                .where(ScanUnit.status.in_(claim_statuses))
+                .values(
+                    status="running",
+                    assigned_server_id=server_id,
+                    attempt_count=ScanUnit.attempt_count + 1,
+                    started_at=now,
+                    lease_expires_at=scan_unit_lease_deadline(now),
+                    failure_category=None,
+                    error_message=None,
                 )
-            ).scalars().all()
-            if not candidate_ids:
-                break
-            after_id = max(candidate_ids)
-            for unit_id in candidate_ids:
-                unit = session.get(ScanUnit, unit_id)
-                if unit is None:
-                    continue
-                job = unit.job
-                if not server_is_allowed_for_job(job, server_id):
-                    continue
-                if not server_can_access_input_dir(session, server_id, unit.path):
-                    continue
-                result = session.execute(
-                    update(ScanUnit)
-                    .where(ScanUnit.id == unit.id)
-                    .where(ScanUnit.status.in_(claim_statuses))
-                    .values(
-                        status="running",
-                        assigned_server_id=server_id,
-                        attempt_count=ScanUnit.attempt_count + 1,
-                        started_at=now,
-                        lease_expires_at=scan_unit_lease_deadline(now),
-                        failure_category=None,
-                        error_message=None,
-                    )
+            )
+            if result.rowcount != 1:
+                raise _ScanUnitClaimCollision(
+                    "scan unit claim lost a compare-and-set race"
                 )
-                if result.rowcount != 1:
-                    session.rollback()
-                    return claim_next_scan_unit(session, server_id)
-                if job.status == "queued":
-                    job.status = "running"
-                    job.started_at = now
-                session.commit()
-                return session.get(ScanUnit, unit.id)
-        session.rollback()
-    return None
+            if job.status == "queued":
+                job.status = "running"
+                job.started_at = now
+            session.refresh(unit)
+            return unit, now, True
 
 def _next_manifest_shard_index(
     session: Session,
@@ -2301,6 +2327,7 @@ __all__ = [
     for name in globals()
     if not name.startswith("__")
     and name not in {
+        "_claim_next_scan_unit_phase",
         "_claim_parent_job_for_key_share_select",
         "_claim_next_pending_shard",
         "_complete_scan_unit",
@@ -2309,6 +2336,7 @@ __all__ = [
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
+        "_ScanUnitClaimCollision",
         "_WorkShardClaimCollision",
     }
 ]

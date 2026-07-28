@@ -15,7 +15,6 @@ from ...schemas import (
 from ..common import ScanUnitAttemptConflictError, ShardAttemptConflictError
 from . import core as _core
 from .core import (
-    claim_next_scan_unit,
     claim_worker_manifest_integrity_check,
     complete_worker_manifest_integrity_check,
     request_worker_manifest_integrity_check,
@@ -39,6 +38,16 @@ FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
 CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR = (
     "claim_next_pending_shard requires a session without an active transaction"
 )
+CLAIM_NEXT_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
+    "claim_next_scan_unit requires a session without an active transaction"
+)
+
+
+class _ScanUnitClaimPhaseEnded(RuntimeError):
+    def __init__(self, now, *, server_available: bool = True) -> None:
+        super().__init__("scan unit claim phase ended")
+        self.now = now
+        self.server_available = server_available
 
 
 def register_remote_manifest(
@@ -150,6 +159,61 @@ def claim_next_pending_shard(
                 return shard
             except _core._WorkShardClaimCollision as exc:
                 collision_parent = exc.claimable_parent
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
+
+
+def claim_next_scan_unit(
+    session: _Session,
+    server_id: str,
+) -> _ScanUnit | None:
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            CLAIM_NEXT_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR
+        )
+
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        while True:
+            now = None
+            restart = False
+            for claim_statuses, reconcile in (
+                ({"stale"}, True),
+                ({"pending"}, False),
+            ):
+                try:
+                    with session.begin():
+                        unit, now, server_available = (
+                            _core._claim_next_scan_unit_phase(
+                                session,
+                                server_id,
+                                claim_statuses=claim_statuses,
+                                now=now,
+                                reconcile=reconcile,
+                            )
+                        )
+                        if unit is None:
+                            # Phase exhaustion is a rollback boundary: it
+                            # releases every skipped candidate lock and, for
+                            # the stale phase, rolls back reconciliation before
+                            # the pending phase starts.
+                            raise _ScanUnitClaimPhaseEnded(
+                                now,
+                                server_available=server_available,
+                            )
+                    return unit
+                except _ScanUnitClaimPhaseEnded as exc:
+                    if not exc.server_available:
+                        return None
+                    now = exc.now
+                except _core._ScanUnitClaimCollision:
+                    # Leave the failed transaction before restarting from the
+                    # server lookup and stale reconciliation phase.
+                    restart = True
+                    break
+            if not restart:
+                return None
     finally:
         session.expire_on_commit = previous_expire_on_commit
 

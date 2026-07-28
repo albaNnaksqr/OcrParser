@@ -71,6 +71,15 @@ class PostgresScanUnitCase:
     scan_unit_id: int
 
 
+@dataclass(frozen=True)
+class PostgresScanClaimCase:
+    session_factory: object
+    engine: object
+    job_ids: tuple[str, ...]
+    server_ids: tuple[str, ...]
+    scan_unit_ids: tuple[int, ...]
+
+
 @contextmanager
 def _postgres_session(session_factory, engine):
     with engine.connect() as connection:
@@ -315,6 +324,109 @@ def _cleanup_scan_unit_case(case: PostgresScanUnitCase) -> None:
         case.engine.dispose()
 
 
+def _seed_scan_claim_case(
+    unit_specs: list[dict],
+    *,
+    first_server_path: str = "/shared",
+) -> PostgresScanClaimCase:
+    session_factory, engine = create_session_factory(POSTGRES_URL)
+    suffix = uuid.uuid4().hex[:12]
+    server_ids = tuple(
+        f"psc-{suffix}-{index}" for index in range(2)
+    )
+    job_indexes = sorted(
+        {int(spec.get("job_index", 0)) for spec in unit_specs} or {0}
+    )
+    job_ids = tuple(
+        f"pscj-{suffix}-{index}" for index in job_indexes
+    )
+    assert all(
+        len(identifier) <= 36
+        for identifier in (*server_ids, *job_ids)
+    )
+    job_id_by_index = dict(zip(job_indexes, job_ids))
+    with _postgres_session(session_factory, engine) as (session, _):
+        for index, server_id in enumerate(server_ids):
+            shared_path = first_server_path if index == 0 else "/shared"
+            session.add(
+                Server(
+                    id=server_id,
+                    name=server_id,
+                    host="localhost",
+                    status="online",
+                    capabilities_json=json.dumps(
+                        {
+                            "shared_paths": [
+                                {
+                                    "path": shared_path,
+                                    "exists": True,
+                                    "is_dir": True,
+                                    "readable": True,
+                                    "writable": True,
+                                }
+                            ]
+                        }
+                    ),
+                    last_heartbeat_at=utcnow(),
+                )
+            )
+        workers_core.ensure_pool_server(session)
+        for job_index in job_indexes:
+            session.add(
+                Job(
+                    id=job_id_by_index[job_index],
+                    input_dir="/shared/input",
+                    output_dir="/shared/output",
+                    engine="dotsocr",
+                    input_mode="distributed_remote_folder_snapshot",
+                    assigned_server_id=POOL_SERVER_ID,
+                    status="queued",
+                )
+            )
+        units = []
+        for spec in unit_specs:
+            assigned_server_id = spec.get("assigned_server_id")
+            if "assigned_server_index" in spec:
+                assigned_server_id = server_ids[
+                    int(spec["assigned_server_index"])
+                ]
+            unit = ScanUnit(
+                job_id=job_id_by_index[int(spec.get("job_index", 0))],
+                path=spec["path"],
+                status=spec["status"],
+                assigned_server_id=assigned_server_id,
+                attempt_count=int(spec.get("attempt_count", 0)),
+                started_at=spec.get("started_at"),
+                lease_expires_at=spec.get("lease_expires_at"),
+            )
+            session.add(unit)
+            units.append(unit)
+        session.commit()
+        scan_unit_ids = tuple(unit.id for unit in units)
+    return PostgresScanClaimCase(
+        session_factory=session_factory,
+        engine=engine,
+        job_ids=job_ids,
+        server_ids=server_ids,
+        scan_unit_ids=scan_unit_ids,
+    )
+
+
+def _cleanup_scan_claim_case(case: PostgresScanClaimCase) -> None:
+    try:
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            session.execute(delete(Job).where(Job.id.in_(case.job_ids)))
+            session.execute(
+                delete(Server).where(Server.id.in_(case.server_ids))
+            )
+            session.commit()
+    finally:
+        case.engine.dispose()
+
+
 def _claim(case: PostgresShardCase, server_id: str):
     with _postgres_session(
         case.session_factory,
@@ -466,6 +578,267 @@ def test_postgres_scan_unit_claim_reclaims_after_concurrent_expiry():
     finally:
         release.set()
         _cleanup_scan_unit_case(case)
+
+
+def test_postgres_pending_scan_units_skip_locked_across_claim_batches():
+    unit_count = manifests_core.SCAN_UNIT_CLAIM_BATCH_SIZE + 1
+    case = _seed_scan_claim_case(
+        [
+            {
+                "job_index": index,
+                "path": f"/shared/input/{index}",
+                "status": "pending",
+            }
+            for index in range(unit_count)
+        ]
+    )
+    entered, release, primary = _run_with_paused_commit(
+        case,
+        lambda session: claim_next_scan_unit(
+            session,
+            case.server_ids[0],
+        ),
+    )
+
+    def second_claim():
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            unit = claim_next_scan_unit(session, case.server_ids[1])
+            return None if unit is None else unit.id
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(primary)
+            assert entered.wait(FUTURE_TIMEOUT_SECONDS)
+            started = time.monotonic()
+            second = executor.submit(second_claim)
+            second_id = second.result(timeout=3)
+            assert second_id == case.scan_unit_ids[-1]
+            assert time.monotonic() - started < 3
+            release.set()
+            first_unit = first.result(timeout=FUTURE_TIMEOUT_SECONDS)
+            assert first_unit.id in case.scan_unit_ids
+            assert first_unit.id != second_id
+    finally:
+        release.set()
+        _cleanup_scan_claim_case(case)
+
+
+def test_postgres_stale_scan_pages_release_locks_at_phase_boundary(
+    monkeypatch,
+):
+    case = _seed_scan_claim_case(
+        [
+            {
+                "job_index": index,
+                "path": f"/shared/blocked/{index}",
+                "status": "stale",
+                "attempt_count": 1,
+            }
+            for index in range(3)
+        ],
+        first_server_path="/shared/allowed",
+    )
+    monkeypatch.setattr(
+        manifests_core,
+        "SCAN_UNIT_CLAIM_BATCH_SIZE",
+        2,
+    )
+    stale_phase_scanned = threading.Event()
+    release_stale_phase = threading.Event()
+    waiter_started = threading.Event()
+    waiter_pid: list[int] = []
+    original_phase = manifests_core._claim_next_scan_unit_phase
+
+    def pause_after_stale_scan(*args, **kwargs):
+        outcome = original_phase(*args, **kwargs)
+        if kwargs["claim_statuses"] == {"stale"} and outcome[0] is None:
+            stale_phase_scanned.set()
+            if not release_stale_phase.wait(FUTURE_TIMEOUT_SECONDS):
+                raise TimeoutError("timed out waiting to release stale phase")
+        return outcome
+
+    monkeypatch.setattr(
+        manifests_core,
+        "_claim_next_scan_unit_phase",
+        pause_after_stale_scan,
+    )
+
+    def claim():
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            return claim_next_scan_unit(session, case.server_ids[0])
+
+    def wait_for_first_unit():
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            waiter_pid.append(backend_pid)
+            waiter_started.set()
+            unit = session.execute(
+                select(ScanUnit)
+                .where(ScanUnit.id == case.scan_unit_ids[0])
+                .with_for_update()
+            ).scalar_one()
+            return unit.id
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            claimed = executor.submit(claim)
+            assert stale_phase_scanned.wait(FUTURE_TIMEOUT_SECONDS)
+            waiter = executor.submit(wait_for_first_unit)
+            assert waiter_started.wait(FUTURE_TIMEOUT_SECONDS)
+            _wait_until_blocked(case.engine, waiter_pid[0])
+            release_stale_phase.set()
+            assert claimed.result(timeout=FUTURE_TIMEOUT_SECONDS) is None
+            assert waiter.result(timeout=FUTURE_TIMEOUT_SECONDS) == (
+                case.scan_unit_ids[0]
+            )
+    finally:
+        release_stale_phase.set()
+        _cleanup_scan_claim_case(case)
+
+
+@pytest.mark.parametrize("include_pending", [False, True])
+def test_postgres_pending_phase_does_not_persist_global_reconciliation(
+    include_pending,
+):
+    expired_at = utcnow() - timedelta(minutes=1)
+    unit_specs = [
+        {
+            "path": "/shared/blocked/expired",
+            "status": "running",
+            "assigned_server_index": 1,
+            "attempt_count": 1,
+            "started_at": expired_at - timedelta(minutes=1),
+            "lease_expires_at": expired_at,
+        }
+    ]
+    if include_pending:
+        unit_specs.append(
+            {
+                "path": "/shared/allowed/pending",
+                "status": "pending",
+            }
+        )
+    case = _seed_scan_claim_case(
+        unit_specs,
+        first_server_path="/shared/allowed",
+    )
+
+    try:
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            claimed = claim_next_scan_unit(session, case.server_ids[0])
+            if include_pending:
+                assert claimed is not None
+                assert claimed.id == case.scan_unit_ids[1]
+            else:
+                assert claimed is None
+
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            expired = session.get(ScanUnit, case.scan_unit_ids[0])
+            assert expired.status == "running"
+            assert expired.assigned_server_id == case.server_ids[1]
+            assert expired.lease_expires_at == expired_at
+    finally:
+        _cleanup_scan_claim_case(case)
+
+
+def test_postgres_stale_success_commits_global_reconciliation():
+    expired_at = utcnow() - timedelta(minutes=1)
+    case = _seed_scan_claim_case(
+        [
+            {
+                "path": "/shared/allowed/claimable",
+                "status": "running",
+                "assigned_server_index": 1,
+                "attempt_count": 1,
+                "lease_expires_at": expired_at,
+            },
+            {
+                "path": "/shared/blocked/reconciled",
+                "status": "running",
+                "assigned_server_index": 1,
+                "attempt_count": 1,
+                "lease_expires_at": expired_at,
+            },
+        ],
+        first_server_path="/shared/allowed",
+    )
+
+    try:
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            claimed = claim_next_scan_unit(session, case.server_ids[0])
+            assert claimed is not None
+            assert claimed.id == case.scan_unit_ids[0]
+            assert claimed.status == "running"
+            assert claimed.attempt_count == 2
+
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            reconciled = session.get(ScanUnit, case.scan_unit_ids[1])
+            assert reconciled.status == "stale"
+            assert reconciled.lease_expires_at is None
+            assert reconciled.failure_category == "lease_expired"
+    finally:
+        _cleanup_scan_claim_case(case)
+
+
+def test_postgres_scan_claim_commit_failure_is_atomic():
+    case = _seed_scan_claim_case(
+        [{"path": "/shared/input", "status": "pending"}]
+    )
+
+    try:
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            def fail_commit(current_session):
+                raise RuntimeError("injected scan claim commit failure")
+
+            sa_event.listen(
+                session,
+                "before_commit",
+                fail_commit,
+                once=True,
+            )
+            with pytest.raises(
+                RuntimeError,
+                match="injected scan claim commit failure",
+            ):
+                claim_next_scan_unit(session, case.server_ids[0])
+            assert session.in_transaction() is False
+
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            unit = session.get(ScanUnit, case.scan_unit_ids[0])
+            job = session.get(Job, case.job_ids[0])
+            assert unit.status == "pending"
+            assert unit.assigned_server_id is None
+            assert unit.attempt_count == 0
+            assert job.status == "queued"
+            assert job.started_at is None
+    finally:
+        _cleanup_scan_claim_case(case)
 
 
 def test_postgres_two_pending_shards_claim_with_skip_locked():
