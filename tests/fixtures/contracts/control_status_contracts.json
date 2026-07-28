@@ -536,7 +536,7 @@
           "stopped": [
             {
               "kind": "domain_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:1938",
+              "source": "ocr_platform/control/scheduling.py:767",
               "symbol": "update(ScanUnit).values(status=...)"
             }
           ],

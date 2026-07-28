@@ -11,7 +11,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.orm import Session
 
 from .domains.common import (
-    RECLAIMABLE_SHARD_STATUSES,
+    RECLAIMABLE_SCAN_UNIT_STATUSES, RECLAIMABLE_SHARD_STATUSES,
     ScanUnitAttemptConflictError,
     SHARD_LEASE_SECONDS,
     ShardAttemptConflictError,
@@ -743,5 +743,34 @@ def _fence_running_shards_for_restarted_server(
             error_message="worker process re-registered before shard completion",
             lease_expires_at=None,
             finished_at=None,
+        )
+    )
+
+
+def stop_reclaimable_work_for_job(
+    session: Session,
+    job: Job,
+) -> None:
+    current_time = utcnow()
+    session.execute(
+        update(WorkShard)
+        .where(WorkShard.job_id == job.id)
+        .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
+        .values(
+            status="stopped",
+            failure_category="operator_stopped",
+            lease_expires_at=None,
+            finished_at=current_time,
+        )
+    )
+    session.execute(
+        update(ScanUnit)
+        .where(ScanUnit.job_id == job.id)
+        .where(ScanUnit.status.in_(RECLAIMABLE_SCAN_UNIT_STATUSES))
+        .values(
+            status="stopped",
+            failure_category="operator_stopped",
+            lease_expires_at=None,
+            finished_at=current_time,
         )
     )

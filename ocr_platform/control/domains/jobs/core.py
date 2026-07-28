@@ -103,7 +103,7 @@ def reconcile_expired_shard_leases(*args, **kwargs):
     return target(*args, **kwargs)
 
 def stop_reclaimable_work_for_job(*args, **kwargs):
-    from ..manifests.core import stop_reclaimable_work_for_job as target
+    from ...scheduling import stop_reclaimable_work_for_job as target
     return target(*args, **kwargs)
 
 

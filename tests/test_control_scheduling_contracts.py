@@ -135,6 +135,9 @@ def test_scheduling_contract_is_driven_by_real_service_calls() -> None:
     }
 
     stopped = invariants["stop_state_results"]
+    assert stopped["policy_source"].startswith(
+        "ocr_platform/control/scheduling.py:"
+    )
     assert stopped["shards"] == {
         "before": {
             "1": "running",

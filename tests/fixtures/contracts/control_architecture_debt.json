@@ -10,8 +10,8 @@
       },
       {
         "source": "jobs",
-        "statement_count": 9,
-        "symbol_count": 9,
+        "statement_count": 8,
+        "symbol_count": 8,
         "target": "manifests"
       },
       {
@@ -40,8 +40,8 @@
       },
       {
         "source": "workers",
-        "statement_count": 3,
-        "symbol_count": 3,
+        "statement_count": 2,
+        "symbol_count": 2,
         "target": "manifests"
       },
       {
@@ -51,7 +51,7 @@
         "target": "model_profiles"
       }
     ],
-    "lazy_wrapper_count": 30,
+    "lazy_wrapper_count": 28,
     "private_symbol_count": 16,
     "sites": [
       {
@@ -245,18 +245,6 @@
         "symbol": "public_assigned_server_id",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "f3c4340d5977c4896639cd79074b4e220311d556f41ff0c70e11e184cc677b5c",
-        "id": "ocr_platform.control.domains.jobs.core:stop_reclaimable_work_for_job:import[ocr_platform.control.domains.manifests.core.stop_reclaimable_work_for_job as target]@f3c4340d5977:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:106",
-        "source_domain": "jobs",
-        "symbol": "stop_reclaimable_work_for_job",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
         "alias": null,
@@ -485,21 +473,9 @@
         "symbol": "server_can_access_input_dir",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "f3c4340d5977c4896639cd79074b4e220311d556f41ff0c70e11e184cc677b5c",
-        "id": "ocr_platform.control.domains.workers.core:stop_reclaimable_work_for_job:import[ocr_platform.control.domains.manifests.core.stop_reclaimable_work_for_job as target]@f3c4340d5977:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/workers/core.py:55",
-        "source_domain": "workers",
-        "symbol": "stop_reclaimable_work_for_job",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
       }
     ],
-    "statement_count": 35,
+    "statement_count": 33,
     "statements": [
       {
         "fingerprint": "2d04069e84cddf5053f776cc0ffa11a0f2c0979007a9ad31b40d6a6a4a3d1c7f",
@@ -626,15 +602,6 @@
         "source_domain": "jobs",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:stop_reclaimable_work_for_job:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:106",
-        "source_domain": "jobs",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
         "fingerprint": "2d04069e84cddf5053f776cc0ffa11a0f2c0979007a9ad31b40d6a6a4a3d1c7f",
@@ -806,15 +773,6 @@
         "source_domain": "workers",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.workers.core:stop_reclaimable_work_for_job:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/workers/core.py:55",
-        "source_domain": "workers",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
       }
     ],
     "strongly_connected_components": [
@@ -824,7 +782,7 @@
         "workers"
       ]
     ],
-    "symbol_count": 37
+    "symbol_count": 35
   },
   "decreasing_gate": {
     "deletions_allowed": true,
@@ -839,7 +797,7 @@
     "transactions": "commit/rollback/flush are counted only on the conventional session name, a Session-annotated parameter, or an assignment/closure alias of one"
   },
   "policy_external_status_writes": {
-    "count": 24,
+    "count": 22,
     "sites": [
       {
         "field": "status",
@@ -951,20 +909,6 @@
         "source": "ocr_platform/control/domains/manifests/core.py:1073",
         "target": "manifest.worker_integrity_status",
         "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "827fa2ba4118b8acaa57d53ac85e8d9ea404c67274d059993bf34011b534ba23",
-        "id": "ocr_platform.control.domains.manifests.core:stop_reclaimable_work_for_job:sql_values[status<-25013cd4f200]@827fa2ba4118:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:1927",
-        "write_kind": "sql_values"
-      },
-      {
-        "field": "status",
-        "fingerprint": "d13396fb316c44b42962d7e4d25d15fff06c2590def987a772a06e4c743e7572",
-        "id": "ocr_platform.control.domains.manifests.core:stop_reclaimable_work_for_job:sql_values[status<-25013cd4f200]@d13396fb316c:1",
-        "source": "ocr_platform/control/domains/manifests/core.py:1938",
-        "write_kind": "sql_values"
       },
       {
         "field": "status",

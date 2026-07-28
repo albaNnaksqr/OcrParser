@@ -1938,6 +1938,11 @@ def build_scheduling_contract() -> dict[str, Any]:
         utcnow,
     )
 
+    stop_policy_source = _function_definition_source(
+        ROOT / "ocr_platform" / "control" / "scheduling.py",
+        "stop_reclaimable_work_for_job",
+    )
+
     def require_ok(response: Any, context: str) -> dict[str, Any]:
         if response.status_code != 200:
             raise RuntimeError(
@@ -2829,6 +2834,7 @@ def build_scheduling_contract() -> dict[str, Any]:
                         stop_scan_window_two["status"]
                     ),
                 },
+                "policy_source": stop_policy_source,
                 "evidence": (
                     "tests/test_control_scheduling_contracts.py::"
                     "test_scheduling_contract_is_driven_by_real_service_calls"
@@ -3364,6 +3370,23 @@ def _constant_source(path: Path, symbol: str) -> str:
         ):
             return f"{path.relative_to(ROOT).as_posix()}:{node.lineno}"
     raise RuntimeError(f"cannot find {symbol} in {path}")
+
+
+def _function_definition_source(path: Path, function_name: str) -> str:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    function = next(
+        (
+            node
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        ),
+        None,
+    )
+    if function is None:
+        raise RuntimeError(f"cannot find {function_name} in {path}")
+    relative = path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
+    return f"{relative.as_posix()}:{function.lineno}"
 
 
 def _status_transition_evidence(

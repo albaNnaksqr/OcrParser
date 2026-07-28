@@ -141,6 +141,7 @@
       "contract": "stop immediately closes reclaimable work, preserves running work until its attempt stops or lease expires, and prevents late updates from regressing terminal state",
       "evidence": "tests/test_control_scheduling_contracts.py::test_scheduling_contract_is_driven_by_real_service_calls",
       "id": "stop_state_results",
+      "policy_source": "ocr_platform/control/scheduling.py:750",
       "scan_units": {
         "after_request_stop": {
           "pending": "stopped",

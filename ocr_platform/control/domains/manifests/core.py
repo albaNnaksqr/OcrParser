@@ -1922,29 +1922,9 @@ def has_static_shards(session: Session, job_id: str) -> bool:
     )
 
 def stop_reclaimable_work_for_job(session: Session, job: Job) -> None:
-    current_time = utcnow()
-    session.execute(
-        update(WorkShard)
-        .where(WorkShard.job_id == job.id)
-        .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
-        .values(
-            status="stopped",
-            failure_category="operator_stopped",
-            lease_expires_at=None,
-            finished_at=current_time,
-        )
-    )
-    session.execute(
-        update(ScanUnit)
-        .where(ScanUnit.job_id == job.id)
-        .where(ScanUnit.status.in_(RECLAIMABLE_SCAN_UNIT_STATUSES))
-        .values(
-            status="stopped",
-            failure_category="operator_stopped",
-            lease_expires_at=None,
-            finished_at=current_time,
-        )
-    )
+    from ...scheduling import stop_reclaimable_work_for_job as target
+
+    target(session, job)
 
 def finalize_stopped_job_if_idle(session: Session, job: Job) -> bool:
     from ...scheduling import _flush_finalization
