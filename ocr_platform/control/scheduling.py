@@ -343,6 +343,10 @@ def _commit_reconciliation(session):
     session.commit()
 
 
+def _flush_reconciliation(session):
+    session.flush()
+
+
 def _flush_finalization(session):
     session.flush()
 

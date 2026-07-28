@@ -591,13 +591,13 @@
           "expected_count": 1,
           "kind": "ast_attribute_assignment",
           "matches": [
-            "ocr_platform/control/domains/manifests/core.py:2211"
+            "ocr_platform/control/domains/manifests/core.py:2260"
           ],
           "source": "shard.status",
           "target": "attempt.status"
         },
         "sources": [
-          "ocr_platform/control/domains/manifests/core.py:2211",
+          "ocr_platform/control/domains/manifests/core.py:2260",
           "ocr_platform/control/schemas.py:214"
         ],
         "type": "derived_domain_transition",
@@ -610,7 +610,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -622,7 +622,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -634,7 +634,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -646,7 +646,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -658,7 +658,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ],
@@ -670,7 +670,7 @@
             },
             {
               "kind": "derived_transition",
-              "source": "ocr_platform/control/domains/manifests/core.py:2211",
+              "source": "ocr_platform/control/domains/manifests/core.py:2260",
               "symbol": "attempt.status = shard.status"
             }
           ]

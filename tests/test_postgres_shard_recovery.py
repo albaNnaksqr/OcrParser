@@ -25,6 +25,7 @@ from ocr_platform.control.domains.workers.commands import (
     heartbeat_server,
     register_server,
 )
+from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.domains.workers import core as workers_core
 from ocr_platform.control.models import (
     Job,
@@ -95,12 +96,15 @@ def _seed_case(
     *,
     max_attempts: int,
     shard_count: int = 1,
+    server_count: int = 3,
     assigned_server_id: str | None = None,
     shard_status: str = "running",
 ) -> PostgresShardCase:
     session_factory, engine = create_session_factory(POSTGRES_URL)
     suffix = uuid.uuid4().hex
-    server_ids = tuple(f"pg-recovery-{suffix}-{index}" for index in range(3))
+    server_ids = tuple(
+        f"pg-recovery-{suffix}-{index}" for index in range(server_count)
+    )
     job_id = str(uuid.uuid4())
     with session_factory() as session:
         _set_timeouts(session)
@@ -490,6 +494,169 @@ def test_postgres_single_pending_shard_second_claimer_returns_fast_none():
             )
     finally:
         release.set()
+        _cleanup_case(case)
+
+
+def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch):
+    case = _seed_case(max_attempts=3, shard_status="pending")
+    claim_holds_shard = threading.Event()
+    release_claim = threading.Event()
+    terminal_started = threading.Event()
+    terminal_pid: list[int] = []
+    original_create_attempt = manifests_core._create_shard_attempt
+
+    def paused_create_attempt(session, shard, server_id):
+        claim_holds_shard.set()
+        if not release_claim.wait(FUTURE_TIMEOUT_SECONDS):
+            raise TimeoutError("timed out waiting to create shard attempt")
+        return original_create_attempt(session, shard, server_id)
+
+    monkeypatch.setattr(
+        "ocr_platform.control.domains.manifests.core._create_shard_attempt",
+        paused_create_attempt,
+    )
+
+    def claim():
+        return _claim(case, case.server_ids[0])
+
+    def terminal_update():
+        with case.session_factory() as session:
+            terminal_pid.append(_set_timeouts(session))
+            terminal_started.set()
+            return update_work_shard(
+                session,
+                case.shard_ids[0],
+                WorkShardUpdateRequest(
+                    status="succeeded",
+                    assigned_server_id=case.server_ids[0],
+                    attempt_count=1,
+                    processed_files=1,
+                ),
+            ).status
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            claimed = executor.submit(claim)
+            assert claim_holds_shard.wait(FUTURE_TIMEOUT_SECONDS)
+            terminal = executor.submit(terminal_update)
+            assert terminal_started.wait(FUTURE_TIMEOUT_SECONDS)
+            _wait_until_blocked(case.engine, terminal_pid[0])
+            release_claim.set()
+            claim_result = claimed.result(timeout=FUTURE_TIMEOUT_SECONDS)
+            assert claim_result == (
+                case.shard_ids[0],
+                1,
+                case.server_ids[0],
+            )
+            assert terminal.result(timeout=FUTURE_TIMEOUT_SECONDS) == "succeeded"
+
+        with case.session_factory() as session:
+            _set_timeouts(session)
+            shard = session.get(WorkShard, case.shard_ids[0])
+            attempts = list(
+                session.execute(
+                    select(ShardAttempt)
+                    .where(ShardAttempt.shard_id == case.shard_ids[0])
+                    .order_by(ShardAttempt.attempt_number)
+                ).scalars()
+            )
+            assert shard.status == "succeeded"
+            assert shard.attempt_count == 1
+            assert [
+                (attempt.attempt_number, attempt.status)
+                for attempt in attempts
+            ] == [(1, "succeeded")]
+    finally:
+        release_claim.set()
+        _cleanup_case(case)
+
+
+def test_postgres_32_shards_8_workers_claim_and_succeed_without_deadlock():
+    shard_count = 32
+    worker_count = 8
+    case = _seed_case(
+        max_attempts=3,
+        shard_count=shard_count,
+        server_count=worker_count,
+        shard_status="pending",
+    )
+    deadline = time.monotonic() + 30
+
+    def worker(server_id: str) -> list[int]:
+        completed: list[int] = []
+        while time.monotonic() < deadline:
+            claimed = _claim(case, server_id)
+            if claimed is None:
+                with case.session_factory() as session:
+                    _set_timeouts(session)
+                    remaining = session.execute(
+                        select(WorkShard.id)
+                        .where(WorkShard.job_id == case.job_id)
+                        .where(
+                            WorkShard.status.in_(
+                                {"pending", "retrying", "stale", "running"}
+                            )
+                        )
+                        .limit(1)
+                    ).scalar_one_or_none()
+                if remaining is None:
+                    return completed
+                time.sleep(0.01)
+                continue
+            shard_id, attempt_count, _ = claimed
+            with case.session_factory() as session:
+                _set_timeouts(session)
+                result = update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(
+                        status="succeeded",
+                        assigned_server_id=server_id,
+                        attempt_count=attempt_count,
+                        processed_files=1,
+                    ),
+                )
+                assert result.status == "succeeded"
+            completed.append(shard_id)
+        raise TimeoutError("shard claim stress did not finish before deadline")
+
+    try:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            futures = [
+                executor.submit(worker, server_id)
+                for server_id in case.server_ids
+            ]
+            completed = [
+                shard_id
+                for future in futures
+                for shard_id in future.result(timeout=FUTURE_TIMEOUT_SECONDS * 3)
+            ]
+
+        assert len(completed) == shard_count
+        assert len(set(completed)) == shard_count
+        with case.session_factory() as session:
+            _set_timeouts(session)
+            shards = list(
+                session.execute(
+                    select(WorkShard)
+                    .where(WorkShard.job_id == case.job_id)
+                    .order_by(WorkShard.shard_index)
+                ).scalars()
+            )
+            attempts = list(
+                session.execute(
+                    select(ShardAttempt)
+                    .where(ShardAttempt.job_id == case.job_id)
+                ).scalars()
+            )
+            assert len(shards) == shard_count
+            assert all(shard.status == "succeeded" for shard in shards)
+            assert all(shard.attempt_count == 1 for shard in shards)
+            assert len(attempts) == shard_count
+            assert len(
+                {(attempt.shard_id, attempt.attempt_number) for attempt in attempts}
+            ) == shard_count
+    finally:
         _cleanup_case(case)
 
 
