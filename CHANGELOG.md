@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.3.4 - 2026-07-28
+
+- Stabilized PostgreSQL shard claiming under high concurrency by ordering
+  claims behind a shared lock on the parent Job before locking a WorkShard.
+  This removes the inverse Job/WorkShard lock order that could deadlock against
+  concurrent terminal updates.
+- Preserved concurrent claim throughput: the parent Job lock is shared between
+  claimers, while WorkShard selection continues to use the existing
+  `FOR UPDATE SKIP LOCKED` behavior.
+- Added deterministic PostgreSQL coverage for the claim-versus-terminal-update
+  collision and concurrent multi-worker claim completion.
+- Preserved the existing CLI, HTTP/OpenAPI, database schema and migration
+  history, claim ordering, state vocabulary, manifest and output formats, and
+  Parser algorithms.
+
 ## 0.3.3 - 2026-07-28
 
 - Enforced `max_shard_attempts` when a running shard lease expires: an
