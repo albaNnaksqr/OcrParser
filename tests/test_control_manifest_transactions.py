@@ -21,8 +21,12 @@ from ocr_platform.control.domains.manifests.commands import (
     FAIL_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
     ManifestCommandTransactionError,
     REGISTER_REMOTE_MANIFEST_ACTIVE_TRANSACTION_ERROR,
+    UPDATE_WORK_SHARD_ACTIVE_TRANSACTION_ERROR,
 )
-from ocr_platform.control.domains.common import POOL_SERVER_ID
+from ocr_platform.control.domains.common import (
+    POOL_SERVER_ID,
+    ShardAttemptConflictError,
+)
 from ocr_platform.control.models import (
     Job,
     JobLog,
@@ -38,6 +42,7 @@ from ocr_platform.control.schemas import (
     RemoteManifestShardRequest,
     ScanUnitCompleteRequest,
     ScanUnitFailRequest,
+    WorkShardUpdateRequest,
 )
 
 
@@ -196,6 +201,66 @@ def _seed_scan_claim_case(
                 scan_units.append(unit)
             session.flush()
             return [unit.id for unit in scan_units]
+
+
+def _seed_shard_update_case(
+    session_factory,
+    *,
+    shard_status: str = "running",
+    job_status: str = "running",
+    attempt_count: int = 1,
+    max_attempts: int = 3,
+) -> int:
+    _seed_job(session_factory)
+    with session_factory() as session:
+        with session.begin():
+            job = session.get(Job, "job-a")
+            job.status = job_status
+            job.max_shard_attempts = max_attempts
+            manifest = Manifest(
+                job_id=job.id,
+                input_mode="remote_folder_snapshot",
+                input_root="/shared/input",
+                manifest_path="/shared/manifests/job-a/manifest.jsonl",
+                status="ready",
+            )
+            session.add(manifest)
+            session.flush()
+            shard = WorkShard(
+                job_id=job.id,
+                manifest_id=manifest.id,
+                shard_index=1,
+                shard_path="/shared/manifests/job-a/shard-000001.jsonl",
+                status=shard_status,
+                assigned_server_id="server-a",
+                attempt_count=attempt_count,
+                file_count=1,
+                started_at=utcnow(),
+                lease_expires_at=(
+                    None
+                    if shard_status in {"succeeded", "failed", "stopped"}
+                    else utcnow() + timedelta(minutes=1)
+                ),
+                finished_at=(
+                    utcnow()
+                    if shard_status in {"succeeded", "failed", "stopped"}
+                    else None
+                ),
+            )
+            session.add(shard)
+            session.flush()
+            session.add(
+                ShardAttempt(
+                    job_id=job.id,
+                    shard_id=shard.id,
+                    attempt_number=attempt_count,
+                    server_id="server-a",
+                    status=shard_status,
+                    started_at=shard.started_at,
+                    finished_at=shard.finished_at,
+                )
+            )
+            return shard.id
 
 
 def _request(
@@ -523,6 +588,547 @@ def test_claim_shard_commit_failure_rolls_back_claim_and_attempt(
                     ShardAttempt.shard_id == shard_id
                 )
             ) is None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("expire_on_commit", [False, True])
+@pytest.mark.parametrize(
+    (
+        "initial_status",
+        "request_status",
+        "expected_status",
+        "expected_processed",
+    ),
+    [
+        ("succeeded", "running", "succeeded", 0),
+        ("retrying", "running", "retrying", 0),
+        ("stale", "running", "stale", 0),
+        ("running", "succeeded", "succeeded", 7),
+    ],
+)
+def test_update_shard_success_paths_commit_once_and_return_readable(
+    tmp_path,
+    expire_on_commit,
+    initial_status,
+    request_status,
+    expected_status,
+    expected_processed,
+) -> None:
+    session_factory, engine = _database(
+        tmp_path,
+        expire_on_commit=expire_on_commit,
+    )
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        shard_status=initial_status,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            updated = commands.update_work_shard(
+                session,
+                shard_id,
+                WorkShardUpdateRequest(
+                    status=request_status,
+                    assigned_server_id="server-a",
+                    attempt_count=1,
+                    processed_files=7,
+                ),
+            )
+
+            assert updated.id == shard_id
+            assert updated.status == expected_status
+            assert updated.processed_files == expected_processed
+            assert session.expire_on_commit is expire_on_commit
+            assert session.in_transaction() is False
+            assert commits == [1]
+            assert rollbacks == []
+            detached_values = (
+                updated.id,
+                updated.status,
+                updated.assigned_server_id,
+                updated.attempt_count,
+                updated.processed_files,
+                updated.finished_at,
+            )
+
+        assert inspect(updated).detached is True
+        assert (
+            updated.id,
+            updated.status,
+            updated.assigned_server_id,
+            updated.attempt_count,
+            updated.processed_files,
+            updated.finished_at,
+        ) == detached_values
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            attempt = session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            )
+            assert shard.status == expected_status
+            assert shard.processed_files == expected_processed
+            assert attempt.status == expected_status
+            assert attempt.processed_files == expected_processed
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("transaction_mode", ["explicit", "autobegin"])
+def test_update_shard_rejects_active_transaction_without_pollution(
+    tmp_path,
+    transaction_mode,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(session_factory)
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            if transaction_mode == "explicit":
+                session.begin()
+            else:
+                assert session.get(WorkShard, shard_id) is not None
+            outer_row = JobLog(
+                job_id="job-a",
+                server_id="outer",
+                stream="stdout",
+                line=f"shard-update-{transaction_mode}",
+            )
+            session.add(outer_row)
+
+            with pytest.raises(
+                ManifestCommandTransactionError,
+                match=(
+                    "^"
+                    + re.escape(
+                        UPDATE_WORK_SHARD_ACTIVE_TRANSACTION_ERROR
+                    )
+                    + "$"
+                ),
+            ):
+                commands.update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(status="succeeded"),
+                )
+
+            assert session.in_transaction() is True
+            assert outer_row in session.new
+            assert commits == []
+            assert rollbacks == []
+            session.rollback()
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            assert shard.status == "running"
+            assert session.scalar(
+                select(JobLog).where(JobLog.server_id == "outer")
+            ) is None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("failure_kind", ["unknown", "conflict"])
+def test_update_shard_failure_rolls_back_once_and_leaves_session_clean(
+    tmp_path,
+    failure_kind,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(session_factory)
+    requested_id = shard_id if failure_kind == "conflict" else shard_id + 999
+    request = WorkShardUpdateRequest(
+        status="succeeded",
+        assigned_server_id=(
+            "wrong-server" if failure_kind == "conflict" else None
+        ),
+        attempt_count=1 if failure_kind == "conflict" else None,
+    )
+    expected_error = (
+        ShardAttemptConflictError
+        if failure_kind == "conflict"
+        else ValueError
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            with pytest.raises(expected_error):
+                commands.update_work_shard(
+                    session,
+                    requested_id,
+                    request,
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+            with session.begin():
+                assert session.get(WorkShard, shard_id) is not None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize("conflict_kind", ["server", "attempt"])
+def test_update_shard_fencing_precedes_terminal_replay(
+    tmp_path,
+    conflict_kind,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        shard_status="succeeded",
+    )
+
+    try:
+        with session_factory() as session:
+            expected_message = (
+                "different server attempt"
+                if conflict_kind == "server"
+                else "stale attempt"
+            )
+            with pytest.raises(
+                ShardAttemptConflictError,
+                match=expected_message,
+            ):
+                commands.update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(
+                        status="running",
+                        assigned_server_id=(
+                            "wrong-server"
+                            if conflict_kind == "server"
+                            else "server-a"
+                        ),
+                        attempt_count=(
+                            0 if conflict_kind == "attempt" else 1
+                        ),
+                        processed_files=999,
+                    ),
+                )
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            assert shard.status == "succeeded"
+            assert shard.processed_files == 0
+    finally:
+        engine.dispose()
+
+
+def test_update_terminal_replay_finalizes_job_idempotently(tmp_path) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        shard_status="failed",
+        job_status="running",
+        max_attempts=1,
+    )
+    request = WorkShardUpdateRequest(
+        status="running",
+        assigned_server_id="server-a",
+        attempt_count=1,
+        processed_files=999,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            replayed = commands.update_work_shard(
+                session,
+                shard_id,
+                request,
+            )
+
+            assert replayed.status == "failed"
+            assert replayed.processed_files == 0
+            assert commits == [1]
+            assert rollbacks == []
+
+        with session_factory() as session:
+            job = session.get(Job, "job-a")
+            assert job.status == "failed"
+            assert job.failure_category == "shard_failed"
+            first_finished_at = job.finished_at
+
+        with session_factory() as session:
+            replayed = commands.update_work_shard(
+                session,
+                shard_id,
+                request,
+            )
+            assert replayed.status == "failed"
+
+        with session_factory() as session:
+            job = session.get(Job, "job-a")
+            assert job.status == "failed"
+            assert job.finished_at == first_finished_at
+    finally:
+        engine.dispose()
+
+
+def test_update_shard_commit_failure_rolls_back_shard_attempt_and_job(
+    tmp_path,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        max_attempts=1,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            def fail_commit(current_session):
+                raise RuntimeError("injected shard update commit failure")
+
+            sa_event.listen(
+                session,
+                "before_commit",
+                fail_commit,
+                once=True,
+            )
+            with pytest.raises(
+                RuntimeError,
+                match="injected shard update commit failure",
+            ):
+                commands.update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(
+                        status="failed",
+                        assigned_server_id="server-a",
+                        attempt_count=1,
+                        processed_files=1,
+                        failure_category="model_error",
+                        error_message="permanent failure",
+                    ),
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            attempt = session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            )
+            job = session.get(Job, "job-a")
+            assert shard.status == "running"
+            assert shard.processed_files == 0
+            assert shard.failure_category is None
+            assert shard.error_message is None
+            assert attempt.status == "running"
+            assert attempt.processed_files == 0
+            assert attempt.failure_category is None
+            assert job.status == "running"
+            assert job.failure_category is None
+            assert job.error_message is None
+            assert job.finished_at is None
+    finally:
+        engine.dispose()
+
+
+def test_update_shard_attempt_lookup_failure_rolls_back_shard_fields(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(session_factory)
+
+    def fail_attempt_lookup(session, shard):
+        raise RuntimeError("injected attempt lookup failure")
+
+    monkeypatch.setattr(
+        core,
+        "_latest_shard_attempt",
+        fail_attempt_lookup,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            with pytest.raises(
+                RuntimeError,
+                match="injected attempt lookup failure",
+            ):
+                commands.update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(
+                        status="running",
+                        assigned_server_id="server-a",
+                        attempt_count=1,
+                        processed_files=9,
+                        completed_pages=11,
+                        execution_paused=True,
+                        failure_category="model_error",
+                        error_message="must roll back",
+                    ),
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            attempt = session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            )
+            job = session.get(Job, "job-a")
+            assert shard.status == "running"
+            assert shard.processed_files == 0
+            assert shard.completed_pages == 0
+            assert shard.execution_paused is False
+            assert shard.failure_category is None
+            assert shard.error_message is None
+            assert attempt.status == "running"
+            assert attempt.processed_files == 0
+            assert job.status == "running"
+    finally:
+        engine.dispose()
+
+
+def test_update_shard_finalization_failure_rolls_back_all_models(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        max_attempts=1,
+    )
+    original_finalize = core._finalize_job_after_shard_change
+
+    def fail_after_finalization(*args, **kwargs):
+        original_finalize(*args, **kwargs)
+        raise RuntimeError("injected finalization failure")
+
+    monkeypatch.setattr(
+        core,
+        "_finalize_job_after_shard_change",
+        fail_after_finalization,
+    )
+
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+
+            with pytest.raises(
+                RuntimeError,
+                match="injected finalization failure",
+            ):
+                commands.update_work_shard(
+                    session,
+                    shard_id,
+                    WorkShardUpdateRequest(
+                        status="failed",
+                        assigned_server_id="server-a",
+                        attempt_count=1,
+                        processed_files=1,
+                        failure_category="model_error",
+                        error_message="must roll back",
+                    ),
+                )
+
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            attempt = session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            )
+            job = session.get(Job, "job-a")
+            assert shard.status == "running"
+            assert shard.processed_files == 0
+            assert shard.failure_category is None
+            assert shard.error_message is None
+            assert shard.finished_at is None
+            assert attempt.status == "running"
+            assert attempt.processed_files == 0
+            assert attempt.failure_category is None
+            assert attempt.error_message is None
+            assert attempt.finished_at is None
+            assert job.status == "running"
+            assert job.failure_category is None
+            assert job.error_message is None
+            assert job.finished_at is None
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.parametrize(
+    ("max_attempts", "expected_status", "expected_job_status"),
+    [
+        (2, "retrying", "running"),
+        (1, "failed", "failed"),
+    ],
+)
+def test_update_failed_shard_keeps_attempt_and_job_in_sync(
+    tmp_path,
+    max_attempts,
+    expected_status,
+    expected_job_status,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    shard_id = _seed_shard_update_case(
+        session_factory,
+        max_attempts=max_attempts,
+    )
+
+    try:
+        with session_factory() as session:
+            updated = commands.update_work_shard(
+                session,
+                shard_id,
+                WorkShardUpdateRequest(
+                    status="failed",
+                    assigned_server_id="server-a",
+                    attempt_count=1,
+                    processed_files=1,
+                    failure_category="model_error",
+                    error_message="OCR failed",
+                ),
+            )
+            assert updated.status == expected_status
+
+        with session_factory() as session:
+            shard = session.get(WorkShard, shard_id)
+            attempt = session.scalar(
+                select(ShardAttempt).where(
+                    ShardAttempt.shard_id == shard_id
+                )
+            )
+            job = session.get(Job, "job-a")
+            assert shard.status == expected_status
+            assert attempt.status == expected_status
+            assert attempt.failure_category == "model_error"
+            assert attempt.error_message == "OCR failed"
+            assert job.status == expected_job_status
+            if expected_status == "failed":
+                assert job.failure_category == "model_error"
+                assert job.error_message == "OCR failed"
     finally:
         engine.dispose()
 
@@ -1632,8 +2238,31 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         core_path,
         "complete_worker_manifest_integrity_check",
     ) == {"commit": 1}
-    assert session_calls(core_path, "update_work_shard") == {
-        "execute": 2,
-        "commit": 3,
-        "refresh": 3,
+    assert session_calls(commands_path, "update_work_shard") == {
+        "begin": 1,
     }
+    assert session_calls(core_path, "update_work_shard") == {}
+    assert session_calls(core_path, "_update_work_shard") == {
+        "execute": 2,
+    }
+    core_source = core_path.read_text(encoding="utf-8")
+    core_tree = ast.parse(core_source)
+    update_leaf = next(
+        node
+        for node in core_tree.body
+        if isinstance(node, ast.FunctionDef)
+        and node.name == "_update_work_shard"
+    )
+    update_source = ast.get_source_segment(core_source, update_leaf)
+    assert update_source.index("shard_snapshot = session.execute(") < (
+        update_source.index("job = _lock_job_for_shard_change(")
+    )
+    assert update_source.index("job = _lock_job_for_shard_change(") < (
+        update_source.index("shard = session.execute(")
+    )
+    assert update_source.index("request.assigned_server_id") < (
+        update_source.index("if shard.status in TERMINAL_SHARD_STATUSES:")
+    )
+    assert update_source.index("request.attempt_count") < (
+        update_source.index("if shard.status in TERMINAL_SHARD_STATUSES:")
+    )

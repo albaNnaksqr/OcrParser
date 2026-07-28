@@ -1,6 +1,10 @@
+import ast
 import importlib.util
+import inspect
 import sys
+import textwrap
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -142,6 +146,107 @@ def test_pg_claim_stress_describes_planned_concurrency_checks():
         "scan_unit_claim_skip_locked",
         "scan_unit_completion_shard_index_locking",
     ]
+
+
+def test_attempt_conflict_check_separates_snapshot_and_command_sessions(monkeypatch):
+    tool = load_tool()
+    snapshot_session = SimpleNamespace(exited=False)
+    command_session = SimpleNamespace(entered=False, exited=False)
+    shard = SimpleNamespace(id=17, attempt_count=3)
+
+    class SnapshotContext:
+        def __enter__(self):
+            return self
+
+        def query(self, model):
+            assert model is tool.WorkShard
+            return self
+
+        def filter_by(self, **filters):
+            assert filters == {"job_id": "job-1"}
+            return self
+
+        def order_by(self, ordering):
+            assert ordering is not None
+            return self
+
+        def first(self):
+            return shard
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            snapshot_session.exited = True
+            return False
+
+    class CommandContext:
+        def __enter__(self):
+            command_session.entered = True
+            return self
+
+        def in_transaction(self):
+            return False
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            command_session.exited = True
+            return False
+
+    sessions = iter([SnapshotContext(), CommandContext()])
+    calls = []
+
+    def fake_update(session, shard_id, request):
+        assert snapshot_session.exited is True
+        assert command_session.entered is True
+        assert session is sessions_used[1]
+        calls.append((shard_id, request))
+        raise tool.ShardAttemptConflictError("stale attempt")
+
+    sessions_used = []
+
+    def session_factory():
+        session = next(sessions)
+        sessions_used.append(session)
+        return session
+
+    monkeypatch.setattr(tool, "update_work_shard", fake_update)
+
+    assert tool._verify_attempt_conflict(session_factory, job_id="job-1") is True
+    assert command_session.exited is True
+    assert len(sessions_used) == 2
+    assert calls[0][0] == 17
+    assert calls[0][1].attempt_count == 2
+
+
+def test_attempt_conflict_check_does_not_reuse_or_rollback_snapshot_session():
+    tool = load_tool()
+    source = textwrap.dedent(inspect.getsource(tool._verify_attempt_conflict))
+    tree = ast.parse(source)
+
+    context_names = [
+        item.optional_vars.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.With)
+        for item in node.items
+        if isinstance(item.optional_vars, ast.Name)
+    ]
+    update_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "update_work_shard"
+    ]
+    rollback_calls = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "rollback"
+    ]
+
+    assert context_names == ["snapshot_session", "command_session"]
+    assert len(update_calls) == 1
+    assert isinstance(update_calls[0].args[0], ast.Name)
+    assert update_calls[0].args[0].id == "command_session"
+    assert rollback_calls == []
 
 
 def test_pg_claim_stress_uses_run_scoped_worker_ids():

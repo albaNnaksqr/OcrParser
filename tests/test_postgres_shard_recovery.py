@@ -989,6 +989,75 @@ def test_postgres_claim_key_share_prevents_terminal_update_deadlock(monkeypatch)
         _cleanup_case(case)
 
 
+def test_postgres_same_terminal_shard_replay_is_idempotent():
+    case = _seed_case(max_attempts=3)
+    request = WorkShardUpdateRequest(
+        status="succeeded",
+        assigned_server_id=case.server_ids[0],
+        attempt_count=1,
+        processed_files=1,
+    )
+    entered, release, primary = _run_with_paused_commit(
+        case,
+        lambda session: update_work_shard(
+            session,
+            case.shard_ids[0],
+            request,
+        ),
+    )
+    replay_started = threading.Event()
+    replay_pid: list[int] = []
+
+    def replay():
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, backend_pid):
+            replay_pid.append(backend_pid)
+            replay_started.set()
+            return update_work_shard(
+                session,
+                case.shard_ids[0],
+                request,
+            ).status
+
+    try:
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            first = executor.submit(primary)
+            assert entered.wait(FUTURE_TIMEOUT_SECONDS)
+            second = executor.submit(replay)
+            assert replay_started.wait(FUTURE_TIMEOUT_SECONDS)
+            _wait_until_blocked(case.engine, replay_pid[0])
+            release.set()
+            assert first.result(
+                timeout=FUTURE_TIMEOUT_SECONDS
+            ).status == "succeeded"
+            assert second.result(
+                timeout=FUTURE_TIMEOUT_SECONDS
+            ) == "succeeded"
+
+        with _postgres_session(
+            case.session_factory,
+            case.engine,
+        ) as (session, _):
+            shard = session.get(WorkShard, case.shard_ids[0])
+            attempts = list(
+                session.scalars(
+                    select(ShardAttempt).where(
+                        ShardAttempt.shard_id == case.shard_ids[0]
+                    )
+                )
+            )
+            assert shard.status == "succeeded"
+            assert shard.processed_files == 1
+            assert len(attempts) == 1
+            assert attempts[0].status == "succeeded"
+            assert attempts[0].processed_files == 1
+    finally:
+        release.set()
+        _cleanup_case(case)
+
+
 def test_postgres_32_shards_8_workers_claim_and_succeed_without_deadlock():
     shard_count = 32
     worker_count = 8

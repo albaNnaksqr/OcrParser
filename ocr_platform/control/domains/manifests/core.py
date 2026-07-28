@@ -2123,7 +2123,21 @@ def _claim_next_pending_shard(
         _create_shard_attempt(session, shard, server_id)
     return shard
 
-def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateRequest) -> WorkShard:
+def update_work_shard(
+    session: Session,
+    shard_id: int,
+    request: WorkShardUpdateRequest,
+) -> WorkShard:
+    from .commands import update_work_shard as target
+
+    return target(session, shard_id, request)
+
+
+def _update_work_shard(
+    session: Session,
+    shard_id: int,
+    request: WorkShardUpdateRequest,
+) -> WorkShard:
     shard_snapshot = session.execute(
         select(WorkShard.job_id, WorkShard.status)
         .where(WorkShard.id == shard_id)
@@ -2163,15 +2177,11 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
                 job,
                 now=utcnow(),
             )
-        session.commit()
-        session.refresh(shard)
         return shard
     if (
         shard.status in {"retrying", "stale"}
         and request.status not in TERMINAL_SHARD_STATUSES
     ):
-        session.commit()
-        session.refresh(shard)
         return shard
     fields_set = getattr(request, "model_fields_set", None)
     if fields_set is None:
@@ -2242,8 +2252,6 @@ def update_work_shard(session: Session, shard_id: int, request: WorkShardUpdateR
                 shard.id if shard.status == "failed" else None
             ),
         )
-    session.commit()
-    session.refresh(shard)
     return shard
 
 def list_shard_attempts(
@@ -2336,6 +2344,7 @@ __all__ = [
         "_lock_claim_parent_job",
         "_lock_job_for_shard_change",
         "_reconcile_expired_shard_leases",
+        "_update_work_shard",
         "_ScanUnitClaimCollision",
         "_WorkShardClaimCollision",
     }

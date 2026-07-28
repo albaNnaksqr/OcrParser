@@ -336,23 +336,35 @@ def _complete_scan_unit_worker(
 
 
 def _verify_attempt_conflict(session_factory: sessionmaker[Session], *, job_id: str) -> bool:
-    with session_factory() as session:
-        shard = session.query(WorkShard).filter_by(job_id=job_id).order_by(WorkShard.id.asc()).first()
+    with session_factory() as snapshot_session:
+        shard = (
+            snapshot_session.query(WorkShard)
+            .filter_by(job_id=job_id)
+            .order_by(WorkShard.id.asc())
+            .first()
+        )
         if shard is None:
             return False
+        shard_id = shard.id
+        stale_attempt_count = max(shard.attempt_count - 1, 0)
+
+    with session_factory() as command_session:
         try:
             update_work_shard(
-                session,
-                shard.id,
+                command_session,
+                shard_id,
                 WorkShardUpdateRequest(
                     status="running",
                     assigned_server_id="stale-worker",
-                    attempt_count=max(shard.attempt_count - 1, 0),
+                    attempt_count=stale_attempt_count,
                     processed_files=0,
                 ),
             )
         except ShardAttemptConflictError:
-            session.rollback()
+            if command_session.in_transaction():
+                raise AssertionError(
+                    "update_work_shard left an active transaction after rejecting a stale attempt"
+                )
             return True
         return False
 

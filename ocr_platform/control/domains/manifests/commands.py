@@ -11,6 +11,7 @@ from ...schemas import (
     RemoteManifestRegisterRequest as _RemoteManifestRegisterRequest,
     ScanUnitCompleteRequest as _ScanUnitCompleteRequest,
     ScanUnitFailRequest as _ScanUnitFailRequest,
+    WorkShardUpdateRequest as _WorkShardUpdateRequest,
 )
 from ..common import ScanUnitAttemptConflictError, ShardAttemptConflictError
 from . import core as _core
@@ -18,7 +19,6 @@ from .core import (
     claim_worker_manifest_integrity_check,
     complete_worker_manifest_integrity_check,
     request_worker_manifest_integrity_check,
-    update_work_shard,
 )
 
 
@@ -40,6 +40,9 @@ CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR = (
 )
 CLAIM_NEXT_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
     "claim_next_scan_unit requires a session without an active transaction"
+)
+UPDATE_WORK_SHARD_ACTIVE_TRANSACTION_ERROR = (
+    "update_work_shard requires a session without an active transaction"
 )
 
 
@@ -216,6 +219,30 @@ def claim_next_scan_unit(
                 return None
     finally:
         session.expire_on_commit = previous_expire_on_commit
+
+
+def update_work_shard(
+    session: _Session,
+    shard_id: int,
+    request: _WorkShardUpdateRequest,
+) -> _WorkShard:
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            UPDATE_WORK_SHARD_ACTIVE_TRANSACTION_ERROR
+        )
+
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        with session.begin():
+            shard = _core._update_work_shard(
+                session,
+                shard_id,
+                request,
+            )
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
+    return shard
 
 
 __all__ = [name for name in globals() if not name.startswith("_")]
