@@ -348,7 +348,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_archive_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:282",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:297",
         "exception_types": [
           "commands.JobNotTerminalError"
         ],
@@ -626,7 +626,7 @@
         "call_chain": [
           "ocr_platform.control.domains.jobs.router.api_get_job"
         ],
-        "evidence": "ocr_platform/control/domains/jobs/router.py:169",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:183",
         "exception_types": [
           "commands.UnknownJobError"
         ],

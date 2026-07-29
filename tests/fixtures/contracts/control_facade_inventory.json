@@ -419,21 +419,21 @@
         "fingerprint": "28a3eab47041a9592079723feb57db02084726e01a6cca2b38d42dec43502c35",
         "id": "tests/test_control_recovery.py:test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit:facade-symbol-use[_claimable_scan_unit_id_select]@28a3eab47041:1",
         "kind": "attribute",
-        "source": "tests/test_control_recovery.py:528",
+        "source": "tests/test_control_recovery.py:1040",
         "symbol": "_claimable_scan_unit_id_select"
       },
       {
         "fingerprint": "a1116d940d7ae22074259f21f7064fd0ca84ed4e02be0e12ff1a5d16849bcb99",
         "id": "tests/test_control_recovery.py:test_claimable_shard_select_uses_postgresql_skip_locked:facade-symbol-use[_claimable_shard_id_select]@a1116d940d7a:1",
         "kind": "attribute",
-        "source": "tests/test_control_recovery.py:515",
+        "source": "tests/test_control_recovery.py:999",
         "symbol": "_claimable_shard_id_select"
       },
       {
         "fingerprint": "00c81c36a6eae6e5bea18ca97522db5831807e8a72cf07dac804014c335934f6",
         "id": "tests/test_control_recovery.py:test_manifest_completion_select_uses_postgresql_for_update:facade-symbol-use[_manifest_for_scan_unit_completion_select]@00c81c36a6ea:1",
         "kind": "attribute",
-        "source": "tests/test_control_recovery.py:542",
+        "source": "tests/test_control_recovery.py:1054",
         "symbol": "_manifest_for_scan_unit_completion_select"
       },
       {
@@ -692,14 +692,14 @@
         "fingerprint": "52b57e74921cf81d3479ccf2fd13c09294926291395778be58b932028630d134",
         "id": "tools/pg_claim_stress.py:_verify_attempt_conflict:facade-symbol-use[ShardAttemptConflictError]@52b57e74921c:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:354",
+        "source": "tools/pg_claim_stress.py:363",
         "symbol": "ShardAttemptConflictError"
       },
       {
         "fingerprint": "2f80caa9d67c01d3bf534d321bbe0499c740c58ff0ee80ce3ac535cd80bb95aa",
         "id": "tools/pg_claim_stress.py:_verify_attempt_conflict:facade-symbol-use[update_work_shard]@2f80caa9d67c:1",
         "kind": "direct_name",
-        "source": "tools/pg_claim_stress.py:344",
+        "source": "tools/pg_claim_stress.py:353",
         "symbol": "update_work_shard"
       }
     ],
@@ -803,7 +803,7 @@
         "classification": "unsupported_leaked",
         "consumed": false,
         "defining_module": "typing",
-        "kind": "_SpecialForm",
+        "kind": "_AnyMeta",
         "owners": [
           "ocr_platform.control.domains.common",
           "ocr_platform.control.domains.jobs.core",
@@ -1890,7 +1890,7 @@
         "classification": "internal_no_compat",
         "consumed": false,
         "defining_module": null,
-        "kind": "set",
+        "kind": "frozenset",
         "owners": [
           "ocr_platform.control.domains.common",
           "ocr_platform.control.domains.jobs.core",
@@ -2177,8 +2177,7 @@
         "owners": [
           "ocr_platform.control.domains.jobs.core",
           "ocr_platform.control.domains.manifests.core",
-          "ocr_platform.control.domains.model_profiles.core",
-          "ocr_platform.control.domains.workers.core"
+          "ocr_platform.control.domains.model_profiles.core"
         ],
         "reason": "Internal Control implementation detail; no compatibility target.",
         "symbol": "ShardAttempt",
@@ -3566,11 +3565,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "archive_job",
         "target": "ocr_platform.control.domains.jobs.commands.archive_job",
@@ -3596,7 +3593,6 @@
         "kind": "function",
         "owners": [
           "ocr_platform.control.domains.jobs.core",
-          "ocr_platform.control.domains.manifests.core",
           "ocr_platform.control.domains.model_profiles.core",
           "ocr_platform.control.domains.workers.core"
         ],
@@ -3738,11 +3734,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": true,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "Use the existing Job command surface.",
         "symbol": "create_job",
         "target": "ocr_platform.control.domains.jobs.commands.create_job",
@@ -3813,11 +3807,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "delete_job",
         "target": "ocr_platform.control.domains.jobs.commands.delete_job",
@@ -4558,11 +4550,9 @@
       {
         "classification": "supported_explicit_target",
         "consumed": false,
-        "defining_module": "ocr_platform.control.domains.jobs.core",
+        "defining_module": "ocr_platform.control.domains.jobs.commands",
         "kind": "function",
-        "owners": [
-          "ocr_platform.control.domains.jobs.core"
-        ],
+        "owners": [],
         "reason": "An explicit domain command/query/schema target exists.",
         "symbol": "request_stop",
         "target": "ocr_platform.control.domains.jobs.commands.request_stop",
@@ -5007,7 +4997,7 @@
         "fingerprint": "abedbe5b0ec46965e8d4f1cff264e8aa43f0614cafa4ab9579c7c1337f6964b7",
         "id": "tests/test_control_recovery.py:<module>:facade-import@abedbe5b0ec4:1",
         "kind": "from_parent",
-        "source": "tests/test_control_recovery.py:9",
+        "source": "tests/test_control_recovery.py:16",
         "symbols": [],
         "wildcard": false
       },

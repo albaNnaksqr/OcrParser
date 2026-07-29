@@ -57,15 +57,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_archive_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:280",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:295",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:280"
+              "ocr_platform/control/domains/jobs/router.py:295"
             ],
-            "reason": "api_archive_job_api_jobs__job_id__archive_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:280 but is not separately executed."
+            "reason": "api_archive_job_api_jobs__job_id__archive_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:295 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -81,7 +81,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.jobs.router.api_archive_job"
               ],
-              "evidence": "ocr_platform/control/domains/jobs/router.py:282",
+              "evidence": "ocr_platform/control/domains/jobs/router.py:297",
               "exception_types": [
                 "commands.JobNotTerminalError"
               ],
@@ -90,13 +90,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "conflict_archive_nonterminal_job",
-            "source_evidence": "ocr_platform/control/domains/jobs/router.py:282"
+            "source_evidence": "ocr_platform/control/domains/jobs/router.py:297"
           },
           "branch_id": "api_archive_job_api_jobs__job_id__archive_post:409:03",
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_archive_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:282",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:297",
           "exception_types": [
             "commands.JobNotTerminalError"
           ],
@@ -1395,15 +1395,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_delete_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:293",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:308",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:293"
+              "ocr_platform/control/domains/jobs/router.py:308"
             ],
-            "reason": "api_delete_job_api_jobs__job_id__delete has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:293 but is not separately executed."
+            "reason": "api_delete_job_api_jobs__job_id__delete has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:308 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -1414,15 +1414,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_delete_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:295",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:310",
           "exception_types": [
             "commands.JobNotTerminalError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:295"
+              "ocr_platform/control/domains/jobs/router.py:310"
             ],
-            "reason": "api_delete_job_api_jobs__job_id__delete has a state, server, or attempt conflict that requires commands.JobNotTerminalError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:295 but is not separately executed."
+            "reason": "api_delete_job_api_jobs__job_id__delete has a state, server, or attempt conflict that requires commands.JobNotTerminalError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:310 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 409
@@ -1724,7 +1724,7 @@
               "call_chain": [
                 "ocr_platform.control.domains.jobs.router.api_get_job"
               ],
-              "evidence": "ocr_platform/control/domains/jobs/router.py:169",
+              "evidence": "ocr_platform/control/domains/jobs/router.py:183",
               "exception_types": [
                 "commands.UnknownJobError"
               ],
@@ -1733,13 +1733,13 @@
             },
             "fixture": "control_http_behavior.json",
             "scenario": "not_found_unknown_job",
-            "source_evidence": "ocr_platform/control/domains/jobs/router.py:169"
+            "source_evidence": "ocr_platform/control/domains/jobs/router.py:183"
           },
           "branch_id": "api_get_job_api_jobs__job_id__get:404:02",
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_get_job"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:169",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:183",
           "exception_types": [
             "commands.UnknownJobError"
           ],
@@ -1875,15 +1875,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_get_job_summary"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:180",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:195",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:180"
+              "ocr_platform/control/domains/jobs/router.py:195"
             ],
-            "reason": "api_get_job_summary_api_jobs__job_id__summary_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:180 but is not separately executed."
+            "reason": "api_get_job_summary_api_jobs__job_id__summary_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:195 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -2314,15 +2314,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_logs_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:265",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:280",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:265"
+              "ocr_platform/control/domains/jobs/router.py:280"
             ],
-            "reason": "api_list_job_logs_page_api_jobs__job_id__logs_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:265 but is not separately executed."
+            "reason": "api_list_job_logs_page_api_jobs__job_id__logs_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:280 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -2424,15 +2424,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_summaries"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:142",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:149",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:142"
+              "ocr_platform/control/domains/jobs/router.py:149"
             ],
-            "reason": "api_list_job_summaries_api_jobs_summary_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:142 but is not executed by the representative behavior set."
+            "reason": "api_list_job_summaries_api_jobs_summary_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:149 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -2565,15 +2565,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_job_summaries_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:162",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:176",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:162"
+              "ocr_platform/control/domains/jobs/router.py:176"
             ],
-            "reason": "api_list_job_summaries_page_api_jobs_summary_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:162 but is not executed by the representative behavior set."
+            "reason": "api_list_job_summaries_page_api_jobs_summary_page_get has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:176 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -3116,15 +3116,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_recent_job_errors_page"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:214",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:229",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:214"
+              "ocr_platform/control/domains/jobs/router.py:229"
             ],
-            "reason": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:214 but is not separately executed."
+            "reason": "api_list_recent_job_errors_page_api_jobs__job_id__recent_errors_page_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:229 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -3257,15 +3257,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_list_recent_job_files"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:195",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:210",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:195"
+              "ocr_platform/control/domains/jobs/router.py:210"
             ],
-            "reason": "api_list_recent_job_files_api_jobs__job_id__recent_files_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:195 but is not separately executed."
+            "reason": "api_list_recent_job_files_api_jobs__job_id__recent_files_get has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:210 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -4285,15 +4285,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_event"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:231",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:246",
           "exception_types": [
             "ValueError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:231"
+              "ocr_platform/control/domains/jobs/router.py:246"
             ],
-            "reason": "api_record_event_api_jobs__job_id__events_post has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:231 but is not executed by the representative behavior set."
+            "reason": "api_record_event_api_jobs__job_id__events_post has an invalid input/state branch requiring ValueError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:246 but is not executed by the representative behavior set."
           },
           "kind": "router_exception_mapping",
           "status": 400
@@ -4335,15 +4335,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_event"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:229",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:244",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:229"
+              "ocr_platform/control/domains/jobs/router.py:244"
             ],
-            "reason": "api_record_event_api_jobs__job_id__events_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:229 but is not separately executed."
+            "reason": "api_record_event_api_jobs__job_id__events_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:244 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -4477,15 +4477,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_record_log"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:244",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:259",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:244"
+              "ocr_platform/control/domains/jobs/router.py:259"
             ],
-            "reason": "api_record_log_api_jobs__job_id__logs_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:244 but is not separately executed."
+            "reason": "api_record_log_api_jobs__job_id__logs_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:259 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -6143,15 +6143,15 @@
           "call_chain": [
             "ocr_platform.control.domains.jobs.router.api_request_stop"
           ],
-          "evidence": "ocr_platform/control/domains/jobs/router.py:272",
+          "evidence": "ocr_platform/control/domains/jobs/router.py:287",
           "exception_types": [
             "commands.UnknownJobError"
           ],
           "exemption": {
             "evidence": [
-              "ocr_platform/control/domains/jobs/router.py:272"
+              "ocr_platform/control/domains/jobs/router.py:287"
             ],
-            "reason": "api_request_stop_api_jobs__job_id__request_stop_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:272 but is not separately executed."
+            "reason": "api_request_stop_api_jobs__job_id__request_stop_post has a missing job/shard/resource branch that requires commands.UnknownJobError; its distinct router mapping is frozen from ocr_platform/control/domains/jobs/router.py:287 but is not separately executed."
           },
           "kind": "router_exception_mapping",
           "status": 404
@@ -7140,7 +7140,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:142",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:149",
         "status": 400
       },
       {
@@ -7149,7 +7149,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_job_summaries_page"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:162",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:176",
         "status": 400
       },
       {
@@ -7158,7 +7158,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_record_event"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:231",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:246",
         "status": 400
       },
       {
@@ -7281,7 +7281,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_get_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:169",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:183",
         "status": 404
       },
       {
@@ -7290,7 +7290,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_get_job_summary"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:180",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:195",
         "status": 404
       },
       {
@@ -7299,7 +7299,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_recent_job_files"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:195",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:210",
         "status": 404
       },
       {
@@ -7308,7 +7308,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_recent_job_errors_page"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:214",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:229",
         "status": 404
       },
       {
@@ -7317,7 +7317,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_record_event"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:229",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:244",
         "status": 404
       },
       {
@@ -7326,7 +7326,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_record_log"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:244",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:259",
         "status": 404
       },
       {
@@ -7335,7 +7335,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_list_job_logs_page"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:265",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:280",
         "status": 404
       },
       {
@@ -7344,7 +7344,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_request_stop"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:272",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:287",
         "status": 404
       },
       {
@@ -7353,7 +7353,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_archive_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:280",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:295",
         "status": 404
       },
       {
@@ -7362,7 +7362,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_delete_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:293",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:308",
         "status": 404
       },
       {
@@ -7506,7 +7506,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_archive_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:282",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:297",
         "status": 409
       },
       {
@@ -7515,7 +7515,7 @@
           "ocr_platform/control/domains/jobs/router.py:api_delete_job"
         ],
         "constructor": "HTTPException",
-        "evidence": "ocr_platform/control/domains/jobs/router.py:295",
+        "evidence": "ocr_platform/control/domains/jobs/router.py:310",
         "status": 409
       },
       {
@@ -7611,7 +7611,7 @@
     ],
     "forbidden_dependencies": [],
     "scan_root": "ocr_platform/control",
-    "scanned_file_count": 67,
+    "scanned_file_count": 73,
     "unresolved_status_calls": []
   }
 }

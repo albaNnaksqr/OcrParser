@@ -10,6 +10,11 @@ from types import ModuleType
 from .. import limits as __limits
 from ..domains import common as _common
 from ..domains.jobs import core as _jobs
+from ..domains.jobs import counters as __job_counters
+from ..domains.jobs import events as __job_events
+from ..domains.jobs import lifecycle as __job_lifecycle
+from ..domains.jobs import logs as __job_logs
+from ..domains.jobs import projection as __job_projection
 from ..domains.manifests import core as _manifests
 from ..domains.model_profiles import core as _model_profiles
 from ..domains.workers import core as _workers
@@ -25,17 +30,45 @@ from ..settings import (
     ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV as ALLOW_SAVED_MODEL_PROFILE_KEYS_ENV,
     DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV as DISABLE_SAVED_MODEL_PROFILE_KEYS_ENV,
 )
-__jobs_core_command_leaves = {
+__jobs_core_compat_wrappers = {
+    "archive_job": _jobs.archive_job,
+    "create_job": _jobs.create_job,
+    "delete_job": _jobs.delete_job,
     "record_event": _jobs.record_event,
     "record_log": _jobs.record_log,
+    "request_stop": _jobs.request_stop,
+}
+__jobs_owned_leaves = {
+    "archive_job": __job_lifecycle.archive,
+    "create_job": __job_lifecycle.create,
+    "delete_job": __job_lifecycle.delete,
+    "record_event": __job_events.record_event,
+    "record_log": __job_logs.record,
+    "request_stop": __job_lifecycle.request_stop,
+}
+__jobs_owned_targets = {
+    "archive_job": (__job_lifecycle, "archive"),
+    "create_job": (__job_lifecycle, "create"),
+    "delete_job": (__job_lifecycle, "delete"),
+    "record_event": (__job_events, "record_event"),
+    "record_log": (__job_logs, "record"),
+    "request_stop": (__job_lifecycle, "request_stop"),
 }
 from ..domains.jobs.commands import (
+    archive_job as archive_job,
+    create_job as create_job,
+    delete_job as delete_job,
     record_event as record_event,
     record_log as record_log,
+    request_stop as request_stop,
 )
 __job_command_wrappers = {
+    "archive_job": archive_job,
+    "create_job": create_job,
+    "delete_job": delete_job,
     "record_event": record_event,
     "record_log": record_log,
+    "request_stop": request_stop,
 }
 __manifest_core_command_leaves = {
     "register_remote_manifest": _manifests.register_remote_manifest,
@@ -62,6 +95,11 @@ class _CompatibilityModule(ModuleType):
             globals()["__limits"],
             _common,
             _jobs,
+            globals()["__job_counters"],
+            globals()["__job_events"],
+            globals()["__job_lifecycle"],
+            globals()["__job_logs"],
+            globals()["__job_projection"],
             _manifests,
             _model_profiles,
             _workers,
@@ -76,7 +114,7 @@ class _CompatibilityModule(ModuleType):
                     setattr(
                         target,
                         name,
-                        globals()["__jobs_core_command_leaves"][name],
+                        globals()["__jobs_core_compat_wrappers"][name],
                     )
                 elif (
                     target is _manifests
@@ -91,6 +129,13 @@ class _CompatibilityModule(ModuleType):
                     )
                 else:
                     setattr(target, name, value)
+        owned_target = globals()["__jobs_owned_targets"].get(name)
+        if owned_target is not None:
+            target_module, target_name = owned_target
+            replacement = value
+            if value is globals()["__job_command_wrappers"].get(name):
+                replacement = globals()["__jobs_owned_leaves"][name]
+            setattr(target_module, target_name, replacement)
 
 
 sys.modules[__name__].__class__ = _CompatibilityModule

@@ -10,8 +10,8 @@
       },
       {
         "source": "jobs",
-        "statement_count": 8,
-        "symbol_count": 8,
+        "statement_count": 6,
+        "symbol_count": 9,
         "target": "manifests"
       },
       {
@@ -22,15 +22,9 @@
       },
       {
         "source": "jobs",
-        "statement_count": 7,
+        "statement_count": 6,
         "symbol_count": 7,
         "target": "workers"
-      },
-      {
-        "source": "manifests",
-        "statement_count": 6,
-        "symbol_count": 6,
-        "target": "jobs"
       },
       {
         "source": "manifests",
@@ -51,8 +45,8 @@
         "target": "model_profiles"
       }
     ],
-    "lazy_wrapper_count": 28,
-    "private_symbol_count": 16,
+    "lazy_wrapper_count": 16,
+    "private_symbol_count": 11,
     "sites": [
       {
         "alias": null,
@@ -91,120 +85,12 @@
         "target_module": "ocr_platform.control.domains.workers.core"
       },
       {
-        "alias": "target",
-        "fingerprint": "d74862a706de02e021ff0f455308fcd3c1a6af9f2797bef4d0602d2651bdcc4b",
-        "id": "ocr_platform.control.domains.jobs.core:_create_distributed_scan_for_job:import[ocr_platform.control.domains.manifests.core._create_distributed_scan_for_job as target]@d74862a706de:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:38",
-        "source_domain": "jobs",
-        "symbol": "_create_distributed_scan_for_job",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "136001fc29180ccd2d1a1196a8d4a89d032f27044479605c1de78e193e313962",
-        "id": "ocr_platform.control.domains.jobs.core:_create_static_shards_for_job:import[ocr_platform.control.domains.manifests.core._create_static_shards_for_job as target]@136001fc2918:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:42",
-        "source_domain": "jobs",
-        "symbol": "_create_static_shards_for_job",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "7f37155327b35f82980f6a6c6d9e02862189267ac72b2c9b067b930109c4bf7b",
-        "id": "ocr_platform.control.domains.jobs.core:_database_migration_preflight_issue:import[ocr_platform.control.domains.workers.core._database_migration_preflight_issue as target]@7f37155327b3:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:46",
-        "source_domain": "jobs",
-        "symbol": "_database_migration_preflight_issue",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "93657f59f3d948d6083eada67e8d29a2641ee40cc98fab788ced7c5751cb12f7",
-        "id": "ocr_platform.control.domains.jobs.core:_effective_job_model_config:import[ocr_platform.control.domains.model_profiles.core._effective_job_model_config as target]@93657f59f3d9:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:50",
-        "source_domain": "jobs",
-        "symbol": "_effective_job_model_config",
-        "target_domain": "model_profiles",
-        "target_module": "ocr_platform.control.domains.model_profiles.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "ac69e39535c1de370535d6008bf429d101e49502014f778acb4a8bc9d1ad1b78",
-        "id": "ocr_platform.control.domains.jobs.core:_job_worker_version_summary:import[ocr_platform.control.domains.workers.core._job_worker_version_summary as target]@ac69e39535c1:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:54",
-        "source_domain": "jobs",
-        "symbol": "_job_worker_version_summary",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "5aabbb7e9f9f8ce4edf8daef60aa91170fdd1db746a530f84984367550a20b62",
-        "id": "ocr_platform.control.domains.jobs.core:_load_worker_integrity_report:import[ocr_platform.control.domains.manifests.core._load_worker_integrity_report as target]@5aabbb7e9f9f:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:58",
-        "source_domain": "jobs",
-        "symbol": "_load_worker_integrity_report",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "8e3d0ad5af12e820c237ad77eec6f017a3b0ba5cacf4f24a76aae9518c28553e",
-        "id": "ocr_platform.control.domains.jobs.core:_manifest_integrity_freeze_summary:import[ocr_platform.control.domains.manifests.core._manifest_integrity_freeze_summary as target]@8e3d0ad5af12:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:62",
-        "source_domain": "jobs",
-        "symbol": "_manifest_integrity_freeze_summary",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "a49d3b5eeac8da6db98fd246968d8ad087840fbb325e6a9673bc2431d2968748",
-        "id": "ocr_platform.control.domains.jobs.core:allowed_server_ids_for_job:import[ocr_platform.control.domains.workers.core.allowed_server_ids_for_job as target]@a49d3b5eeac8:1",
+        "alias": null,
+        "fingerprint": "f857ba9238febad3dcfd45e381098e587843a35bc21331ad3d4d4a477ec17580",
+        "id": "ocr_platform.control.domains.jobs.commands:_refresh_job_summary:import[ocr_platform.control.domains.manifests.core.finalize_stopped_job_if_idle]@f857ba9238fe:1",
         "lazy_wrapper": true,
         "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:66",
-        "source_domain": "jobs",
-        "symbol": "allowed_server_ids_for_job",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "a519c056afe8148dfe6055bbb0692966fce073c7a178b9f3ca04ea7343f819a9",
-        "id": "ocr_platform.control.domains.jobs.core:ensure_pool_server:import[ocr_platform.control.domains.workers.core.ensure_pool_server as target]@a519c056afe8:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:74",
-        "source_domain": "jobs",
-        "symbol": "ensure_pool_server",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "8687e606a7bcf5055c1375084127eda0265f12979463d747c28fdbe4e9a02d90",
-        "id": "ocr_platform.control.domains.jobs.core:finalize_stopped_job_if_idle:import[ocr_platform.control.domains.manifests.core.finalize_stopped_job_if_idle as target]@8687e606a7bc:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:82",
+        "source": "ocr_platform/control/domains/jobs/commands.py:96",
         "source_domain": "jobs",
         "symbol": "finalize_stopped_job_if_idle",
         "target_domain": "manifests",
@@ -213,34 +99,154 @@
       {
         "alias": "target",
         "fingerprint": "8500d0f4864f6a813fa37400210c6712aeced36d8b84ee66959332897eaba511",
-        "id": "ocr_platform.control.domains.jobs.core:has_static_shards:import[ocr_platform.control.domains.manifests.core.has_static_shards as target]@8500d0f4864f:1",
+        "id": "ocr_platform.control.domains.jobs.events:has_static_shards:import[ocr_platform.control.domains.manifests.core.has_static_shards as target]@8500d0f4864f:1",
         "lazy_wrapper": true,
         "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:86",
+        "source": "ocr_platform/control/domains/jobs/events.py:16",
         "source_domain": "jobs",
         "symbol": "has_static_shards",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
-        "alias": "target",
-        "fingerprint": "7ea5f77db4251b64348ebb9ba20aba63d201066efc06ad4d92ad805e179b872c",
-        "id": "ocr_platform.control.domains.jobs.core:infer_default_manifest_root:import[ocr_platform.control.domains.manifests.core.infer_default_manifest_root as target]@7ea5f77db425:1",
-        "lazy_wrapper": true,
+        "alias": null,
+        "fingerprint": "6a6ecc77d1457566f2f660637cf7974d6dfc21505d8b7f0def3b5a9784cdcf64",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.manifests.core._create_distributed_scan_for_job]@6a6ecc77d145:1",
+        "lazy_wrapper": false,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:25",
+        "source_domain": "jobs",
+        "symbol": "_create_distributed_scan_for_job",
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
+      },
+      {
+        "alias": null,
+        "fingerprint": "7cdbde6e7a3d52b7684c94ce6fc9083d7780810bfb914211ebab2ad0401c9835",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.manifests.core._create_static_shards_for_job]@7cdbde6e7a3d:1",
+        "lazy_wrapper": false,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:25",
+        "source_domain": "jobs",
+        "symbol": "_create_static_shards_for_job",
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
+      },
+      {
+        "alias": null,
+        "fingerprint": "f857ba9238febad3dcfd45e381098e587843a35bc21331ad3d4d4a477ec17580",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.manifests.core.finalize_stopped_job_if_idle]@f857ba9238fe:1",
+        "lazy_wrapper": false,
         "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:90",
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:25",
+        "source_domain": "jobs",
+        "symbol": "finalize_stopped_job_if_idle",
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
+      },
+      {
+        "alias": null,
+        "fingerprint": "f3657f0675a6610e1cb0a40c0427ab93bcb96b74ddb310e20d177e7281da1306",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.manifests.core.infer_default_manifest_root]@f3657f0675a6:1",
+        "lazy_wrapper": false,
+        "private": false,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:25",
         "source_domain": "jobs",
         "symbol": "infer_default_manifest_root",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
+        "alias": null,
+        "fingerprint": "89efb4b8545d074e77786a4f0c985b73dd659a26d3fe08a1245831c024a006ea",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.model_profiles.core._effective_job_model_config]@89efb4b8545d:1",
+        "lazy_wrapper": false,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:31",
+        "source_domain": "jobs",
+        "symbol": "_effective_job_model_config",
+        "target_domain": "model_profiles",
+        "target_module": "ocr_platform.control.domains.model_profiles.core"
+      },
+      {
+        "alias": null,
+        "fingerprint": "a11541ef78813a3dd7e1888ed6f9dd7e342175cee6d20244b0940e90ad28f221",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.workers.core._database_migration_preflight_issue]@a11541ef7881:1",
+        "lazy_wrapper": false,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:32",
+        "source_domain": "jobs",
+        "symbol": "_database_migration_preflight_issue",
+        "target_domain": "workers",
+        "target_module": "ocr_platform.control.domains.workers.core"
+      },
+      {
+        "alias": null,
+        "fingerprint": "9177df2e98cfbe54a6ea0dadaaeba4c0aa49f71df89ee11ee0f5c26eeba8b322",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import[ocr_platform.control.domains.workers.core.ensure_pool_server]@9177df2e98cf:1",
+        "lazy_wrapper": false,
+        "private": false,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:32",
+        "source_domain": "jobs",
+        "symbol": "ensure_pool_server",
+        "target_domain": "workers",
+        "target_module": "ocr_platform.control.domains.workers.core"
+      },
+      {
         "alias": "target",
-        "fingerprint": "28127ab8eba16543295d83233df0dd7205e5adb88b5701ae2e68a921be827781",
-        "id": "ocr_platform.control.domains.jobs.core:public_assigned_server_id:import[ocr_platform.control.domains.workers.core.public_assigned_server_id as target]@28127ab8eba1:1",
+        "fingerprint": "ac69e39535c1de370535d6008bf429d101e49502014f778acb4a8bc9d1ad1b78",
+        "id": "ocr_platform.control.domains.jobs.projection:_job_worker_version_summary:import[ocr_platform.control.domains.workers.core._job_worker_version_summary as target]@ac69e39535c1:1",
+        "lazy_wrapper": true,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/projection.py:20",
+        "source_domain": "jobs",
+        "symbol": "_job_worker_version_summary",
+        "target_domain": "workers",
+        "target_module": "ocr_platform.control.domains.workers.core"
+      },
+      {
+        "alias": "target",
+        "fingerprint": "5aabbb7e9f9f8ce4edf8daef60aa91170fdd1db746a530f84984367550a20b62",
+        "id": "ocr_platform.control.domains.jobs.projection:_load_worker_integrity_report:import[ocr_platform.control.domains.manifests.core._load_worker_integrity_report as target]@5aabbb7e9f9f:1",
+        "lazy_wrapper": true,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/projection.py:24",
+        "source_domain": "jobs",
+        "symbol": "_load_worker_integrity_report",
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
+      },
+      {
+        "alias": "target",
+        "fingerprint": "8e3d0ad5af12e820c237ad77eec6f017a3b0ba5cacf4f24a76aae9518c28553e",
+        "id": "ocr_platform.control.domains.jobs.projection:_manifest_integrity_freeze_summary:import[ocr_platform.control.domains.manifests.core._manifest_integrity_freeze_summary as target]@8e3d0ad5af12:1",
+        "lazy_wrapper": true,
+        "private": true,
+        "source": "ocr_platform/control/domains/jobs/projection.py:28",
+        "source_domain": "jobs",
+        "symbol": "_manifest_integrity_freeze_summary",
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
+      },
+      {
+        "alias": "target",
+        "fingerprint": "a49d3b5eeac8da6db98fd246968d8ad087840fbb325e6a9673bc2431d2968748",
+        "id": "ocr_platform.control.domains.jobs.projection:allowed_server_ids_for_job:import[ocr_platform.control.domains.workers.core.allowed_server_ids_for_job as target]@a49d3b5eeac8:1",
         "lazy_wrapper": true,
         "private": false,
-        "source": "ocr_platform/control/domains/jobs/core.py:94",
+        "source": "ocr_platform/control/domains/jobs/projection.py:32",
+        "source_domain": "jobs",
+        "symbol": "allowed_server_ids_for_job",
+        "target_domain": "workers",
+        "target_module": "ocr_platform.control.domains.workers.core"
+      },
+      {
+        "alias": "target",
+        "fingerprint": "28127ab8eba16543295d83233df0dd7205e5adb88b5701ae2e68a921be827781",
+        "id": "ocr_platform.control.domains.jobs.projection:public_assigned_server_id:import[ocr_platform.control.domains.workers.core.public_assigned_server_id as target]@28127ab8eba1:1",
+        "lazy_wrapper": true,
+        "private": false,
+        "source": "ocr_platform/control/domains/jobs/projection.py:36",
         "source_domain": "jobs",
         "symbol": "public_assigned_server_id",
         "target_domain": "workers",
@@ -296,42 +302,6 @@
       },
       {
         "alias": "target",
-        "fingerprint": "62064ca0d27e26a70f77345a972b45b004e42835d00a9bc04ba7970f48f8dd7f",
-        "id": "ocr_platform.control.domains.manifests.core:_latest_manifest_scan_progress:import[ocr_platform.control.domains.jobs.core._latest_manifest_scan_progress as target]@62064ca0d27e:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:35",
-        "source_domain": "manifests",
-        "symbol": "_latest_manifest_scan_progress",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "f2560f3e08e8e958f670509ff1dda8017d21627a0e0136b5c4d332f045897529",
-        "id": "ocr_platform.control.domains.manifests.core:_manifest_scan_error_samples:import[ocr_platform.control.domains.jobs.core._manifest_scan_error_samples as target]@f2560f3e08e8:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:39",
-        "source_domain": "manifests",
-        "symbol": "_manifest_scan_error_samples",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "ed14edc37bb98ab824d92b57e32aaa6f9c212333590a6e0c94f12d4ef305ef80",
-        "id": "ocr_platform.control.domains.manifests.core:_manifest_scan_metadata:import[ocr_platform.control.domains.jobs.core._manifest_scan_metadata as target]@ed14edc37bb9:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:43",
-        "source_domain": "manifests",
-        "symbol": "_manifest_scan_metadata",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "alias": "target",
         "fingerprint": "9405ad13f6c4d76e3d60faf5aaf916581c242240dfa3c84329d40140cb1fad96",
         "id": "ocr_platform.control.domains.manifests.core:_normal_posix_path:import[ocr_platform.control.domains.workers.core._normal_posix_path as target]@9405ad13f6c4:1",
         "lazy_wrapper": true,
@@ -356,30 +326,6 @@
       },
       {
         "alias": "target",
-        "fingerprint": "1aa5b3583352d5b7b1e42d0e14a4506ed8c9d8f41150a5e151f0d00dca887957",
-        "id": "ocr_platform.control.domains.manifests.core:_recent_manifest_scan_error_samples:import[ocr_platform.control.domains.jobs.core._recent_manifest_scan_error_samples as target]@1aa5b3583352:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:55",
-        "source_domain": "manifests",
-        "symbol": "_recent_manifest_scan_error_samples",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "eb0295aad861534af9876a9545efe95fb53852c2e177e01592e8d06d9423ea62",
-        "id": "ocr_platform.control.domains.manifests.core:_scan_unit_problem_samples:import[ocr_platform.control.domains.jobs.core._scan_unit_problem_samples as target]@eb0295aad861:1",
-        "lazy_wrapper": true,
-        "private": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:63",
-        "source_domain": "manifests",
-        "symbol": "_scan_unit_problem_samples",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "alias": "target",
         "fingerprint": "893f6ee3501fccd0c0c0bc18efd8f09d494a47b65bbcaa32684f8d359dbf142c",
         "id": "ocr_platform.control.domains.manifests.core:evaluate_server_path_access:import[ocr_platform.control.domains.workers.core.evaluate_server_path_access as target]@893f6ee3501f:1",
         "lazy_wrapper": true,
@@ -389,18 +335,6 @@
         "symbol": "evaluate_server_path_access",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "alias": "target",
-        "fingerprint": "ca069dcdabcd01243612b47e8c014c5a7dcf9da7e81480b6cd51091a886d0a6b",
-        "id": "ocr_platform.control.domains.manifests.core:get_job_or_raise:import[ocr_platform.control.domains.jobs.core.get_job_or_raise as target]@ca069dcdabcd:1",
-        "lazy_wrapper": true,
-        "private": false,
-        "source": "ocr_platform/control/domains/manifests/core.py:71",
-        "source_domain": "manifests",
-        "symbol": "get_job_or_raise",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
       },
       {
         "alias": "target",
@@ -475,7 +409,7 @@
         "target_module": "ocr_platform.control.domains.manifests.core"
       }
     ],
-    "statement_count": 33,
+    "statement_count": 24,
     "statements": [
       {
         "fingerprint": "2d04069e84cddf5053f776cc0ffa11a0f2c0979007a9ad31b40d6a6a4a3d1c7f",
@@ -488,117 +422,90 @@
       },
       {
         "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:_create_distributed_scan_for_job:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
+        "id": "ocr_platform.control.domains.jobs.commands:_refresh_job_summary:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:38",
+        "source": "ocr_platform/control/domains/jobs/commands.py:96",
         "source_domain": "jobs",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
         "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:_create_static_shards_for_job:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
+        "id": "ocr_platform.control.domains.jobs.events:has_static_shards:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:42",
+        "source": "ocr_platform/control/domains/jobs/events.py:16",
         "source_domain": "jobs",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:_database_migration_preflight_issue:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:46",
+        "fingerprint": "304def621374c93414fa199d069153475fc25265ea915a8f1b13146b3321c5d8",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import-statement[ocr_platform.control.domains.manifests.core]@304def621374:1",
+        "lazy_wrapper": false,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:25",
         "source_domain": "jobs",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
+        "target_domain": "manifests",
+        "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
-        "fingerprint": "e539abaf328aa0c7ff3db73d6acee59af47da88805fea69680090c22d1696714",
-        "id": "ocr_platform.control.domains.jobs.core:_effective_job_model_config:import-statement[ocr_platform.control.domains.model_profiles.core]@e539abaf328a:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:50",
+        "fingerprint": "c1d18696ae7c860d9c58341dafaf8f1b3252d05f73415bf754941a0d74db7071",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import-statement[ocr_platform.control.domains.model_profiles.core]@c1d18696ae7c:1",
+        "lazy_wrapper": false,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:31",
         "source_domain": "jobs",
         "target_domain": "model_profiles",
         "target_module": "ocr_platform.control.domains.model_profiles.core"
       },
       {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:_job_worker_version_summary:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:54",
-        "source_domain": "jobs",
-        "target_domain": "workers",
-        "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:_load_worker_integrity_report:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:58",
-        "source_domain": "jobs",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:_manifest_integrity_freeze_summary:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:62",
-        "source_domain": "jobs",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:allowed_server_ids_for_job:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:66",
+        "fingerprint": "2d04069e84cddf5053f776cc0ffa11a0f2c0979007a9ad31b40d6a6a4a3d1c7f",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:<module>:import-statement[ocr_platform.control.domains.workers.core]@2d04069e84cd:1",
+        "lazy_wrapper": false,
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:32",
         "source_domain": "jobs",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
       },
       {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:ensure_pool_server:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
+        "id": "ocr_platform.control.domains.jobs.projection:_job_worker_version_summary:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:74",
+        "source": "ocr_platform/control/domains/jobs/projection.py:20",
         "source_domain": "jobs",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
       },
       {
         "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:finalize_stopped_job_if_idle:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
+        "id": "ocr_platform.control.domains.jobs.projection:_load_worker_integrity_report:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:82",
+        "source": "ocr_platform/control/domains/jobs/projection.py:24",
         "source_domain": "jobs",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
         "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:has_static_shards:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
+        "id": "ocr_platform.control.domains.jobs.projection:_manifest_integrity_freeze_summary:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:86",
-        "source_domain": "jobs",
-        "target_domain": "manifests",
-        "target_module": "ocr_platform.control.domains.manifests.core"
-      },
-      {
-        "fingerprint": "64e7e594bcd3d5c8d4a34de080f25aac2e5068968dc89090573140aeb2abe388",
-        "id": "ocr_platform.control.domains.jobs.core:infer_default_manifest_root:import-statement[ocr_platform.control.domains.manifests.core]@64e7e594bcd3:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:90",
+        "source": "ocr_platform/control/domains/jobs/projection.py:28",
         "source_domain": "jobs",
         "target_domain": "manifests",
         "target_module": "ocr_platform.control.domains.manifests.core"
       },
       {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
-        "id": "ocr_platform.control.domains.jobs.core:public_assigned_server_id:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
+        "id": "ocr_platform.control.domains.jobs.projection:allowed_server_ids_for_job:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/jobs/core.py:94",
+        "source": "ocr_platform/control/domains/jobs/projection.py:32",
+        "source_domain": "jobs",
+        "target_domain": "workers",
+        "target_module": "ocr_platform.control.domains.workers.core"
+      },
+      {
+        "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
+        "id": "ocr_platform.control.domains.jobs.projection:public_assigned_server_id:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
+        "lazy_wrapper": true,
+        "source": "ocr_platform/control/domains/jobs/projection.py:36",
         "source_domain": "jobs",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
@@ -640,33 +547,6 @@
         "target_module": "ocr_platform.control.domains.workers.core"
       },
       {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:_latest_manifest_scan_progress:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:35",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:_manifest_scan_error_samples:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:39",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:_manifest_scan_metadata:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:43",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
         "id": "ocr_platform.control.domains.manifests.core:_normal_posix_path:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
@@ -685,24 +565,6 @@
         "target_module": "ocr_platform.control.domains.workers.core"
       },
       {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:_recent_manifest_scan_error_samples:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:55",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:_scan_unit_problem_samples:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:63",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
-      },
-      {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
         "id": "ocr_platform.control.domains.manifests.core:evaluate_server_path_access:import-statement[ocr_platform.control.domains.workers.core]@de78233292ba:1",
         "lazy_wrapper": true,
@@ -710,15 +572,6 @@
         "source_domain": "manifests",
         "target_domain": "workers",
         "target_module": "ocr_platform.control.domains.workers.core"
-      },
-      {
-        "fingerprint": "aa4c8a664cb2901f1737d1db4a3569b796756f64593437c3a7dc47f97118ef2a",
-        "id": "ocr_platform.control.domains.manifests.core:get_job_or_raise:import-statement[ocr_platform.control.domains.jobs.core]@aa4c8a664cb2:1",
-        "lazy_wrapper": true,
-        "source": "ocr_platform/control/domains/manifests/core.py:71",
-        "source_domain": "manifests",
-        "target_domain": "jobs",
-        "target_module": "ocr_platform.control.domains.jobs.core"
       },
       {
         "fingerprint": "de78233292ba585cbce89d83b0a7c0c02be3e16ddfa921a3313a6e09090a2a26",
@@ -777,12 +630,11 @@
     ],
     "strongly_connected_components": [
       [
-        "jobs",
         "manifests",
         "workers"
       ]
     ],
-    "symbol_count": 35
+    "symbol_count": 30
   },
   "decreasing_gate": {
     "deletions_allowed": true,
@@ -797,80 +649,8 @@
     "transactions": "commit/rollback/flush are counted only on the conventional session name, a Session-annotated parameter, or an assignment/closure alias of one"
   },
   "policy_external_status_writes": {
-    "count": 19,
+    "count": 10,
     "sites": [
-      {
-        "field": "status",
-        "fingerprint": "4fb86b9fa8182fc10508613b58e714ff67eb880c8f41b0f787b156badaa92e32",
-        "id": "ocr_platform.control.domains.jobs.core:record_event:attribute-write[job.status<-25013cd4f200]@4fb86b9fa818:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1720",
-        "target": "job.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "578547bb02813057632c6c1ff74c2ac82d4338df037ad82066e086159a5b055d",
-        "id": "ocr_platform.control.domains.jobs.core:record_event:attribute-write[job.status<-ee39f4bca3a4]@578547bb0281:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1726",
-        "target": "job.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "ebef0bce2fc53fca10a79e442398fccc05d73bcc4a42bff942bdc3feb0de40bd",
-        "id": "ocr_platform.control.domains.jobs.core:request_stop:attribute-write[job.status<-03729e825c99]@ebef0bce2fc5:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1250",
-        "target": "job.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "4fb86b9fa8182fc10508613b58e714ff67eb880c8f41b0f787b156badaa92e32",
-        "id": "ocr_platform.control.domains.jobs.core:request_stop:attribute-write[job.status<-25013cd4f200]@4fb86b9fa818:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1246",
-        "target": "job.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "0c0437014b439aea4f11b1f2f0eb10ecf8086eab3224c839ac41e633345fee71",
-        "id": "ocr_platform.control.domains.jobs.core:upsert_job_file_from_event:attribute-write[job_file.status<-44b64f7d7c54]@0c0437014b43:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1307",
-        "target": "job_file.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "0c0437014b439aea4f11b1f2f0eb10ecf8086eab3224c839ac41e633345fee71",
-        "id": "ocr_platform.control.domains.jobs.core:upsert_job_file_from_event:attribute-write[job_file.status<-44b64f7d7c54]@0c0437014b43:2",
-        "source": "ocr_platform/control/domains/jobs/core.py:1323",
-        "target": "job_file.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "eb2f6a80c6fd350b10b0163b0eaabe5f8f458bea9655d8622a282dc4765d57a6",
-        "id": "ocr_platform.control.domains.jobs.core:upsert_job_file_from_event:attribute-write[job_file.status<-5530f8904751]@eb2f6a80c6fd:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1329",
-        "target": "job_file.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "97cff55718c5f6d8ef9a0c4b9c0868496de6b6b4be7a5e52846405fb642ce065",
-        "id": "ocr_platform.control.domains.jobs.core:upsert_job_file_from_event:attribute-write[job_file.status<-5d93dbd09232]@97cff55718c5:1",
-        "source": "ocr_platform/control/domains/jobs/core.py:1325",
-        "target": "job_file.status",
-        "write_kind": "attribute_assignment"
-      },
-      {
-        "field": "status",
-        "fingerprint": "97cff55718c5f6d8ef9a0c4b9c0868496de6b6b4be7a5e52846405fb642ce065",
-        "id": "ocr_platform.control.domains.jobs.core:upsert_job_file_from_event:attribute-write[job_file.status<-5d93dbd09232]@97cff55718c5:2",
-        "source": "ocr_platform/control/domains/jobs/core.py:1334",
-        "target": "job_file.status",
-        "write_kind": "attribute_assignment"
-      },
       {
         "field": "status",
         "fingerprint": "4c0555caa3401bcb6ad4b41967249deaa67543c7562b921187da1492b6defae7",
@@ -953,119 +733,76 @@
   "query_mutations": {
     "direct_dml_count": 0,
     "direct_dml_sites": [],
-    "semantic_allowlist_count": 3,
-    "semantic_allowlist_sites": [
-      {
-        "classification": "transitive AST mutation analysis",
-        "core_module": "ocr_platform.control.domains.jobs.core",
-        "fingerprint": "04c558c6b42cc3299fc62e5e8a43bdf37566987e4f600c9bb6a22ddc0d8d4585",
-        "id": "ocr_platform.control.domains.jobs.queries:<module>:semantic-query-mutation[get_job_summary]@04c558c6b42c:1",
-        "source": "ocr_platform/control/domains/jobs/queries.py:10",
-        "symbol": "get_job_summary"
-      },
-      {
-        "classification": "transitive AST mutation analysis",
-        "core_module": "ocr_platform.control.domains.jobs.core",
-        "fingerprint": "b7680e233c6ef268c1036e1ea0a27cafd8d749f6d8c4b2aab1b2db60f31ec437",
-        "id": "ocr_platform.control.domains.jobs.queries:<module>:semantic-query-mutation[list_job_summaries]@b7680e233c6e:1",
-        "source": "ocr_platform/control/domains/jobs/queries.py:10",
-        "symbol": "list_job_summaries"
-      },
-      {
-        "classification": "transitive AST mutation analysis",
-        "core_module": "ocr_platform.control.domains.jobs.core",
-        "fingerprint": "964b53b95a999106a98d9f1c4f59d2fe53bdf7e5f7d1d118b4f4b656c5bf3a46",
-        "id": "ocr_platform.control.domains.jobs.queries:<module>:semantic-query-mutation[list_job_summaries_page]@964b53b95a99:1",
-        "source": "ocr_platform/control/domains/jobs/queries.py:10",
-        "symbol": "list_job_summaries_page"
-      }
-    ]
+    "semantic_allowlist_count": 0,
+    "semantic_allowlist_sites": []
   },
   "schema_version": 1,
   "transactions": {
     "operations": {
-      "commit": 14,
-      "flush": 14,
-      "rollback": 4
+      "commit": 9,
+      "flush": 17,
+      "rollback": 3
     },
     "sites": [
       {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.jobs.core:archive_job:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/jobs/core.py:1271"
-      },
-      {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.jobs.core:create_job:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/jobs/core.py:191"
+        "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
+        "id": "ocr_platform.control.domains.jobs.commands:_refresh_job_summary:session.flush@62d494078650:1",
+        "operation": "flush",
+        "source": "ocr_platform/control/domains/jobs/commands.py:100"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:create_job:session.flush@62d494078650:1",
+        "id": "ocr_platform.control.domains.jobs.commands:_refresh_job_summary:session.flush@62d494078650:2",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:183"
-      },
-      {
-        "fingerprint": "44dbf1e505b52fc89b19b3edf3b14718c14928d828c622963d474aa667df86cb",
-        "id": "ocr_platform.control.domains.jobs.core:create_job:session.rollback@44dbf1e505b5:1",
-        "operation": "rollback",
-        "source": "ocr_platform/control/domains/jobs/core.py:193"
-      },
-      {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.jobs.core:delete_job:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/jobs/core.py:1263"
-      },
-      {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.jobs.core:get_job_summary:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/jobs/core.py:602"
+        "source": "ocr_platform/control/domains/jobs/commands.py:102"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:get_job_summary:session.flush@62d494078650:1",
+        "id": "ocr_platform.control.domains.jobs.counters:get_or_create_job_counter:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:599"
+        "source": "ocr_platform/control/domains/jobs/counters.py:39"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:get_job_summary:session.flush@62d494078650:2",
+        "id": "ocr_platform.control.domains.jobs.events:record_event:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:601"
+        "source": "ocr_platform/control/domains/jobs/events.py:60"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:get_or_create_job_counter:session.flush@62d494078650:1",
+        "id": "ocr_platform.control.domains.jobs.events:record_event:session.flush@62d494078650:2",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:1351"
+        "source": "ocr_platform/control/domains/jobs/events.py:63"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:record_event:session.flush@62d494078650:1",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:archive:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:1699"
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:171"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:record_event:session.flush@62d494078650:2",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:create:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:1702"
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:120"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
-        "id": "ocr_platform.control.domains.jobs.core:record_log:session.flush@62d494078650:1",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:delete:session.flush@62d494078650:1",
         "operation": "flush",
-        "source": "ocr_platform/control/domains/jobs/core.py:1760"
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:162"
       },
       {
-        "fingerprint": "809b98bd0ebc5b252387922cf499a94928e92b9eccd56a2abf8b2836bb152517",
-        "id": "ocr_platform.control.domains.jobs.core:request_stop:session.commit@809b98bd0ebc:1",
-        "operation": "commit",
-        "source": "ocr_platform/control/domains/jobs/core.py:1253"
+        "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
+        "id": "ocr_platform.control.domains.jobs.lifecycle:request_stop:session.flush@62d494078650:1",
+        "operation": "flush",
+        "source": "ocr_platform/control/domains/jobs/lifecycle.py:153"
+      },
+      {
+        "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
+        "id": "ocr_platform.control.domains.jobs.logs:record:session.flush@62d494078650:1",
+        "operation": "flush",
+        "source": "ocr_platform/control/domains/jobs/logs.py:42"
       },
       {
         "fingerprint": "62d4940786504f7556f762f5bfc6deeb9fc9f349c4a02d9a766afd300f0587a8",
@@ -1182,6 +919,6 @@
         "source": "ocr_platform/control/domains/workers/core.py:283"
       }
     ],
-    "total": 32
+    "total": 29
   }
 }

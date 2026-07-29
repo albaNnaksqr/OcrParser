@@ -32,15 +32,15 @@ from ...schemas import (
 from ..common import *
 
 def _latest_manifest_scan_progress(*args, **kwargs):
-    from ..jobs.core import _latest_manifest_scan_progress as target
+    from ..jobs.projection import latest_manifest_scan_progress as target
     return target(*args, **kwargs)
 
 def _manifest_scan_error_samples(*args, **kwargs):
-    from ..jobs.core import _manifest_scan_error_samples as target
+    from ..jobs.projection import manifest_scan_error_samples as target
     return target(*args, **kwargs)
 
 def _manifest_scan_metadata(*args, **kwargs):
-    from ..jobs.core import _manifest_scan_metadata as target
+    from ..jobs.projection import manifest_scan_metadata as target
     return target(*args, **kwargs)
 
 def _normal_posix_path(*args, **kwargs):
@@ -52,7 +52,7 @@ def _path_is_under(*args, **kwargs):
     return target(*args, **kwargs)
 
 def _recent_manifest_scan_error_samples(*args, **kwargs):
-    from ..jobs.core import _recent_manifest_scan_error_samples as target
+    from ..jobs.projection import recent_manifest_scan_error_samples as target
     return target(*args, **kwargs)
 
 def _remaining_retry_status(*args, **kwargs):
@@ -60,7 +60,7 @@ def _remaining_retry_status(*args, **kwargs):
     return target(*args, **kwargs)
 
 def _scan_unit_problem_samples(*args, **kwargs):
-    from ..jobs.core import _scan_unit_problem_samples as target
+    from ..jobs.projection import scan_unit_problem_samples as target
     return target(*args, **kwargs)
 
 def evaluate_server_path_access(*args, **kwargs):
@@ -68,7 +68,7 @@ def evaluate_server_path_access(*args, **kwargs):
     return target(*args, **kwargs)
 
 def get_job_or_raise(*args, **kwargs):
-    from ..jobs.core import get_job_or_raise as target
+    from ..jobs.lifecycle import get_or_raise as target
     return target(*args, **kwargs)
 
 def list_servers(*args, **kwargs):

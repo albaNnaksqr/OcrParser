@@ -8,7 +8,9 @@ from sqlalchemy.orm import sessionmaker
 
 from ocr_platform.control import scheduling
 from ocr_platform.control.database import init_db
+from ocr_platform.control.domains.jobs import commands as jobs_commands
 from ocr_platform.control.domains.jobs import core as jobs_core
+from ocr_platform.control.domains.jobs import lifecycle as jobs_lifecycle
 from ocr_platform.control.models import (
     Job,
     Manifest,
@@ -258,7 +260,7 @@ def test_stop_reclaimable_policy_is_atomic_under_outer_transaction() -> None:
                 match="injected scan stop failure",
             ):
                 with session_factory() as session:
-                    jobs_core.request_stop(session, "job-a")
+                    jobs_commands.request_stop(session, "job-a")
         finally:
             sa_event.remove(
                 engine,
@@ -292,8 +294,11 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
         / "manifests"
         / "core.py"
     )
-    jobs_path = (
+    jobs_compat_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
+    )
+    jobs_lifecycle_path = (
+        ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "lifecycle.py"
     )
     workers_path = (
         ROOT
@@ -334,7 +339,7 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
     assert policy_source.count("lease_expires_at=None") == 2
     assert policy_source.count("finished_at=current_time") == 2
 
-    for path in (manifests_path, jobs_path, workers_path):
+    for path in (manifests_path, jobs_compat_path, workers_path):
         wrapper_source = function_source(
             path,
             "stop_reclaimable_work_for_job",
@@ -346,12 +351,12 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
         assert "session.execute(" not in wrapper_source
         assert 'status="stopped"' not in wrapper_source
 
-    request_stop_source = function_source(jobs_path, "request_stop")
+    request_stop_source = function_source(jobs_lifecycle_path, "request_stop")
     assert request_stop_source.index(
         "job = _lock_job_for_shard_change("
-    ) < request_stop_source.index("job.stop_requested = True")
+    ) < request_stop_source.index("policy.request_stop(job)")
     assert request_stop_source.index(
-        "job.stop_requested = True"
+        "policy.request_stop(job)"
     ) < request_stop_source.index(
         "stop_reclaimable_work_for_job(session, job)"
     )
@@ -360,12 +365,8 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
     ) < request_stop_source.index(
         "finalize_stopped_job_if_idle(session, job)"
     )
-    assert request_stop_source.index(
-        "finalize_stopped_job_if_idle(session, job)"
-    ) < request_stop_source.index("session.commit()")
-    assert request_stop_source.index(
-        "session.commit()"
-    ) < request_stop_source.index("session.refresh(job)")
+    assert "session.commit()" not in request_stop_source
+    assert "session.rollback()" not in request_stop_source
 
     worker_stop_source = function_source(
         workers_path,

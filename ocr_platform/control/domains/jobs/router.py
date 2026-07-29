@@ -130,6 +130,13 @@ def create_router(
         session: Session = Depends(get_db),
     ):
         try:
+            commands.refresh_job_summaries(
+                session,
+                status=status,
+                include_archived=include_archived,
+                limit=limit,
+                offset=offset,
+            )
             return queries.list_job_summaries(
                 session,
                 status=status,
@@ -150,6 +157,13 @@ def create_router(
         session: Session = Depends(get_db),
     ):
         try:
+            commands.refresh_job_summaries(
+                session,
+                status=status,
+                include_archived=include_archived,
+                limit=limit,
+                offset=offset,
+            )
             return queries.list_job_summaries_page(
                 session,
                 status=status,
@@ -171,6 +185,7 @@ def create_router(
     @router.get("/api/jobs/{job_id}/summary", response_model=JobSummaryResponse)
     def api_get_job_summary(job_id: str, session: Session = Depends(get_db)):
         try:
+            commands.refresh_job_summary(session, job_id)
             return queries.get_job_summary(
                 session,
                 job_id,

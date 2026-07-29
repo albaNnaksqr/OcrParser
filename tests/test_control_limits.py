@@ -11,7 +11,12 @@ from datetime import datetime, timezone
 import pytest
 from fastapi.testclient import TestClient
 
+import ocr_platform.control.domains.jobs.commands as jobs_commands
+import ocr_platform.control.domains.jobs.events as jobs_events
 import ocr_platform.control.domains.jobs.core as jobs_core
+import ocr_platform.control.domains.jobs.lifecycle as jobs_lifecycle
+import ocr_platform.control.domains.jobs.logs as jobs_logs
+import ocr_platform.control.domains.jobs.projection as jobs_projection
 import ocr_platform.control.domains.manifests.core as manifests_core
 import ocr_platform.control.domains.manifests.queries as manifest_queries
 import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
@@ -1054,7 +1059,7 @@ def test_static_create_and_scan_completion_propagate_runtime_snapshot(
             )
         )
         session.commit()
-        jobs_core.create_job(
+        jobs_commands.create_job(
             session,
             JobCreateRequest(
                 input_dir=str(input_dir),
@@ -1066,7 +1071,7 @@ def test_static_create_and_scan_completion_propagate_runtime_snapshot(
             ),
             limits=limits,
         )
-        distributed = jobs_core.create_job(
+        distributed = jobs_commands.create_job(
             session,
             JobCreateRequest(
                 input_dir=str(tmp_path / "distributed-input"),
@@ -1240,9 +1245,15 @@ def test_explicit_router_limits_do_not_reread_legacy_globals(
     def fail_legacy_read():
         raise AssertionError("hot path reread legacy control limits")
 
+    for module in (jobs_events, jobs_projection):
+        monkeypatch.setattr(
+            module,
+            "__legacy_control_limits",
+            fail_legacy_read,
+        )
     monkeypatch.setattr(
-        jobs_core,
-        "__legacy_control_limits",
+        jobs_logs,
+        "legacy_control_limits",
         fail_legacy_read,
     )
     monkeypatch.setattr(
@@ -1300,10 +1311,11 @@ def test_direct_python_entries_resolve_one_legacy_snapshot(
         worker_limits_calls += 1
         return ControlLimits()
 
-    monkeypatch.setattr(jobs_core, "__legacy_control_limits", job_limits)
+    monkeypatch.setattr(jobs_events, "__legacy_control_limits", job_limits)
+    monkeypatch.setattr(jobs_projection, "__legacy_control_limits", job_limits)
     monkeypatch.setattr(workers_core, "__legacy_control_limits", worker_limits)
     with session_factory() as session:
-        jobs_core.record_event(
+        jobs_events.record_event(
             session,
             job_id,
             JobEventRequest(
@@ -1316,7 +1328,7 @@ def test_direct_python_entries_resolve_one_legacy_snapshot(
         )
         assert job_limits_calls == 1
         job_limits_calls = 0
-        jobs_core.list_job_summaries(session)
+        jobs_projection.list_job_summaries(session)
         assert job_limits_calls == 1
         job_limits_calls = 0
         workers_core.preflight_job(
@@ -1384,17 +1396,17 @@ def test_evidence_row_boundary_is_zero_n_and_n_plus_one() -> None:
 
 
 def test_job_detail_hot_paths_keep_direct_session_call_baseline() -> None:
-    module = ast.parse(inspect.getsource(jobs_core))
-    functions = {
-        node.name: node
-        for node in module.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    }
-
-    def session_calls(function_name: str) -> Counter[str]:
+    def session_calls(module, function_name: str) -> Counter[str]:
+        tree = ast.parse(inspect.getsource(module))
+        function = next(
+            node
+            for node in tree.body
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+            and node.name == function_name
+        )
         return Counter(
             call.func.attr
-            for call in ast.walk(functions[function_name])
+            for call in ast.walk(function)
             if isinstance(call, ast.Call)
             and isinstance(call.func, ast.Attribute)
             and isinstance(call.func.value, ast.Name)
@@ -1408,29 +1420,22 @@ def test_job_detail_hot_paths_keep_direct_session_call_baseline() -> None:
             }
         )
 
-    assert session_calls("record_event") == {
+    assert session_calls(jobs_events, "record_event") == {
         "flush": 2,
     }
-    assert session_calls("record_log") == {
+    assert session_calls(jobs_logs, "record") == {
         "execute": 2,
         "flush": 1,
     }
-    assert session_calls("create_job") == {
-        "commit": 1,
+    assert session_calls(jobs_lifecycle, "create") == {
         "flush": 1,
-        "refresh": 1,
-        "rollback": 1,
     }
-    assert session_calls("request_stop") == {
-        "commit": 1,
-        "refresh": 1,
+    assert session_calls(jobs_lifecycle, "request_stop") == {
+        "flush": 1,
     }
-    assert session_calls("delete_job") == {
-        "commit": 1,
-    }
-    assert session_calls("archive_job") == {
-        "commit": 1,
-        "refresh": 1,
+    assert session_calls(jobs_lifecycle, "delete") == {"flush": 1}
+    assert session_calls(jobs_lifecycle, "archive") == {
+        "flush": 1,
     }
 
 
@@ -1470,14 +1475,11 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
             for name, function in functions.items()
         }
 
-    assert session_calls(jobs_core, {"create_job"}) == {
-        "create_job": {
+    assert session_calls(jobs_lifecycle, {"create"}) == {
+        "create": {
             "add": 1,
-            "refresh": 1,
             "get": 3,
             "flush": 1,
-            "commit": 1,
-            "rollback": 1,
         }
     }
     assert session_calls(

@@ -4023,6 +4023,12 @@ def build_status_contract() -> dict[str, Any]:
     jobs_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
     )
+    jobs_policy_path = (
+        ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "policy.py"
+    )
+    jobs_events_path = (
+        ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "events.py"
+    )
     scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
     metadata_path = ROOT / "ocr_parser" / "domain" / "metadata.py"
 
@@ -4216,7 +4222,7 @@ def build_status_contract() -> dict[str, Any]:
         str(value) for value in PROCESSED_FILE_STATUSES
     } | {str(JobFile.__table__.c.status.default.arg)}
     job_file_transition_evidence = _status_transition_evidence(
-        [jobs_path],
+        [jobs_path, jobs_policy_path],
         instance_field=("job_file", "status"),
     )
     job_file_known.update(job_file_transition_evidence)
@@ -4385,7 +4391,10 @@ def build_status_contract() -> dict[str, Any]:
                         "JobEventRequest",
                         "payload",
                     ),
-                    "ocr_platform/control/domains/jobs/core.py:1242",
+                    _function_definition_source(
+                        jobs_policy_path,
+                        "upsert_file_from_event",
+                    ),
                 ],
             },
             "open_reason": (
@@ -4405,7 +4414,7 @@ def build_status_contract() -> dict[str, Any]:
                         "JobEventRequest",
                         "payload",
                     ),
-                    "ocr_platform/control/domains/jobs/core.py:1559",
+                    _function_definition_source(jobs_events_path, "record_event"),
                     _constant_source(metadata_path, "SUCCESS_STATUSES"),
                 ],
             },
