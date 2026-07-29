@@ -17,8 +17,12 @@ import ocr_platform.control.domains.jobs.core as jobs_core
 import ocr_platform.control.domains.jobs.lifecycle as jobs_lifecycle
 import ocr_platform.control.domains.jobs.logs as jobs_logs
 import ocr_platform.control.domains.jobs.projection as jobs_projection
-import ocr_platform.control.domains.manifests.core as manifests_core
+import ocr_platform.control.domains.manifests.commands as manifest_commands
+import ocr_platform.control.domains.manifests.construction as manifests_construction
+import ocr_platform.control.domains.manifests.freeze as manifests_freeze
+import ocr_platform.control.domains.manifests.integrity as manifests_integrity
 import ocr_platform.control.domains.manifests.queries as manifest_queries
+import ocr_platform.control.domains.manifests.use_cases as manifest_use_cases
 import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
 import ocr_platform.control.domains.diagnostics.operations as diagnostics_operations
 import ocr_platform.control.domains.workers.core as workers_core
@@ -627,13 +631,13 @@ def test_manifest_integrity_freeze_summary_caps_runtime_limit_at_five() -> None:
         ],
     )
 
-    two = manifests_core._manifest_integrity_freeze_summary(
+    two = manifests_integrity.manifest_integrity_freeze_summary(
         report,
         limits=ControlLimits(
             manifest_integrity_issue_sample_limit=2,
         ),
     )
-    fifty = manifests_core._manifest_integrity_freeze_summary(
+    fifty = manifests_integrity.manifest_integrity_freeze_summary(
         report,
         limits=ControlLimits(),
     )
@@ -784,11 +788,11 @@ def test_manifest_integrity_legacy_fallback_and_explicit_override(
     )
 
     with session_factory() as session:
-        legacy = manifests_core.get_manifest_integrity_report(
+        legacy = manifests_integrity.get_manifest_integrity_report(
             session,
             job_id,
         )
-        explicit = manifests_core.get_manifest_integrity_report(
+        explicit = manifests_integrity.get_manifest_integrity_report(
             session,
             job_id,
             limits=ControlLimits(
@@ -1003,12 +1007,12 @@ def test_manifest_router_and_nested_freeze_use_one_runtime_snapshot(
         return limits
 
     monkeypatch.setattr(
-        manifests_core,
-        "__legacy_control_limits",
+        manifests_freeze,
+        "legacy_control_limits",
         legacy_limits,
     )
     with session_factory() as session:
-        manifests_core.get_manifest_freeze_report(session, job_id)
+        manifests_freeze.get_manifest_freeze_report(session, job_id)
 
     assert legacy_calls == 1
     engine.dispose()
@@ -1024,7 +1028,7 @@ def test_static_create_and_scan_completion_propagate_runtime_snapshot(
     )
     limits = ControlLimits(manifest_integrity_issue_sample_limit=2)
     captured: list[ControlLimits] = []
-    original_report = manifests_core.get_manifest_integrity_report
+    original_report = manifests_integrity.get_manifest_integrity_report
 
     def observed_report(session, job_id, *, limits=None):
         captured.append(limits)
@@ -1038,15 +1042,20 @@ def test_static_create_and_scan_completion_propagate_runtime_snapshot(
         raise AssertionError("nested manifest path reread legacy limits")
 
     monkeypatch.setattr(
-        manifests_core,
+        manifests_freeze,
         "get_manifest_integrity_report",
         observed_report,
     )
-    monkeypatch.setattr(
-        manifests_core,
-        "__legacy_control_limits",
-        fail_legacy_read,
-    )
+    for module in (
+        manifests_construction,
+        manifests_freeze,
+        manifests_integrity,
+    ):
+        monkeypatch.setattr(
+            module,
+            "legacy_control_limits",
+            fail_legacy_read,
+        )
     input_dir = tmp_path / "static-input"
     input_dir.mkdir()
     (input_dir / "a.pdf").write_bytes(b"%PDF-1.4\n")
@@ -1091,7 +1100,7 @@ def test_static_create_and_scan_completion_propagate_runtime_snapshot(
         )
         unit.status = "running"
         session.commit()
-        manifests_core.complete_scan_unit(
+        manifest_commands.complete_scan_unit(
             session,
             unit.id,
             ScanUnitCompleteRequest(),
@@ -1462,6 +1471,7 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
                     and call.func.value.id == "session"
                     and call.func.attr
                     in {
+                        "begin",
                         "execute",
                         "flush",
                         "commit",
@@ -1483,32 +1493,52 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
         }
     }
     assert session_calls(
-        manifests_core,
+        manifests_construction,
         {
             "_create_static_shards_for_job",
-            "complete_scan_unit",
-            "_complete_scan_unit",
-            "_build_manifest_freeze_report",
-            "freeze_manifest_if_scan_complete",
-            "get_manifest_freeze_report",
-            "complete_worker_manifest_integrity_check",
-            "get_manifest_integrity_report",
         },
     ) == {
         "_create_static_shards_for_job": {
             "add": 2,
             "flush": 2,
         },
-        "complete_scan_unit": {},
+    }
+    assert session_calls(
+        manifest_commands,
+        {"complete_scan_unit"},
+    ) == {
+        "complete_scan_unit": {"begin": 1},
+    }
+    assert session_calls(
+        manifest_use_cases,
+        {"_complete_scan_unit"},
+    ) == {
         "_complete_scan_unit": {
             "flush": 1,
         },
+    }
+    assert session_calls(
+        manifests_freeze,
+        {
+            "_build_manifest_freeze_report",
+            "freeze_manifest_if_scan_complete",
+            "get_manifest_freeze_report",
+        },
+    ) == {
         "_build_manifest_freeze_report": {"execute": 1},
-        "freeze_manifest_if_scan_complete": {},
+        "freeze_manifest_if_scan_complete": {"execute": 2},
         "get_manifest_freeze_report": {"execute": 1},
+    }
+    assert session_calls(
+        manifests_integrity,
+        {
+            "complete_worker_manifest_integrity_check",
+            "get_manifest_integrity_report",
+        },
+    ) == {
         "complete_worker_manifest_integrity_check": {
             "get": 1,
-            "commit": 1,
+            "flush": 1,
         },
         "get_manifest_integrity_report": {"execute": 6},
     }

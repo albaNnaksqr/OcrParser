@@ -976,7 +976,7 @@ def test_projection_authorities_are_ast_derived_relationships() -> None:
         / "control"
         / "domains"
         / "manifests"
-        / "core.py"
+        / "freeze.py"
     )
     scheduling_path = (
         ROOT / "ocr_platform" / "control" / "scheduling.py"

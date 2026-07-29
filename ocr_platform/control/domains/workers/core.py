@@ -44,11 +44,11 @@ def ensure_default_model_profiles(*args, **kwargs):
     return target(*args, **kwargs)
 
 def infer_default_manifest_root(*args, **kwargs):
-    from ..manifests.core import infer_default_manifest_root as target
+    from ..manifests.paths import infer_default_manifest_root as target
     return target(*args, **kwargs)
 
 def server_can_access_input_dir(*args, **kwargs):
-    from ..manifests.core import server_can_access_input_dir as target
+    from ..manifests.paths import server_can_access_input_dir as target
     return target(*args, **kwargs)
 
 def stop_reclaimable_work_for_job(*args, **kwargs):

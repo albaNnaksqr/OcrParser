@@ -13,7 +13,7 @@ from .counters import parse_page_no, prune_job_detail_rows, update_job_counter_f
 from .lifecycle import get_or_raise as get_job_or_raise
 
 def has_static_shards(*args, **kwargs):
-    from ..manifests.core import has_static_shards as target
+    from ..manifests.projection import has_static_shards as target
     return target(*args, **kwargs)
 
 def record_event(

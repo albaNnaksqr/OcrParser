@@ -4017,6 +4017,9 @@ def build_status_contract() -> dict[str, Any]:
         / "manifests"
         / "policy.py"
     )
+    manifests_construction_path = manifests_path.with_name("construction.py")
+    manifests_freeze_path = manifests_path.with_name("freeze.py")
+    manifests_integrity_path = manifests_path.with_name("integrity.py")
     workers_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "workers" / "core.py"
     )
@@ -4088,29 +4091,29 @@ def build_status_contract() -> dict[str, Any]:
         )
 
     scan_evidence = _status_transition_evidence(
-        [manifests_path, scheduling_path, workers_path],
+        [manifests_construction_path, scheduling_path, workers_path],
         constructor="ScanUnit",
         sql_model="ScanUnit",
         instance_field=("unit", "status"),
     )
     manifest_evidence = _status_transition_evidence(
-        [manifests_path, manifests_policy_path],
+        [manifests_construction_path, manifests_policy_path],
         constructor="Manifest",
         instance_field=("manifest", "status"),
     )
     worker_integrity_evidence = _status_transition_evidence(
-        [manifests_path],
+        [manifests_policy_path],
         instance_field=("manifest", "worker_integrity_status"),
     )
     freeze_literal_evidence = _constructor_status_evidence(
-        manifests_path,
+        manifests_freeze_path,
         "ManifestFreezeReportResponse",
     )
     freeze_evidence = copy.deepcopy(manifest_evidence)
     for value, evidence in freeze_literal_evidence.items():
         freeze_evidence.setdefault(value, []).extend(evidence)
     freeze_projection_sources = _constructor_keyword_projection_sources(
-        manifests_path,
+        manifests_freeze_path,
         constructor="ManifestFreezeReportResponse",
         keyword="status",
         value=("manifest", "status"),
@@ -4135,7 +4138,7 @@ def build_status_contract() -> dict[str, Any]:
         )
 
     integrity_known_evidence = _constructor_status_evidence(
-        manifests_path,
+        manifests_integrity_path,
         "ManifestIntegrityResponse",
     )
 
@@ -4242,7 +4245,8 @@ def build_status_contract() -> dict[str, Any]:
     freeze_authority = _authority(
         "derived_response_projection",
         [
-            str(manifests_path.relative_to(ROOT)),
+            str(manifests_construction_path.relative_to(ROOT)),
+            str(manifests_freeze_path.relative_to(ROOT)),
             str(manifests_policy_path.relative_to(ROOT)),
             *freeze_projection_sources,
         ],
@@ -4299,7 +4303,7 @@ def build_status_contract() -> dict[str, Any]:
                 [
                     str(path.relative_to(ROOT))
                     for path in [
-                        manifests_path,
+                        manifests_construction_path,
                         scheduling_path,
                         workers_path,
                     ]
@@ -4333,7 +4337,10 @@ def build_status_contract() -> dict[str, Any]:
             "values": sorted(manifest_evidence),
             "authority": _authority(
                 "ast_domain_transitions",
-                [str(manifests_path.relative_to(ROOT))],
+                [
+                    str(manifests_construction_path.relative_to(ROOT)),
+                    str(manifests_policy_path.relative_to(ROOT)),
+                ],
                 manifest_evidence,
             ),
             "behavior_observed_values": [],
@@ -4344,7 +4351,7 @@ def build_status_contract() -> dict[str, Any]:
             "values": sorted(worker_integrity_evidence),
             "authority": _authority(
                 "ast_domain_transitions",
-                [str(manifests_path.relative_to(ROOT))],
+                [str(manifests_policy_path.relative_to(ROOT))],
                 worker_integrity_evidence,
             ),
             "behavior_observed_values": [],
@@ -4368,8 +4375,10 @@ def build_status_contract() -> dict[str, Any]:
                         "ManifestIntegrityResponse",
                         "status",
                     ),
-                    "ocr_platform/control/domains/manifests/core.py:888",
-                    "ocr_platform/control/domains/manifests/core.py:893",
+                    _function_definition_source(
+                        manifests_integrity_path,
+                        "get_manifest_integrity_report",
+                    ),
                 ],
             },
             "known_value_evidence": integrity_known_evidence,

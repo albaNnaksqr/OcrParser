@@ -157,10 +157,10 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
         "private": imports["private_symbol_count"],
         "lazy": imports["lazy_wrapper_count"],
     } == {
-        "statements": 24,
-        "symbols": 30,
-        "private": 11,
-        "lazy": 16,
+        "statements": 11,
+        "symbols": 14,
+        "private": 5,
+        "lazy": 5,
     }
     assert imports["edges"] == [
         {
@@ -168,12 +168,6 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
             "target": "workers",
             "statement_count": 1,
             "symbol_count": 3,
-        },
-        {
-            "source": "jobs",
-            "target": "manifests",
-            "statement_count": 6,
-            "symbol_count": 9,
         },
         {
             "source": "jobs",
@@ -188,41 +182,27 @@ def test_architecture_debt_counts_match_independent_audit() -> None:
             "symbol_count": 7,
         },
         {
-            "source": "manifests",
-            "target": "workers",
-            "statement_count": 5,
-            "symbol_count": 5,
-        },
-        {
-            "source": "workers",
-            "target": "manifests",
-            "statement_count": 2,
-            "symbol_count": 2,
-        },
-        {
             "source": "workers",
             "target": "model_profiles",
             "statement_count": 2,
             "symbol_count": 2,
         },
     ]
-    assert imports["strongly_connected_components"] == [
-        ["manifests", "workers"]
-    ]
+    assert imports["strongly_connected_components"] == []
     assert transactions["total"] == 29
     assert transactions["operations"] == {
-        "commit": 9,
-        "flush": 17,
+        "commit": 6,
+        "flush": 20,
         "rollback": 3,
     }
     assert query["direct_dml_count"] == 0
     assert query["semantic_allowlist_count"] == 0
     assert query["semantic_allowlist_sites"] == []
-    assert writes["count"] == 10
+    assert writes["count"] == 7
     assert sum(
         site["write_kind"] == "attribute_assignment"
         for site in writes["sites"]
-    ) == 7
+    ) == 4
     assert sum(
         site["write_kind"] == "sql_values"
         for site in writes["sites"]
@@ -276,15 +256,19 @@ def test_replaced_transaction_and_policy_write_fail(
     baseline = _baseline()
 
     transaction_root = _copy_domains(tmp_path / "transaction")
-    manifest_core = (
+    transaction_core = (
         transaction_root
         / "ocr_platform"
         / "control"
         / "domains"
-        / "manifests"
+        / "workers"
         / "core.py"
     )
-    _replace_once(manifest_core, "session.commit()", "session.flush()")
+    _replace_once(
+        transaction_core,
+        "session.commit()",
+        "session.flush()",
+    )
     transaction_actual = (
         control_architecture_debt.build_architecture_debt(transaction_root)
     )
@@ -401,18 +385,18 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
     actual = control_architecture_debt.build_architecture_debt(root)
 
     control_architecture_debt.validate_decreasing(actual, baseline)
-    assert actual["cross_domain_imports"]["symbol_count"] == 29
+    assert actual["cross_domain_imports"]["symbol_count"] == 13
 
     transaction_root = _copy_domains(tmp_path / "transaction")
-    manifest_core = (
+    transaction_core = (
         transaction_root
         / "ocr_platform"
         / "control"
         / "domains"
-        / "manifests"
+        / "workers"
         / "core.py"
     )
-    _replace_once(manifest_core, "session.commit()", "pass")
+    _replace_once(transaction_core, "session.commit()", "pass")
     transaction_actual = (
         control_architecture_debt.build_architecture_debt(transaction_root)
     )
@@ -436,7 +420,7 @@ def test_deleting_debt_site_is_allowed(tmp_path: Path) -> None:
         policy_root
     )
     control_architecture_debt.validate_decreasing(policy_actual, baseline)
-    assert policy_actual["policy_external_status_writes"]["count"] == 9
+    assert policy_actual["policy_external_status_writes"]["count"] == 6
 
 def test_line_number_changes_are_evidence_only(tmp_path: Path) -> None:
     root = _copy_domains(tmp_path)
@@ -548,7 +532,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
         bulk_root
     )
     assert bulk_actual["query_mutations"]["direct_dml_count"] == 1
-    assert bulk_actual["policy_external_status_writes"]["count"] == 11
+    assert bulk_actual["policy_external_status_writes"]["count"] == 8
     with pytest.raises(ValueError, match="direct_dml_sites"):
         control_architecture_debt.validate_decreasing(
             bulk_actual,
@@ -605,7 +589,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
         core_root
     )
     assert core_actual["query_mutations"]["direct_dml_count"] == 0
-    assert core_actual["policy_external_status_writes"]["count"] == 11
+    assert core_actual["policy_external_status_writes"]["count"] == 8
 
 
 def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
@@ -678,7 +662,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
     status_actual = control_architecture_debt.build_architecture_debt(
         status_root
     )
-    assert status_actual["policy_external_status_writes"]["count"] == 12
+    assert status_actual["policy_external_status_writes"]["count"] == 9
     with pytest.raises(
         ValueError,
         match="policy_external_status_writes.sites",
@@ -777,7 +761,7 @@ def test_semantic_query_analysis_uses_the_shared_mutation_sinks(
     actual = control_architecture_debt.build_architecture_debt(root)
 
     assert actual["query_mutations"]["semantic_allowlist_count"] == 1
-    assert actual["policy_external_status_writes"]["count"] == 14
+    assert actual["policy_external_status_writes"]["count"] == 11
     with pytest.raises(
         ValueError,
         match="semantic_allowlist_sites",
@@ -830,7 +814,7 @@ def test_alias_dynamic_import_and_closure_escape_hatches_are_blocked(
     import_actual = control_architecture_debt.build_architecture_debt(
         import_root
     )
-    assert import_actual["cross_domain_imports"]["symbol_count"] == 31
+    assert import_actual["cross_domain_imports"]["symbol_count"] == 15
 
     closure_root = _copy_domains(tmp_path / "closure")
     closure_core = (
@@ -893,7 +877,7 @@ def test_false_positive_exclusions_for_constructor_and_unrelated_flush(
 def hidden_bulk_update(session):
     session.bulk_update_mappings(Job, [{"status": "failed"}])
 """,
-            11,
+            8,
         ),
         (
             "bulk-save",
@@ -901,7 +885,7 @@ def hidden_bulk_update(session):
 def hidden_bulk_save(session):
     session.bulk_save_objects([Job(status="failed")])
 """,
-            11,
+            8,
         ),
         (
             "scalar-returning",
@@ -912,7 +896,7 @@ def hidden_scalar(session):
         local_update(Job).values(label="changed").returning(Job)
     )
 """,
-            10,
+            7,
         ),
         (
             "module-alias-returning",
@@ -921,7 +905,7 @@ def hidden_module_alias(session):
     import sqlalchemy as sa
     session.scalar(sa.update(Job).values(label="changed").returning(Job))
 """,
-            10,
+            7,
         ),
     ],
 )
@@ -983,7 +967,7 @@ def hidden_attribute_mutation(job, now):
     actual = control_architecture_debt.build_architecture_debt(root)
 
     assert actual["query_mutations"]["direct_dml_count"] == 2
-    assert actual["policy_external_status_writes"]["count"] == 10
+    assert actual["policy_external_status_writes"]["count"] == 7
     with pytest.raises(ValueError, match="direct_dml_sites"):
         control_architecture_debt.validate_decreasing(
             actual,

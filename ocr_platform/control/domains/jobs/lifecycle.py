@@ -22,12 +22,12 @@ from ..common import (
     UnknownJobError,
     json_dumps,
 )
-from ..manifests.core import (
-    _create_distributed_scan_for_job,
-    _create_static_shards_for_job,
-    finalize_stopped_job_if_idle,
-    infer_default_manifest_root,
+from ..manifests.construction import (
+    create_distributed_scan_for_job,
+    create_static_shards_for_job,
 )
+from ..manifests.paths import infer_default_manifest_root
+from ..manifests.use_cases import finalize_stopped_job_if_idle
 from ..model_profiles.core import _effective_job_model_config
 from ..workers.core import (
     _database_migration_preflight_issue,
@@ -118,13 +118,13 @@ def create(
     )
     session.add(job)
     session.flush()
-    _create_static_shards_for_job(
+    create_static_shards_for_job(
         session,
         job,
         request,
         limits=control_limits,
     )
-    _create_distributed_scan_for_job(session, job)
+    create_distributed_scan_for_job(session, job)
     return job
 
 

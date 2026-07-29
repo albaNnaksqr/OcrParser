@@ -21,11 +21,11 @@ def _job_worker_version_summary(*args, **kwargs):
     return target(*args, **kwargs)
 
 def _load_worker_integrity_report(*args, **kwargs):
-    from ..manifests.core import _load_worker_integrity_report as target
+    from ..manifests.integrity import load_worker_integrity_report as target
     return target(*args, **kwargs)
 
 def _manifest_integrity_freeze_summary(*args, **kwargs):
-    from ..manifests.core import _manifest_integrity_freeze_summary as target
+    from ..manifests.integrity import manifest_integrity_freeze_summary as target
     return target(*args, **kwargs)
 
 def allowed_server_ids_for_job(*args, **kwargs):
@@ -122,76 +122,33 @@ def _static_input_file_count(session: Session, job_id: str) -> int:
     return max(int(manifest_file_count or 0), int(shard_file_count or 0))
 
 def _latest_manifest_scan_progress(session: Session, job_id: str) -> dict[str, Any]:
-    event = session.execute(
-        select(JobEvent)
-        .where(JobEvent.job_id == job_id)
-        .where(JobEvent.event_type == "manifest_scan_progress")
-        .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-        .limit(1)
-    ).scalar_one_or_none()
-    if event is None:
-        return {}
-    return json_loads_object(event.payload_json)
+    from ..manifests.projection import latest_manifest_scan_progress
+
+    return latest_manifest_scan_progress(session, job_id)
 
 def _manifest_scan_metadata(manifest: Manifest | None) -> dict[str, Any]:
-    if manifest is None or not manifest.meta_path:
-        return {}
-    try:
-        payload = json.loads(Path(manifest.meta_path).read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
+    from ..manifests.projection import manifest_scan_metadata
+
+    return manifest_scan_metadata(manifest)
 
 def _manifest_scan_error_samples(manifest_meta: dict[str, Any], *, limit: int = 5) -> list[dict[str, Any]]:
-    samples: list[dict[str, Any]] = []
-    for item in manifest_meta.get("skipped_errors") or []:
-        if not isinstance(item, dict):
-            continue
-        samples.append(_scan_error_sample_with_category(item))
-        if len(samples) >= limit:
-            break
-    return samples
+    from ..manifests.projection import manifest_scan_error_samples
+
+    return manifest_scan_error_samples(manifest_meta, limit=limit)
 
 def _recent_manifest_scan_error_samples(session: Session, job_id: str, *, limit: int = 5) -> list[dict[str, Any]]:
-    rows = session.execute(
-        select(JobEvent)
-        .where(JobEvent.job_id == job_id)
-        .where(JobEvent.event_type == "manifest_scan_progress")
-        .order_by(JobEvent.created_at.desc(), JobEvent.id.desc())
-        .limit(50)
-    ).scalars().all()
-    samples: list[dict[str, Any]] = []
-    seen_keys: set[tuple[str, str]] = set()
-    for event in rows:
-        payload = json_loads_object(event.payload_json)
-        for item in payload.get("skipped_errors") or []:
-            if not isinstance(item, dict):
-                continue
-            sample = _scan_error_sample_with_category(item)
-            key = (str(sample.get("path") or ""), str(sample.get("reason") or ""))
-            if key in seen_keys:
-                continue
-            seen_keys.add(key)
-            samples.append(sample)
-            if len(samples) >= limit:
-                return samples
-    return samples
+    from ..manifests.projection import recent_manifest_scan_error_samples
+
+    return recent_manifest_scan_error_samples(
+        session,
+        job_id,
+        limit=limit,
+    )
 
 def _scan_unit_problem_samples(session: Session, job_id: str, *, limit: int = 5) -> list[dict[str, Any]]:
-    return [
-        {
-            "path": path,
-            "reason": error_message or f"scan unit {status}",
-            "failure_category": failure_category,
-        }
-        for path, status, error_message, failure_category in session.execute(
-            select(ScanUnit.path, ScanUnit.status, ScanUnit.error_message, ScanUnit.failure_category)
-            .where(ScanUnit.job_id == job_id)
-            .where(ScanUnit.status.in_({"failed", "stale"}))
-            .order_by(ScanUnit.id.asc())
-            .limit(limit)
-        ).all()
-    ]
+    from ..manifests.projection import scan_unit_problem_samples
+
+    return scan_unit_problem_samples(session, job_id, limit=limit)
 
 def _manifest_scan_started_at(session: Session, job_id: str) -> datetime | None:
     return session.execute(

@@ -9,18 +9,16 @@ from ...models import Manifest as _Manifest
 from ...models import ScanUnit as _ScanUnit
 from ...models import WorkShard as _WorkShard
 from ...schemas import (
+    ManifestIntegrityWorkerCompleteRequest as _ManifestIntegrityWorkerCompleteRequest,
     RemoteManifestRegisterRequest as _RemoteManifestRegisterRequest,
     ScanUnitCompleteRequest as _ScanUnitCompleteRequest,
     ScanUnitFailRequest as _ScanUnitFailRequest,
     WorkShardUpdateRequest as _WorkShardUpdateRequest,
 )
 from ..common import ScanUnitAttemptConflictError, ShardAttemptConflictError
-from . import core as _core
-from .core import (
-    claim_worker_manifest_integrity_check,
-    complete_worker_manifest_integrity_check,
-    request_worker_manifest_integrity_check,
-)
+from . import construction as _construction
+from . import integrity as _integrity
+from . import use_cases as _use_cases
 
 
 class ManifestCommandTransactionError(RuntimeError):
@@ -45,6 +43,15 @@ CLAIM_NEXT_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR = (
 UPDATE_WORK_SHARD_ACTIVE_TRANSACTION_ERROR = (
     "update_work_shard requires a session without an active transaction"
 )
+REQUEST_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR = (
+    "request_worker_manifest_integrity_check requires a session without an active transaction"
+)
+CLAIM_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR = (
+    "claim_worker_manifest_integrity_check requires a session without an active transaction"
+)
+COMPLETE_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR = (
+    "complete_worker_manifest_integrity_check requires a session without an active transaction"
+)
 
 
 class _ScanUnitClaimPhaseEnded(RuntimeError):
@@ -68,7 +75,7 @@ def register_remote_manifest(
     session.expire_on_commit = False
     try:
         with session.begin():
-            manifest = _core.register_remote_manifest(
+            manifest = _construction.register_remote_manifest(
                 session,
                 job_id,
                 request,
@@ -94,7 +101,7 @@ def complete_scan_unit(
     session.expire_on_commit = False
     try:
         with session.begin():
-            unit = _core._complete_scan_unit(
+            unit = _use_cases.complete_scan_unit(
                 session,
                 scan_unit_id,
                 request,
@@ -119,7 +126,7 @@ def fail_scan_unit(
     session.expire_on_commit = False
     try:
         with session.begin():
-            unit = _core._fail_scan_unit(
+            unit = _use_cases.fail_scan_unit(
                 session,
                 scan_unit_id,
                 request,
@@ -127,6 +134,76 @@ def fail_scan_unit(
     finally:
         session.expire_on_commit = previous_expire_on_commit
     return unit
+
+
+def request_worker_manifest_integrity_check(
+    session: _Session,
+    job_id: str,
+):
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            REQUEST_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR
+        )
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        with session.begin():
+            response = _integrity.request_worker_manifest_integrity_check(
+                session,
+                job_id,
+            )
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
+    return response
+
+
+def claim_worker_manifest_integrity_check(
+    session: _Session,
+    server_id: str,
+):
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            CLAIM_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR
+        )
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        with session.begin():
+            task = _integrity.claim_worker_manifest_integrity_check(
+                session,
+                server_id,
+            )
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
+    return task
+
+
+def complete_worker_manifest_integrity_check(
+    session: _Session,
+    manifest_id: int,
+    server_id: str,
+    request: _ManifestIntegrityWorkerCompleteRequest,
+    *,
+    limits: _ControlLimits | None = None,
+):
+    if session.in_transaction():
+        raise ManifestCommandTransactionError(
+            COMPLETE_WORKER_INTEGRITY_ACTIVE_TRANSACTION_ERROR
+        )
+    previous_expire_on_commit = session.expire_on_commit
+    session.expire_on_commit = False
+    try:
+        with session.begin():
+            response = _integrity.complete_worker_manifest_integrity_check(
+                session,
+                manifest_id,
+                server_id,
+                request,
+                limits=limits,
+            )
+    finally:
+        session.expire_on_commit = previous_expire_on_commit
+    return response
 
 
 def claim_next_pending_shard(
@@ -155,7 +232,7 @@ def claim_next_pending_shard(
                         if not parent_claimable:
                             return None
                         collision_parent = None
-                    shard = _core._claim_next_pending_shard(
+                    shard = _use_cases.claim_next_pending_shard(
                         session,
                         job_id,
                         server_id,
@@ -189,7 +266,7 @@ def claim_next_scan_unit(
                 try:
                     with session.begin():
                         unit, now, server_available = (
-                            _core._claim_next_scan_unit_phase(
+                            _use_cases.claim_next_scan_unit_phase(
                                 session,
                                 server_id,
                                 claim_statuses=claim_statuses,

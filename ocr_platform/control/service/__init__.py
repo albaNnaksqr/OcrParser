@@ -16,6 +16,12 @@ from ..domains.jobs import lifecycle as __job_lifecycle
 from ..domains.jobs import logs as __job_logs
 from ..domains.jobs import projection as __job_projection
 from ..domains.manifests import core as _manifests
+from ..domains.manifests import construction as __manifest_construction
+from ..domains.manifests import freeze as __manifest_freeze
+from ..domains.manifests import integrity as __manifest_integrity
+from ..domains.manifests import paths as __manifest_paths
+from ..domains.manifests import projection as __manifest_projection
+from ..domains.manifests import use_cases as __manifest_use_cases
 from ..domains.model_profiles import core as _model_profiles
 from ..domains.workers import core as _workers
 from ..domains.common import *
@@ -73,6 +79,15 @@ __job_command_wrappers = {
 __manifest_core_command_leaves = {
     "register_remote_manifest": _manifests.register_remote_manifest,
 }
+__manifest_owned_leaves = {
+    "register_remote_manifest": __manifest_construction.register_remote_manifest,
+}
+__manifest_owned_targets = {
+    "register_remote_manifest": (
+        __manifest_construction,
+        "register_remote_manifest",
+    ),
+}
 from ..domains.manifests.commands import (
     register_remote_manifest as register_remote_manifest,
 )
@@ -101,6 +116,12 @@ class _CompatibilityModule(ModuleType):
             globals()["__job_logs"],
             globals()["__job_projection"],
             _manifests,
+            globals()["__manifest_construction"],
+            globals()["__manifest_freeze"],
+            globals()["__manifest_integrity"],
+            globals()["__manifest_paths"],
+            globals()["__manifest_projection"],
+            globals()["__manifest_use_cases"],
             _model_profiles,
             _workers,
         ):
@@ -135,6 +156,13 @@ class _CompatibilityModule(ModuleType):
             replacement = value
             if value is globals()["__job_command_wrappers"].get(name):
                 replacement = globals()["__jobs_owned_leaves"][name]
+            setattr(target_module, target_name, replacement)
+        manifest_owned_target = globals()["__manifest_owned_targets"].get(name)
+        if manifest_owned_target is not None:
+            target_module, target_name = manifest_owned_target
+            replacement = value
+            if value is globals()["__manifest_command_wrappers"].get(name):
+                replacement = globals()["__manifest_owned_leaves"][name]
             setattr(target_module, target_name, replacement)
 
 

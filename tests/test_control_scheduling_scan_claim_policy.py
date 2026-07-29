@@ -17,7 +17,7 @@ from ocr_platform.control.domains.common import (
     SHARD_LEASE_SECONDS,
 )
 from ocr_platform.control.domains.manifests import commands as manifest_commands
-from ocr_platform.control.domains.manifests import core as manifests_core
+from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.models import Job, ScanUnit, Server, utcnow
 
 
@@ -292,7 +292,7 @@ def test_scan_claim_collision_restarts_at_stale_phase() -> None:
     engine, session_factory = _session_factory()
     phase_calls: list[tuple[set[str], bool, object]] = []
     claim_calls = 0
-    original_phase = manifests_core._claim_next_scan_unit_phase
+    original_phase = manifest_use_cases.claim_next_scan_unit_phase
     original_claim = scheduling._claim_scan_unit_candidate
 
     def record_phase(*args, **kwargs):
@@ -324,8 +324,8 @@ def test_scan_claim_collision_restarts_at_stale_phase() -> None:
 
         with pytest.MonkeyPatch.context() as monkeypatch:
             monkeypatch.setattr(
-                manifests_core,
-                "_claim_next_scan_unit_phase",
+                    manifest_use_cases,
+                    "claim_next_scan_unit_phase",
                 record_phase,
             )
             monkeypatch.setattr(
@@ -423,6 +423,7 @@ def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
         / "core.py"
     )
     commands_path = core_path.with_name("commands.py")
+    use_cases_path = core_path.with_name("use_cases.py")
 
     def function_source(path: Path, name: str) -> str:
         source = path.read_text(encoding="utf-8")
@@ -477,7 +478,7 @@ def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
     ) in wrapper
     assert "select(ScanUnit)" not in wrapper
 
-    phase = function_source(core_path, "_claim_next_scan_unit_phase")
+    phase = function_source(use_cases_path, "_claim_next_scan_unit_phase")
     assert "session.get(Server, server_id)" in phase
     assert "server.archived_at is not None" in phase
     assert "reconcile_expired_scan_unit_leases(session, now=now)" in phase

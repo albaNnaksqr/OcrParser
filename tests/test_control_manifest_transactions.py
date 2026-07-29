@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import importlib
+import json
 import re
 from collections import Counter
 from datetime import timedelta
@@ -13,7 +14,12 @@ from sqlalchemy.orm import sessionmaker
 
 from ocr_platform.control.database import init_db
 from ocr_platform.control import scheduling
-from ocr_platform.control.domains.manifests import commands, core
+from ocr_platform.control.domains.manifests import (
+    commands,
+    core,
+    integrity,
+    use_cases,
+)
 from ocr_platform.control.domains.manifests.commands import (
     CLAIM_NEXT_PENDING_SHARD_ACTIVE_TRANSACTION_ERROR,
     CLAIM_NEXT_SCAN_UNIT_ACTIVE_TRANSACTION_ERROR,
@@ -38,6 +44,8 @@ from ocr_platform.control.models import (
     utcnow,
 )
 from ocr_platform.control.schemas import (
+    ManifestIntegrityResponse,
+    ManifestIntegrityWorkerCompleteRequest,
     RemoteManifestRegisterRequest,
     RemoteManifestShardRequest,
     ScanUnitCompleteRequest,
@@ -1318,7 +1326,7 @@ def test_claim_scan_unit_cas_collision_rolls_back_before_full_retry(
     first_now = utcnow()
     second_now = first_now + timedelta(seconds=1)
     now_values = iter((first_now, second_now))
-    monkeypatch.setattr(core, "utcnow", lambda: next(now_values))
+    monkeypatch.setattr(use_cases, "utcnow", lambda: next(now_values))
 
     class _LostRaceResult:
         rowcount = 0
@@ -1471,7 +1479,7 @@ def test_claim_scan_unit_pending_phase_reuses_now_without_reconciliation(
         now_calls += 1
         return fixed_now
 
-    monkeypatch.setattr(core, "utcnow", one_now)
+    monkeypatch.setattr(use_cases, "utcnow", one_now)
 
     try:
         with session_factory() as session:
@@ -1584,7 +1592,11 @@ def test_complete_scan_unit_failure_rolls_back_all_manifest_side_effects(
     def fail_freeze(*args, **kwargs):
         raise RuntimeError("freeze failed")
 
-    monkeypatch.setattr(core, "freeze_manifest_if_scan_complete", fail_freeze)
+    monkeypatch.setattr(
+        use_cases,
+        "freeze_manifest_if_scan_complete",
+        fail_freeze,
+    )
 
     try:
         with session_factory() as session:
@@ -2105,6 +2117,131 @@ def test_service_patch_restore_preserves_manifest_wrapper_and_core_leaf(
         engine.dispose()
 
 
+def _seed_worker_integrity_manifest(session_factory) -> int:
+    _seed_job(session_factory)
+    with session_factory.begin() as session:
+        server = session.get(Server, "server-a")
+        server.status = "online"
+        server.capabilities_json = json.dumps(
+            {
+                "shared_paths": [
+                    {
+                        "path": "/shared",
+                        "exists": True,
+                        "is_dir": True,
+                        "readable": True,
+                    }
+                ]
+            }
+        )
+        manifest = Manifest(
+            job_id="job-a",
+            input_mode="remote_folder_snapshot",
+            input_root="/shared/input",
+            manifest_path="/shared/manifest.jsonl",
+            file_count=0,
+            total_bytes=0,
+            status="ready",
+        )
+        session.add(manifest)
+        session.flush()
+        return manifest.id
+
+
+def test_worker_integrity_commands_each_commit_exactly_once(
+    tmp_path,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    manifest_id = _seed_worker_integrity_manifest(session_factory)
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            requested = commands.request_worker_manifest_integrity_check(
+                session,
+                "job-a",
+            )
+            assert requested.worker_integrity_status == "pending"
+            assert commits == [1]
+            assert rollbacks == []
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            task = commands.claim_worker_manifest_integrity_check(
+                session,
+                "server-a",
+            )
+            assert task is not None
+            assert task.manifest_id == manifest_id
+            assert commits == [1]
+            assert rollbacks == []
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            completed = (
+                commands.complete_worker_manifest_integrity_check(
+                    session,
+                    manifest_id,
+                    "server-a",
+                    ManifestIntegrityWorkerCompleteRequest(
+                        report=ManifestIntegrityResponse(
+                            job_id="job-a",
+                            manifest_id=manifest_id,
+                            ok=True,
+                            status="ok",
+                        )
+                    ),
+                )
+            )
+            assert completed.worker_integrity_status == "ok"
+            assert commits == [1]
+            assert rollbacks == []
+            assert session.in_transaction() is False
+    finally:
+        engine.dispose()
+
+
+def test_worker_integrity_request_rolls_back_policy_failure(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    session_factory, engine = _database(tmp_path)
+    manifest_id = _seed_worker_integrity_manifest(session_factory)
+    original = integrity.policy.request_worker_integrity
+
+    def fail_after_policy(manifest, *, requested_at):
+        original(manifest, requested_at=requested_at)
+        raise RuntimeError("injected worker integrity failure")
+
+    monkeypatch.setattr(
+        integrity.policy,
+        "request_worker_integrity",
+        fail_after_policy,
+    )
+    try:
+        with session_factory() as session:
+            commits, rollbacks = _transaction_observers(session)
+            with pytest.raises(
+                RuntimeError,
+                match="injected worker integrity failure",
+            ):
+                commands.request_worker_manifest_integrity_check(
+                    session,
+                    "job-a",
+                )
+            assert commits == []
+            assert rollbacks == [1]
+            assert session.in_transaction() is False
+
+        with session_factory() as session:
+            manifest = session.get(Manifest, manifest_id)
+            assert manifest.worker_integrity_status is None
+            assert manifest.worker_integrity_requested_at is None
+    finally:
+        engine.dispose()
+
+
 def test_manifest_registration_session_call_scope_is_exact() -> None:
     core_path = (
         ROOT
@@ -2115,7 +2252,10 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         / "core.py"
     )
     commands_path = core_path.with_name("commands.py")
-    ports_path = core_path.with_name("ports.py")
+    construction_path = core_path.with_name("construction.py")
+    freeze_path = core_path.with_name("freeze.py")
+    integrity_path = core_path.with_name("integrity.py")
+    use_cases_path = core_path.with_name("use_cases.py")
     scheduling_path = (
         ROOT / "ocr_platform" / "control" / "scheduling.py"
     )
@@ -2151,14 +2291,14 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "register_remote_manifest",
     ) == {"begin": 1}
     assert session_calls(
-        core_path,
+        construction_path,
         "register_remote_manifest",
     ) == {
         "execute": 2,
         "flush": 1,
     }
     assert session_calls(
-        core_path,
+        construction_path,
         "_create_static_shards_for_job",
     ) == {"flush": 2}
     assert session_calls(
@@ -2169,7 +2309,7 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "execute": 1,
     }
     assert session_calls(core_path, "claim_next_pending_shard") == {}
-    assert session_calls(core_path, "_claim_next_pending_shard") == {
+    assert session_calls(use_cases_path, "_claim_next_pending_shard") == {
         "execute": 1,
     }
     assert session_calls(
@@ -2187,7 +2327,7 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "begin": 1,
     }
     assert session_calls(core_path, "claim_next_scan_unit") == {}
-    assert session_calls(core_path, "_claim_next_scan_unit_phase") == {
+    assert session_calls(use_cases_path, "_claim_next_scan_unit_phase") == {
         "execute": 1,
         "refresh": 1,
     }
@@ -2199,7 +2339,7 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "begin": 1,
     }
     assert session_calls(core_path, "complete_scan_unit") == {}
-    assert session_calls(core_path, "_complete_scan_unit") == {
+    assert session_calls(use_cases_path, "_complete_scan_unit") == {
         "flush": 1,
     }
     assert session_calls(
@@ -2207,54 +2347,66 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "_lock_scan_unit_for_transition",
     ) == {"execute": 1}
     assert session_calls(
-        ports_path,
+        construction_path,
         "lock_manifest_for_scan_unit_completion",
     ) == {"execute": 1}
     assert session_calls(
-        ports_path,
+        construction_path,
         "materialize_scan_unit_completion",
     ) == {}
     assert session_calls(
-        ports_path,
+        construction_path,
         "existing_scan_unit_paths",
     ) == {"execute": 1}
     assert session_calls(
-        ports_path,
+        construction_path,
         "next_manifest_shard_index",
     ) == {"execute": 2}
     assert session_calls(
-        ports_path,
+        freeze_path,
         "freeze_manifest_if_scan_complete",
     ) == {"execute": 2}
     assert session_calls(commands_path, "fail_scan_unit") == {
         "begin": 1,
     }
     assert session_calls(core_path, "fail_scan_unit") == {}
-    assert session_calls(core_path, "_fail_scan_unit") == {
+    assert session_calls(use_cases_path, "_fail_scan_unit") == {
         "flush": 1,
     }
     assert session_calls(
-        ports_path,
+        freeze_path,
         "fail_manifest_if_scan_complete",
     ) == {"execute": 2}
     assert session_calls(
-        core_path,
+        integrity_path,
         "claim_worker_manifest_integrity_check",
     ) == {
         "execute": 2,
-        "commit": 1,
+        "flush": 1,
     }
     assert session_calls(
-        core_path,
+        integrity_path,
         "request_worker_manifest_integrity_check",
     ) == {
         "execute": 1,
-        "commit": 1,
+        "flush": 1,
     }
     assert session_calls(
-        core_path,
+        integrity_path,
         "complete_worker_manifest_integrity_check",
-    ) == {"commit": 1}
+    ) == {"flush": 1}
+    assert session_calls(
+        commands_path,
+        "claim_worker_manifest_integrity_check",
+    ) == {"begin": 1}
+    assert session_calls(
+        commands_path,
+        "request_worker_manifest_integrity_check",
+    ) == {"begin": 1}
+    assert session_calls(
+        commands_path,
+        "complete_worker_manifest_integrity_check",
+    ) == {"begin": 1}
     assert session_calls(commands_path, "update_work_shard") == {
         "begin": 1,
     }

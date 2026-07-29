@@ -93,7 +93,7 @@ def _refresh_job_summary(session: Session, job: Job) -> None:
         reconcile_expired_scan_unit_leases,
         reconcile_expired_shard_leases,
     )
-    from ..manifests.core import finalize_stopped_job_if_idle
+    from ..manifests.use_cases import finalize_stopped_job_if_idle
 
     reconcile_expired_shard_leases(session, job_id=job.id)
     reconcile_expired_scan_unit_leases(session, job_id=job.id)

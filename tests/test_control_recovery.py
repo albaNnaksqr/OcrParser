@@ -12,6 +12,7 @@ from ocr_platform.control.domains.manifests.commands import (
 from ocr_platform.control.domains.workers import core as workers_core
 from ocr_platform.control.domains.jobs import core as jobs_core
 from ocr_platform.control.domains.manifests import core as manifests_core
+from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import scheduling, service
 from sqlalchemy import event as sa_event
@@ -1024,7 +1025,7 @@ def test_shard_claim_parent_select_uses_postgresql_key_share():
 def test_shard_claim_locks_parent_before_claimable_shard_selector():
     import inspect
 
-    source = inspect.getsource(manifests_core._claim_next_pending_shard)
+    source = inspect.getsource(manifest_use_cases.claim_next_pending_shard)
 
     reconcile_position = source.index("_reconcile_expired_shard_leases(")
     parent_lock_position = source.index(

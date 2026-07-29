@@ -8,7 +8,7 @@ import pytest
 
 from ocr_platform.control import scheduling
 from ocr_platform.control.domains.common import ScanUnitAttemptConflictError
-from ocr_platform.control.domains.manifests import core, ports
+from ocr_platform.control.domains.manifests import construction, use_cases
 from ocr_platform.control.models import Job, Manifest, ScanUnit
 from ocr_platform.control.schemas import (
     RemoteManifestShardRequest,
@@ -202,12 +202,12 @@ def test_scan_completion_leaf_preserves_port_and_transition_order(
         lambda *args, **kwargs: calls.append("plan") or plan,
     )
     monkeypatch.setattr(
-        core,
+        use_cases,
         "get_job_or_raise",
         lambda *args, **kwargs: calls.append("job") or job,
     )
     monkeypatch.setattr(
-        ports,
+        construction,
         "lock_manifest_for_scan_unit_completion",
         lambda *args, **kwargs: calls.append("manifest_lock") or manifest,
     )
@@ -217,17 +217,17 @@ def test_scan_completion_leaf_preserves_port_and_transition_order(
         lambda *args, **kwargs: calls.append("transition") or unit,
     )
     monkeypatch.setattr(
-        ports,
+        construction,
         "materialize_scan_unit_completion",
         lambda *args, **kwargs: calls.append("materialize"),
     )
     monkeypatch.setattr(
-        core,
+        use_cases,
         "freeze_manifest_if_scan_complete",
         lambda *args, **kwargs: calls.append("freeze"),
     )
 
-    returned = core._complete_scan_unit(
+    returned = use_cases.complete_scan_unit(
         session,
         unit.id,
         ScanUnitCompleteRequest(
@@ -279,7 +279,7 @@ def test_scan_failure_leaf_preserves_port_and_transition_order(
         lambda *args, **kwargs: calls.append("plan") or plan,
     )
     monkeypatch.setattr(
-        core,
+        use_cases,
         "get_job_or_raise",
         lambda *args, **kwargs: calls.append("job") or job,
     )
@@ -289,12 +289,12 @@ def test_scan_failure_leaf_preserves_port_and_transition_order(
         lambda *args, **kwargs: calls.append("transition") or unit,
     )
     monkeypatch.setattr(
-        ports,
+        use_cases,
         "fail_manifest_if_scan_complete",
         lambda *args, **kwargs: calls.append("manifest_fail"),
     )
 
-    returned = core._fail_scan_unit(
+    returned = use_cases.fail_scan_unit(
         session,
         unit.id,
         ScanUnitFailRequest(
@@ -314,16 +314,16 @@ def test_scan_failure_leaf_preserves_port_and_transition_order(
     ]
 
 
-def test_manifest_ports_do_not_own_scan_or_shard_status_assignment() -> None:
-    ports_path = (
+def test_manifest_construction_does_not_own_scan_or_shard_status_assignment() -> None:
+    construction_path = (
         ROOT
         / "ocr_platform"
         / "control"
         / "domains"
         / "manifests"
-        / "ports.py"
+        / "construction.py"
     )
-    tree = ast.parse(ports_path.read_text(encoding="utf-8"))
+    tree = ast.parse(construction_path.read_text(encoding="utf-8"))
     status_assignments = [
         node
         for node in ast.walk(tree)

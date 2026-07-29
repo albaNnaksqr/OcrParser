@@ -437,6 +437,7 @@ def test_work_shard_claim_ownership_and_application_boundary_are_static(
         / "core.py"
     )
     commands_path = core_path.with_name("commands.py")
+    use_cases_path = core_path.with_name("use_cases.py")
 
     def function_source(path: Path, name: str) -> str:
         source = path.read_text(encoding="utf-8")
@@ -503,7 +504,7 @@ def test_work_shard_claim_ownership_and_application_boundary_are_static(
     assert "select(WorkShard.id)" not in wrapper
 
     application = function_source(
-        core_path,
+        use_cases_path,
         "_claim_next_pending_shard",
     )
     reconcile_position = application.index(

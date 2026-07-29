@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ...models import Job, ModelProfile
 from ...schemas import JobFileResponse, JobResponse
 from ..common import json_loads_list, json_loads_object
-from ..manifests.core import has_static_shards
+from ..manifests.projection import has_static_shards
 from ..model_profiles.core import _resolve_model_profile_api_key
 from ..workers.core import public_assigned_server_id
 
