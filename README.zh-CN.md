@@ -1,11 +1,11 @@
 # OcrParser
 
-> v0.3 继续以本公开仓库作为唯一源码主线，并加入安装 profile、Control/Agent
-> 域拆分、统一数据库 migration、模块化 UI 和不可变 build provenance。参见
+> v0.4.0rc1 是 Control 运维成熟度候选版本，新增显式 migration readiness、
+> engine profile 认证 preflight、有界可观测性，并完成 Control domain ownership；
+> 本公开仓库继续作为唯一源码主线。参见
 > [架构说明](docs/architecture.zh-CN.md)、
-> [v0.3 迁移指南](docs/migration-v0.3.zh-CN.md)和
-> [v0.3.4 发布说明](docs/release-v0.3.4.zh-CN.md)。部署方还应使用
-> [v0.3 稳定性试运行手册](docs/stability-soak.zh-CN.md)完成隔离验证。
+> [v0.4 升级指南](docs/migration-v0.4.zh-CN.md)和
+> [v0.4.0rc1 发布说明](docs/release-v0.4.0rc1.zh-CN.md)。
 
 [English](README.md) | 中文
 

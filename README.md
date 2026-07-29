@@ -1,12 +1,12 @@
 # OcrParser
 
-> v0.3 keeps this public repository as the single source-code mainline and adds
-> installation profiles, domain-based Control/Agent internals, unified database
-> migrations, modular UI assets, and immutable build provenance. See
+> v0.4.0rc1 is the Control operational-maturity release candidate. It adds
+> explicit migration readiness, certified-profile preflight, bounded
+> observability, and completed Control domain ownership while keeping this
+> public repository as the single source-code mainline. See
 > [architecture](docs/architecture.md), the
-> [v0.3 migration guide](docs/migration-v0.3.md), and the
-> [v0.3.4 release notes](docs/release-v0.3.4.md). Operators validating a deployment
-> should also use the [v0.3 stability soak runbook](docs/stability-soak.md).
+> [v0.4 upgrade guide](docs/migration-v0.4.md), and the
+> [v0.4.0rc1 release notes](docs/release-v0.4.0rc1.md).
 
 English | [中文](README.zh-CN.md)
 

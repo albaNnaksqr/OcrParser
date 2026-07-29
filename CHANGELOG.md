@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## 0.4.0rc1 - 2026-07-29
+
+- Made PostgreSQL migration readiness explicit: startup auto-migration is
+  opt-in, `/healthz` remains process health, `/readyz` reports schema drift,
+  and the shared migration runner remains the only upgrade authority.
+- Added optional Model Profile certification metadata and provenance-aware
+  preflight without automatically certifying existing profiles.
+- Added bounded-label Prometheus metrics, capacity recommendations, audit
+  summaries, and operator-owned alert templates without automatic scaling.
+- Refactored Control transaction ownership, scheduling, jobs, manifests, and
+  workers into explicit commands, queries, policies, and use cases while
+  preserving HTTP/OpenAPI, database, status, manifest, output, and scheduling
+  behavior.
+- Removed the `ocr_platform.control.service` compatibility façade after
+  migrating every repository consumer. This is the only intentional Python
+  import breaking change in v0.4.
+- Added bilingual v0.4 upgrade, module-map, operations, and RC release
+  documentation. The RC proceeds through isolated recovery, package,
+  provenance, and integration gates before final release consideration.
+
 ## 0.3.4 - 2026-07-28
 
 - Stabilized PostgreSQL shard claiming under high concurrency by ordering
