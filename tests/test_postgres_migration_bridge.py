@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.domains.manifests import commands as manifest_commands
-from ocr_platform.control.domains.manifests import core as manifest_core
+from ocr_platform.control.domains.manifests import construction as manifest_construction
 from ocr_platform.control.migration import MigrationCatalog, MigrationRunner
 from ocr_platform.control.models import (
     Job,
@@ -167,7 +167,7 @@ def test_postgres_concurrent_remote_manifest_registration_is_serialized(
     first_has_static_shards_call = True
     has_static_shards_call_lock = threading.Lock()
     second_backend_pid: list[int] = []
-    original_has_static_shards = manifest_core.has_static_shards
+    original_has_static_shards = manifest_construction.has_static_shards
 
     def hold_first_registration_after_job_lock(session, current_job_id):
         nonlocal first_has_static_shards_call
@@ -181,7 +181,7 @@ def test_postgres_concurrent_remote_manifest_registration_is_serialized(
         return original_has_static_shards(session, current_job_id)
 
     monkeypatch.setattr(
-        manifest_core,
+        manifest_construction,
         "has_static_shards",
         hold_first_registration_after_job_lock,
     )

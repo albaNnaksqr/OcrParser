@@ -26,7 +26,7 @@ from ocr_platform.control.domains.workers.commands import (
     heartbeat_server,
     register_server,
 )
-from ocr_platform.control.domains.manifests import core as manifests_core
+from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.domains.workers import core as workers_core
 from ocr_platform.control.models import (
     Job,
@@ -581,7 +581,7 @@ def test_postgres_scan_unit_claim_reclaims_after_concurrent_expiry():
 
 
 def test_postgres_pending_scan_units_skip_locked_across_claim_batches():
-    unit_count = manifests_core.SCAN_UNIT_CLAIM_BATCH_SIZE + 1
+    unit_count = manifest_use_cases.SCAN_UNIT_CLAIM_BATCH_SIZE + 1
     case = _seed_scan_claim_case(
         [
             {
@@ -642,7 +642,7 @@ def test_postgres_stale_scan_pages_release_locks_at_phase_boundary(
         first_server_path="/shared/allowed",
     )
     monkeypatch.setattr(
-        manifests_core,
+        manifest_use_cases,
         "SCAN_UNIT_CLAIM_BATCH_SIZE",
         2,
     )
@@ -650,7 +650,7 @@ def test_postgres_stale_scan_pages_release_locks_at_phase_boundary(
     release_stale_phase = threading.Event()
     waiter_started = threading.Event()
     waiter_pid: list[int] = []
-    original_phase = manifests_core._claim_next_scan_unit_phase
+    original_phase = manifest_use_cases.claim_next_scan_unit_phase
 
     def pause_after_stale_scan(*args, **kwargs):
         outcome = original_phase(*args, **kwargs)
@@ -661,8 +661,8 @@ def test_postgres_stale_scan_pages_release_locks_at_phase_boundary(
         return outcome
 
     monkeypatch.setattr(
-        manifests_core,
-        "_claim_next_scan_unit_phase",
+        manifest_use_cases,
+        "claim_next_scan_unit_phase",
         pause_after_stale_scan,
     )
 
