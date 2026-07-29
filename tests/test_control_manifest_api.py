@@ -10,6 +10,14 @@ from ocr_platform.control.domains.model_profiles.commands import (
     ACTIVE_TRANSACTION_ERROR,
     ModelProfileTransactionError,
 )
+from ocr_platform.control.domains.jobs.commands import create_job
+from ocr_platform.control.domains.manifests import (
+    use_cases as manifest_use_cases,
+)
+from ocr_platform.control.domains.model_profiles.commands import (
+    upsert_model_profile,
+)
+from ocr_platform.control.domains.common import POOL_SERVER_ID
 from ocr_platform.control.models import (
     Job,
     Manifest,
@@ -21,11 +29,6 @@ from ocr_platform.control.models import (
     utcnow,
 )
 from ocr_platform.control.schemas import JobCreateRequest, ModelProfileRequest
-from ocr_platform.control.service import (
-    POOL_SERVER_ID,
-    create_job,
-    upsert_model_profile,
-)
 from ocr_platform.manifest.models import ManifestItem
 
 
@@ -496,7 +499,11 @@ def test_distributed_scan_unit_completion_skips_existing_child_paths(tmp_path):
 
 
 def test_scan_unit_claim_checks_later_batches_when_first_batch_inaccessible(tmp_path, monkeypatch):
-    monkeypatch.setattr("ocr_platform.control.service.SCAN_UNIT_CLAIM_BATCH_SIZE", 2)
+    monkeypatch.setattr(
+        manifest_use_cases,
+        "SCAN_UNIT_CLAIM_BATCH_SIZE",
+        2,
+    )
     client, session_factory = make_client_with_session(tmp_path)
     register_server(client)
     client.post(

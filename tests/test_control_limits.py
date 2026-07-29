@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import importlib
 import inspect
 import json
 from collections import Counter
@@ -149,11 +148,6 @@ def _create_missing_shard_manifest(
         return job_id, manifest.id
 
 
-def _compatibility_service():
-    module_name = ".".join(("ocr_platform", "control", "service"))
-    return importlib.import_module(module_name)
-
-
 def test_control_limits_parse_existing_environment_and_are_frozen() -> None:
     limits = ControlLimits.from_environment(
         {
@@ -278,11 +272,10 @@ def test_control_runtime_prefers_explicit_limits_and_freezes_legacy_snapshot(
     engine.dispose()
 
 
-def test_two_apps_keep_isolated_limits_and_ignore_late_service_patches(
+def test_two_apps_keep_isolated_limits_and_ignore_late_global_patches(
     tmp_path,
     monkeypatch,
 ) -> None:
-    service = _compatibility_service()
     first_factory, first_engine, first_settings = _session_factory(
         tmp_path,
         "first.db",
@@ -291,27 +284,27 @@ def test_two_apps_keep_isolated_limits_and_ignore_late_service_patches(
         tmp_path,
         "second.db",
     )
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_LOG_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(limits_module, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(limits_module, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(limits_module, "JOB_LOG_DETAIL_LIMIT", 0)
     first_app = create_app(
         runtime=build_control_runtime(
             settings=first_settings,
             session_factory=first_factory,
         )
     )
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 2)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 2)
-    monkeypatch.setattr(service, "JOB_LOG_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(limits_module, "JOB_FILE_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(limits_module, "JOB_EVENT_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(limits_module, "JOB_LOG_DETAIL_LIMIT", 2)
     second_app = create_app(
         runtime=build_control_runtime(
             settings=second_settings,
             session_factory=second_factory,
         )
     )
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 99)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 99)
-    monkeypatch.setattr(service, "JOB_LOG_DETAIL_LIMIT", 99)
+    monkeypatch.setattr(limits_module, "JOB_FILE_DETAIL_LIMIT", 99)
+    monkeypatch.setattr(limits_module, "JOB_EVENT_DETAIL_LIMIT", 99)
+    monkeypatch.setattr(limits_module, "JOB_LOG_DETAIL_LIMIT", 99)
 
     assert first_app.state.control_limits.job_file_detail_limit == 0
     assert second_app.state.control_limits.job_file_detail_limit == 2
@@ -781,9 +774,8 @@ def test_manifest_integrity_legacy_fallback_and_explicit_override(
         tmp_path,
         shard_count=3,
     )
-    service = _compatibility_service()
     monkeypatch.setattr(
-        service,
+        limits_module,
         "MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
         1,
     )
@@ -840,7 +832,7 @@ def test_two_apps_isolate_manifest_integrity_limit_from_global_drift(
         shard_count=3,
     )
     monkeypatch.setattr(
-        _compatibility_service(),
+        limits_module,
         "MANIFEST_INTEGRITY_ISSUE_SAMPLE_LIMIT",
         99,
     )

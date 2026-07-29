@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import ast
-import importlib
 import json
 import re
 from collections import Counter
@@ -16,7 +15,6 @@ from ocr_platform.control.database import init_db
 from ocr_platform.control import scheduling
 from ocr_platform.control.domains.manifests import (
     commands,
-    core,
     integrity,
     use_cases,
 )
@@ -315,11 +313,6 @@ def _scan_complete_request(
             )
         ],
     )
-
-
-def _compatibility_service():
-    module_name = ".".join(("ocr_platform", "control", "service"))
-    return importlib.import_module(module_name)
 
 
 def _transaction_observers(session):
@@ -2031,89 +2024,6 @@ def test_register_manifest_result_remains_readable_and_restores_expiry(
             manifest.status,
         ) == values
     finally:
-        engine.dispose()
-
-
-def test_service_patch_restore_preserves_manifest_wrapper_and_core_leaf(
-    tmp_path,
-    monkeypatch,
-) -> None:
-    session_factory, engine = _database(tmp_path)
-    _seed_job(session_factory)
-    service = _compatibility_service()
-    command_name = "register_" + "remote_manifest"
-    wrapper = getattr(commands, command_name)
-    original_leaf = getattr(core, command_name)
-    calls: list[bool] = []
-
-    def fake_leaf(session, job_id, request):
-        calls.append(session.in_transaction())
-        return Manifest(
-            id=999,
-            job_id=job_id,
-            input_mode=request.input_mode,
-            input_root=request.input_root,
-            manifest_path=request.manifest_path,
-            meta_path=request.meta_path,
-            file_count=request.file_count,
-            total_bytes=request.total_bytes,
-            status="ready",
-        )
-
-    assert getattr(service, command_name) is wrapper
-    assert getattr(core, command_name) is original_leaf
-
-    try:
-        with monkeypatch.context() as patch:
-            patch.setattr(service, command_name, fake_leaf)
-            assert getattr(service, command_name) is fake_leaf
-            assert getattr(core, command_name) is fake_leaf
-
-            with session_factory() as session:
-                fake_manifest = wrapper(
-                    session,
-                    "job-a",
-                    _request(),
-                )
-                assert fake_manifest.id == 999
-                assert session.in_transaction() is False
-
-            with session_factory() as session:
-                direct_fake = getattr(service, command_name)(
-                    session,
-                    "job-a",
-                    _request(),
-                )
-                assert direct_fake.id == 999
-
-        assert getattr(service, command_name) is wrapper
-        assert getattr(core, command_name) is original_leaf
-        assert calls == [True, False]
-
-        with session_factory() as session:
-            manifest = getattr(service, command_name)(
-                session,
-                "job-a",
-                _request(),
-            )
-            assert manifest.id is not None
-            assert session.in_transaction() is False
-
-        with session_factory() as session:
-            assert session.scalar(
-                select(Manifest).where(Manifest.job_id == "job-a")
-            ) is not None
-            assert len(
-                list(
-                    session.scalars(
-                        select(WorkShard).where(
-                            WorkShard.job_id == "job-a"
-                        )
-                    )
-                )
-            ) == 2
-    finally:
-        setattr(core, command_name, original_leaf)
         engine.dispose()
 
 

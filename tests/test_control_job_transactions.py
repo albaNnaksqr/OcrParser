@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib
 import re
 
 import pytest
@@ -10,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 from ocr_platform.control.database import init_db
 from ocr_platform.control.domains.jobs import (
     commands,
-    core,
     counters,
     events,
     lifecycle,
@@ -46,11 +44,6 @@ def _database(tmp_path, *, expire_on_commit: bool = False):
     )
     init_db(engine)
     return session_factory, engine
-
-
-def _compatibility_service():
-    module_name = ".".join(("ocr_platform", "control", "service"))
-    return importlib.import_module(module_name)
 
 
 def _seed_job(session_factory, *, job_id: str = "job-a") -> None:
@@ -142,7 +135,6 @@ def test_record_event_command_commits_exactly_once(tmp_path) -> None:
             ) is not None
     finally:
         engine.dispose()
-
 
 def test_record_log_command_commits_exactly_once(tmp_path) -> None:
     session_factory, engine = _database(tmp_path)
@@ -587,107 +579,4 @@ def test_job_command_dynamically_delegates_to_owned_event_leaf(
         assert len(delegated_limits) == 1
         assert isinstance(delegated_limits[0], ControlLimits)
     finally:
-        engine.dispose()
-
-
-@pytest.mark.parametrize("command_name", ["record_event", "record_log"])
-def test_service_patch_restore_preserves_command_wrapper_and_core_leaf(
-    tmp_path,
-    monkeypatch,
-    command_name,
-) -> None:
-    session_factory, engine = _database(tmp_path)
-    _seed_job(session_factory)
-    service = _compatibility_service()
-    wrapper = getattr(commands, command_name)
-    original_leaf = getattr(core, command_name)
-    fake_calls: list[tuple[bool, ControlLimits | None]] = []
-
-    def fake_leaf(session, job_id, request, *, limits=None):
-        fake_calls.append((session.in_transaction(), limits))
-        if command_name == "record_event":
-            return session.get(Job, job_id)
-        return JobLog(
-            job_id=job_id,
-            server_id=request.server_id,
-            stream=request.stream,
-            line=request.line,
-        )
-
-    assert getattr(service, command_name) is wrapper
-    assert getattr(core, command_name) is original_leaf
-
-    try:
-        with monkeypatch.context() as patch:
-            patch.setattr(service, command_name, fake_leaf)
-            assert getattr(service, command_name) is fake_leaf
-            assert getattr(core, command_name) is fake_leaf
-
-            with session_factory() as session:
-                request = (
-                    _event_request()
-                    if command_name == "record_event"
-                    else _log_request(line="fake via command")
-                )
-                result = wrapper(
-                    session,
-                    "job-a",
-                    request,
-                    limits=ControlLimits(),
-                )
-                if command_name == "record_event":
-                    assert result.id == "job-a"
-                else:
-                    assert result.job_id == "job-a"
-                assert session.in_transaction() is False
-
-            with session_factory() as session:
-                request = (
-                    _event_request()
-                    if command_name == "record_event"
-                    else _log_request(line="fake via service")
-                )
-                result = getattr(service, command_name)(
-                    session,
-                    "job-a",
-                    request,
-                    limits=ControlLimits(),
-                )
-                if command_name == "record_event":
-                    assert result.id == "job-a"
-                else:
-                    assert result.job_id == "job-a"
-
-        assert getattr(service, command_name) is wrapper
-        assert getattr(core, command_name) is original_leaf
-        assert len(fake_calls) == 2
-        assert fake_calls[0][0] is True
-        assert fake_calls[1][0] is False
-
-        with session_factory() as session:
-            request = (
-                _event_request()
-                if command_name == "record_event"
-                else _log_request(line="real after restore")
-            )
-            restored = wrapper(session, "job-a", request)
-            assert session.in_transaction() is False
-            if command_name == "record_event":
-                assert restored.id == "job-a"
-            else:
-                assert restored.id is not None
-
-        with session_factory() as session:
-            if command_name == "record_event":
-                assert session.scalar(
-                    select(JobEvent).where(JobEvent.job_id == "job-a")
-                ) is not None
-            else:
-                persisted = session.scalar(
-                    select(JobLog).where(JobLog.job_id == "job-a")
-                )
-                assert persisted is not None
-                assert persisted.line == "real after restore"
-    finally:
-        setattr(core, command_name, original_leaf)
         engine.dispose()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import ast
-import hashlib
+import importlib.util
 from pathlib import Path
 
 from ocr_parser.contracts import EngineCapabilities, ManifestItem
@@ -131,13 +131,11 @@ def test_control_domains_do_not_import_legacy_service_facade() -> None:
     assert violations == []
 
 
-def test_control_service_facade_symbols_match_v0_3_2() -> None:
-    from ocr_platform.control import service
+def test_control_service_facade_is_removed() -> None:
+    control_root = (
+        Path(__file__).parents[1] / "ocr_platform" / "control"
+    )
 
-    symbols = sorted(service.__all__)
-    digest = hashlib.sha256(
-        ("\n".join(symbols) + "\n").encode("utf-8")
-    ).hexdigest()
-
-    assert len(symbols) == 285
-    assert digest == "3b52860755bfdbda0fbcdfd04e510cbc4cafb7aedd74192988b9d043a0da4469"
+    assert not (control_root / "service").exists()
+    assert not (control_root / "service.py").exists()
+    assert importlib.util.find_spec("ocr_platform.control.service") is None

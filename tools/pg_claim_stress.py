@@ -27,8 +27,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.models import Job, Manifest, ScanUnit, Server, WorkShard
 from ocr_platform.control.settings import ControlSettings
-from ocr_platform.control.service import (
-    POOL_SERVER_ID,
+from ocr_platform.control.domains.common import POOL_SERVER_ID
+from ocr_platform.control.domains.manifests.commands import (
     ShardAttemptConflictError,
     claim_next_pending_shard,
     claim_next_scan_unit,

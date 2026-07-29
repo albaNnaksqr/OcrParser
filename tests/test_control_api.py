@@ -1,12 +1,20 @@
 from datetime import timedelta
+import json
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
 from ocr_platform.control.app import create_app
+from ocr_platform.control import database as control_database
+from ocr_platform.control import limits as control_limits
 from ocr_platform.control.database import create_session_factory, init_db
-import ocr_platform.control.service as service
+from ocr_platform.control.domains.workers import (
+    identity as worker_identity,
+)
+from ocr_platform.control.domains.workers.preflight import (
+    database_migration_preflight_issue,
+)
 
 from ocr_platform.control.models import (
     Job,
@@ -82,7 +90,7 @@ def test_control_app_can_require_current_postgres_migrations_at_startup(tmp_path
     init_db(engine)
     monkeypatch.setenv("OCR_PLATFORM_REQUIRE_CURRENT_MIGRATIONS", "1")
     monkeypatch.setattr(
-        service.database,
+        control_database,
         "describe_database_status",
         lambda db_engine: {
             "dialect": "postgresql",
@@ -1001,7 +1009,7 @@ def test_job_preflight_blocks_postgres_when_schema_migrations_table_is_missing(t
     )
 
     monkeypatch.setattr(
-        service.database,
+        control_database,
         "describe_database_status",
         lambda db_engine: {
             "dialect": "postgresql",
@@ -1033,7 +1041,7 @@ def test_job_preflight_blocks_postgres_when_schema_migrations_table_is_missing(t
 
 
 def test_postgres_migration_preflight_issue_reports_latest_unapplied_migration():
-    issue = service._database_migration_preflight_issue(
+    issue = database_migration_preflight_issue(
         {
             "dialect": "postgresql",
             "schema_migrations_table_exists": True,
@@ -1062,7 +1070,7 @@ def test_create_job_rejects_postgres_with_unapplied_schema_migrations(tmp_path, 
         json={"id": "server-a", "name": "Server A", "host": "localhost"},
     )
     monkeypatch.setattr(
-        service.database,
+        control_database,
         "describe_database_status",
         lambda db_engine: {
             "dialect": "postgresql",
@@ -2320,10 +2328,8 @@ def test_job_events_update_file_progress(tmp_path):
 
 
 def test_job_detail_rows_are_capped(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 2)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 3)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 3)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -2357,10 +2363,8 @@ def test_job_detail_rows_are_capped(monkeypatch, tmp_path):
 
 
 def test_job_file_detail_pruning_prioritizes_failed_files(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 2)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 10)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 10)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -2413,10 +2417,8 @@ def test_job_file_detail_pruning_prioritizes_failed_files(monkeypatch, tmp_path)
 
 
 def test_job_event_detail_pruning_prioritizes_failure_and_terminal_events(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 10)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 3)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 10)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 3)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -2550,9 +2552,11 @@ def test_request_stop_finalizes_queued_job_without_agent_claim(tmp_path):
 
 
 def test_archive_stale_server_stops_assigned_queued_jobs(tmp_path, monkeypatch):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "SERVER_STALE_AFTER_SECONDS", 1)
+    monkeypatch.setattr(
+        worker_identity,
+        "SERVER_STALE_AFTER_SECONDS",
+        1,
+    )
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -2922,10 +2926,8 @@ def test_job_summary_returns_aggregate_progress_without_file_rows(tmp_path):
 
 
 def test_job_summary_uses_counters_when_detail_rows_are_disabled(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3006,9 +3008,7 @@ def test_job_summary_uses_counters_when_detail_rows_are_disabled(monkeypatch, tm
 def test_manifest_scan_progress_survives_when_raw_event_details_are_disabled(
     monkeypatch, tmp_path
 ):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3063,15 +3063,13 @@ def test_manifest_scan_progress_survives_when_raw_event_details_are_disabled(
     with session_factory() as session:
         rows = session.query(JobEvent).filter_by(job_id=job["id"]).all()
         assert [row.event_type for row in rows] == ["manifest_scan_progress"]
-        payload = service.json_loads_object(rows[0].payload_json)
+        payload = json.loads(rows[0].payload_json)
         assert payload["scanned_files"] == 150
 
 
 def test_recent_failed_files_uses_counter_samples_when_detail_rows_are_disabled(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3121,10 +3119,8 @@ def test_recent_failed_files_uses_counter_samples_when_detail_rows_are_disabled(
 
 
 def test_recent_errors_page_uses_counter_samples_when_detail_rows_are_disabled(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3182,10 +3178,8 @@ def test_recent_errors_page_uses_counter_samples_when_detail_rows_are_disabled(m
 def test_recent_errors_page_uses_counter_event_samples_for_job_failures_when_events_disabled(
     monkeypatch, tmp_path
 ):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3307,10 +3301,8 @@ def test_failure_events_persist_inferred_failure_category_for_indexed_recent_err
 
 
 def test_job_summary_uses_counter_failure_category_counts_when_detail_rows_are_disabled(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_FILE_DETAIL_LIMIT", 0)
-    monkeypatch.setattr(service, "JOB_EVENT_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_FILE_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_EVENT_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3895,9 +3887,7 @@ def test_job_log_page_endpoint_returns_bounded_filtered_logs(tmp_path):
 
 
 def test_job_log_rows_are_capped(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_LOG_DETAIL_LIMIT", 2)
+    monkeypatch.setattr(control_limits, "JOB_LOG_DETAIL_LIMIT", 2)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",
@@ -3931,9 +3921,7 @@ def test_job_log_rows_are_capped(monkeypatch, tmp_path):
 
 
 def test_job_log_detail_rows_can_be_disabled(monkeypatch, tmp_path):
-    from ocr_platform.control import service
-
-    monkeypatch.setattr(service, "JOB_LOG_DETAIL_LIMIT", 0)
+    monkeypatch.setattr(control_limits, "JOB_LOG_DETAIL_LIMIT", 0)
     client, session_factory = make_client_with_session(tmp_path)
     client.post(
         "/api/servers/register",

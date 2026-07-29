@@ -50,12 +50,11 @@ internal move from an external behavior change. The current baseline records:
   `execute`, `scalar`, or `scalars`; its function-aware semantic call graph
   follows module-level and lazy imports across all same-domain runtime modules,
   including future command and application modules; and
-- the complete runtime export and repository-consumer inventory for the legacy
-  `ocr_platform.control.service` façade. Export names and consumer/import/
-  monkeypatch sites use a decreasing gate. The 286-symbol machine-readable
-  classification is in
-  `tests/fixtures/contracts/control_facade_inventory.json`; the 23 symbols
-  actually consumed in this repository have explicit migration decisions in
+- a tombstone gate for the removed
+  `ocr_platform.control.service` façade. The module must not exist and direct,
+  relative, dynamic, embedded, or string monkeypatch references are forbidden.
+  The 24 symbols formerly consumed by repository tests and tools have completed
+  targets in `tests/fixtures/contracts/control_facade_inventory.json` and
   [Control façade migration](control-facade-migration.md).
 
 Migration history is not copied into another fixture. The existing

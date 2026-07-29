@@ -14,7 +14,8 @@ from ocr_platform.control.domains.jobs import core as jobs_core
 from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
-from ocr_platform.control import scheduling, service
+from ocr_platform.control import scheduling
+from ocr_platform.control.domains.manifests import ports as manifest_ports
 from sqlalchemy import event as sa_event
 from sqlalchemy.dialects import postgresql
 
@@ -997,7 +998,7 @@ def test_shard_attempts_preserve_retry_evidence(tmp_path):
 
 
 def test_claimable_shard_select_uses_postgresql_skip_locked():
-    statement = service._claimable_shard_id_select("job-1")
+    statement = scheduling._claimable_shard_id_select("job-1")
 
     compiled = str(
         statement.compile(
@@ -1038,7 +1039,10 @@ def test_shard_claim_locks_parent_before_claimable_shard_selector():
 
 
 def test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit():
-    statement = service._claimable_scan_unit_id_select(limit=25)
+    statement = scheduling._claimable_scan_unit_id_select(
+        statuses={"pending", "stale"},
+        limit=25,
+    )
 
     compiled = str(
         statement.compile(
@@ -1052,7 +1056,9 @@ def test_claimable_scan_unit_select_uses_postgresql_skip_locked_with_limit():
 
 
 def test_manifest_completion_select_uses_postgresql_for_update():
-    statement = service._manifest_for_scan_unit_completion_select("job-1")
+    statement = manifest_ports.manifest_for_scan_unit_completion_select(
+        "job-1"
+    )
 
     compiled = str(
         statement.compile(

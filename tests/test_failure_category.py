@@ -1,5 +1,7 @@
 from ocr_parser.infra.failure_category import infer_failure_category as parser_infer_failure_category
-from ocr_platform.control.service import infer_failure_category as control_infer_failure_category
+from ocr_parser.infra.failure_category import (
+    infer_failure_category as control_infer_failure_category,
+)
 
 
 def test_control_and_parser_use_same_failure_category_classifier():

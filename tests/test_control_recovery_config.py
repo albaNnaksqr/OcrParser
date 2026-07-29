@@ -21,11 +21,11 @@ def load_timeout_values(extra_env=None):
             "-c",
             (
                 "import json\n"
-                "from ocr_platform.control import service\n"
+                "from ocr_platform.control.domains import common\n"
                 "print(json.dumps({\n"
-                "  'job_stale': service.STALE_AFTER_SECONDS,\n"
-                "  'server_stale': service.SERVER_STALE_AFTER_SECONDS,\n"
-                "  'shard_lease': service.SHARD_LEASE_SECONDS,\n"
+                "  'job_stale': common.STALE_AFTER_SECONDS,\n"
+                "  'server_stale': common.SERVER_STALE_AFTER_SECONDS,\n"
+                "  'shard_lease': common.SHARD_LEASE_SECONDS,\n"
                 "}))\n"
             ),
         ],

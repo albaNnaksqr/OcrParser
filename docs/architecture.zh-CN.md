@@ -50,8 +50,9 @@ workers、manifests、model profiles、remote administration 和 diagnostics 六
 每个域拥有自己的 HTTP adapter、command/query、service 实现和 schema 转换。
 v0.3 暂时继续集中维护 ORM models。
 
-历史 `ocr_platform.control.service` 导入路径在 v0.3 作为兼容 façade 保留。新集成
-应直接导入对应业务域；原有 5,000 行单体 service module 已删除。
+历史 `ocr_platform.control.service` 兼容 façade 已在 v0.4 删除。新集成必须直接
+导入明确的 command、query 或 schema owner；原有 5,000 行单体 service 和
+wildcard façade 均不再存在。
 
 ## Agent runtime
 

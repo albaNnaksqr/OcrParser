@@ -37,12 +37,11 @@ v0.4 Control 重构使用经过审查并提交到仓库的 fixture，区分内�
   bulk API，以及通过 `execute`、`scalar`、`scalars` 执行的 DML；function-aware
   语义 call graph 会跟踪 module-level 与函数内 lazy import，并覆盖同一 domain
   的全部 runtime module，包括后续的 command 和 application 模块；
-- 历史 `ocr_platform.control.service` façade 的完整运行时 export 与仓库 consumer
-  inventory。export 名称以及 consumer/import/monkeypatch site 使用递减门禁。
-  286 个 symbol 的机器可读分类位于
-  `tests/fixtures/contracts/control_facade_inventory.json`；仓库实际消费的 23 个
-  symbol 在 [Control façade 迁移表](control-facade-migration.zh-CN.md) 中有明确
-  迁移决策。
+- 已删除 `ocr_platform.control.service` façade 的 tombstone 门禁。旧模块必须
+  不存在，direct、relative、dynamic、embedded import 和字符串 monkeypatch
+  均被禁止。仓库测试与工具曾消费的 24 个 symbol 已在
+  `tests/fixtures/contracts/control_facade_inventory.json` 和
+  [Control façade 迁移表](control-facade-migration.zh-CN.md) 中记录完成目标。
 
 迁移历史不会复制到第二份 fixture。现有
 `tests/fixtures/contracts/control_migration_checksums.json` 继续作为 migration
@@ -70,5 +69,4 @@ fixture diff。意外出现的 OpenAPI、schema、状态或 migration reference 
 现有 v0.1 route-path golden 继续作为较小的独立门禁。architecture-debt gate
 采用递减规则：当前 `(stable ID, AST fingerprint)` 必须是审查基线的子集。删除
 site 允许通过；新增 site、替换 AST、新增 domain edge 或新增 SCC 都会失败。
-兼容 façade 的 export、import、embedded/dynamic consumer、symbol use 和
-monkeypatch site 使用同样的只减不增规则；production façade consumer 一律禁止。
+façade tombstone gate 要求模块和全部仓库引用保持为零。

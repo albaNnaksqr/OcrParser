@@ -16,9 +16,11 @@ from ocr_platform.agent.config import AgentConfig
 from ocr_platform.agent.runner import build_ocr_command
 from ocr_platform.control.app import create_app
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.models import Job, ScanUnit, WorkShard
-from ocr_platform.control import service
-from ocr_platform.control.service import POOL_SERVER_ID
+from ocr_platform.control.domains.common import POOL_SERVER_ID
+from ocr_platform.control.domains.manifests.commands import (
+    claim_next_pending_shard,
+)
+from ocr_platform.control.models import Job, ScanUnit, WorkShard, utcnow
 from ocr_platform.manifest.models import ManifestItem
 
 
@@ -2686,7 +2688,7 @@ def test_expired_running_shard_can_be_reclaimed_by_another_server(tmp_path):
     )
     with session_factory() as session:
         shard = session.get(WorkShard, first_claim["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     second_claim = api.post(
@@ -2714,7 +2716,7 @@ def test_late_running_update_does_not_revive_stale_attempt(tmp_path):
     ).json()
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     summary = api.get(f"/api/jobs/{job['id']}/summary")
@@ -2810,7 +2812,7 @@ def test_reclaimed_expired_shard_closes_stale_attempt_history(tmp_path):
     )
     with session_factory() as session:
         shard = session.get(WorkShard, first_claim["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     second_claim = api.post(
@@ -2840,7 +2842,7 @@ def test_server_heartbeat_renews_running_shard_lease(tmp_path):
         f"/api/jobs/{job['id']}/shards/claim",
         params={"server_id": "server-a"},
     ).json()
-    old_deadline = service.utcnow() + timedelta(seconds=5)
+    old_deadline = utcnow() + timedelta(seconds=5)
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
         shard.lease_expires_at = old_deadline
@@ -2863,7 +2865,7 @@ def test_idle_or_jobless_heartbeat_does_not_renew_work_leases(tmp_path):
         f"/api/jobs/{job['id']}/shards/claim",
         params={"server_id": "server-a"},
     ).json()
-    old_deadline = service.utcnow() + timedelta(seconds=30)
+    old_deadline = utcnow() + timedelta(seconds=30)
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
         shard.lease_expires_at = old_deadline
@@ -2926,8 +2928,8 @@ def test_busy_heartbeat_renews_only_matching_live_job_leases(tmp_path):
         f"/api/jobs/{job_b['id']}/shards/claim",
         params={"server_id": "server-a"},
     ).json()
-    live_deadline = service.utcnow() + timedelta(seconds=30)
-    expired_deadline = service.utcnow() - timedelta(seconds=1)
+    live_deadline = utcnow() + timedelta(seconds=30)
+    expired_deadline = utcnow() - timedelta(seconds=1)
     with session_factory() as session:
         session.get(WorkShard, live_a["id"]).lease_expires_at = live_deadline
         session.get(WorkShard, expired_a["id"]).lease_expires_at = expired_deadline
@@ -3008,7 +3010,7 @@ def test_same_server_restart_reclaims_expired_attempt_and_completes_all_shards(t
     ).json()
     with session_factory() as session:
         shard = session.get(WorkShard, interrupted["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     restarted_idle = api.post(
@@ -3060,7 +3062,7 @@ def test_healthy_same_server_attempt_is_not_reclaimed_by_idle_restart(tmp_path):
         f"/api/jobs/{job['id']}/shards/claim",
         params={"server_id": "server-a"},
     ).json()
-    old_deadline = service.utcnow() + timedelta(seconds=30)
+    old_deadline = utcnow() + timedelta(seconds=30)
     with session_factory() as session:
         session.get(WorkShard, claimed["id"]).lease_expires_at = old_deadline
         session.commit()
@@ -3178,7 +3180,11 @@ def test_claim_next_pending_shard_does_not_claim_if_parent_stops_before_update(
 
         session.execute = execute_with_stop_race
 
-        claimed = service.claim_next_pending_shard(session, job["id"], "server-a")
+        claimed = claim_next_pending_shard(
+            session,
+            job["id"],
+            "server-a",
+        )
 
     assert update_seen is True
     assert claimed is None
@@ -3241,7 +3247,7 @@ def test_stopping_job_finalizes_when_running_shard_lease_expires(
     api.post(f"/api/jobs/{job['id']}/request-stop")
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     summary = api.get(f"/api/jobs/{job['id']}/summary").json()
@@ -3265,7 +3271,7 @@ def test_stopping_job_lease_expiry_closes_operator_stopped_attempt_history(tmp_p
     api.post(f"/api/jobs/{job['id']}/request-stop")
     with session_factory() as session:
         shard = session.get(WorkShard, claimed["id"])
-        shard.lease_expires_at = service.utcnow() - timedelta(seconds=1)
+        shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
 
     summary = api.get(f"/api/jobs/{job['id']}/summary")

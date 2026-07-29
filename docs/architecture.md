@@ -59,9 +59,10 @@ manifests, model profiles, remote administration, and diagnostics. Each domain
 owns its HTTP adapter, command/query surface, service implementation, and schema
 conversion. ORM models remain centralized for v0.3.
 
-The historical `ocr_platform.control.service` import path is a compatibility
-façade for v0.3. New integrations must import the owning domain instead; the
-5,000-line monolithic service module no longer exists.
+The historical `ocr_platform.control.service` compatibility façade was removed
+in v0.4. New integrations must import the explicit owning command, query, or
+schema surface; the 5,000-line monolithic service and its wildcard façade no
+longer exist.
 
 ## Agent runtime
 
