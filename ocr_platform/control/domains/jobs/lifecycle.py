@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ... import certification_gate, database
@@ -21,6 +22,7 @@ from ..common import (
     JobNotTerminalError,
     UnknownJobError,
     json_dumps,
+    utcnow,
 )
 from ..manifests.construction import (
     create_distributed_scan_for_job,
@@ -28,12 +30,10 @@ from ..manifests.construction import (
 )
 from ..manifests.paths import infer_default_manifest_root
 from ..manifests.use_cases import finalize_stopped_job_if_idle
-from ..model_profiles.core import _effective_job_model_config
-from ..workers.core import (
-    _database_migration_preflight_issue,
-    ensure_pool_server,
-)
-from ..workers.queries import candidate_workers_for_job
+from ..model_profiles.queries import effective_job_model_config
+from ..workers.eligibility import candidate_workers_for_job
+from ..workers.preflight import database_migration_preflight_issue
+from ..workers.registration import ensure_pool_server
 from . import policy
 
 
@@ -47,12 +47,12 @@ def create(
     control_limits = limits if limits is not None else legacy_control_limits()
     if request.input_mode not in ALLOWED_INPUT_MODES:
         raise ValueError(f"unknown input_mode: {request.input_mode}")
-    migration_issue = _database_migration_preflight_issue(
+    migration_issue = database_migration_preflight_issue(
         database.describe_database_status(session.get_bind())
     )
     if migration_issue is not None:
         raise ValueError(migration_issue.message)
-    model_config = _effective_job_model_config(
+    model_config = effective_job_model_config(
         session,
         request,
         settings=settings,
@@ -179,6 +179,25 @@ def get_or_raise(session: Session, job_id: str) -> Job:
     return job
 
 
+def stop_assigned_queued_jobs_for_server(
+    session: Session,
+    server_id: str,
+) -> None:
+    current_time = utcnow()
+    jobs = list(
+        session.execute(
+            select(Job)
+            .where(Job.assigned_server_id == server_id)
+            .where(Job.status == "queued")
+        ).scalars()
+    )
+    for job in jobs:
+        policy.stop_for_archived_worker(job, now=current_time)
+        stop_reclaimable_work_for_job(session, job)
+    if jobs:
+        session.flush()
+
+
 __all__ = [
     "archive",
     "create",
@@ -186,4 +205,5 @@ __all__ = [
     "get_or_raise",
     "normalize_status_filter",
     "request_stop",
+    "stop_assigned_queued_jobs_for_server",
 ]

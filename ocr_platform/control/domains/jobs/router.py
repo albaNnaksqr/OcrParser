@@ -21,8 +21,8 @@ from ...schemas import (
 )
 from ...settings import ControlSettings
 from ..model_profiles import policy as certification_policy
+from ..workers.preflight import preflight_job
 from . import commands, queries
-from ..workers.core import preflight_job
 from .schemas import job_file_to_response, job_to_response
 
 

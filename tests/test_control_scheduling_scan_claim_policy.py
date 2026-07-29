@@ -487,9 +487,10 @@ def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
     assert "server_is_allowed_for_job(job, server_id)" in phase
     assert "server_can_access_input_dir(" in phase
     assert "scheduling_policy._claim_scan_unit_candidate(" in phase
-    assert 'job.status == "queued"' in phase
-    assert 'job.status = "running"' in phase
-    assert "job.started_at = now" in phase
+    assert "job_policy.start_if_queued(job, started_at=now)" in phase
+    assert 'job.status == "queued"' not in phase
+    assert 'job.status = "running"' not in phase
+    assert "job.started_at = now" not in phase
     assert "update(ScanUnit)" not in phase
     assert 'status="running"' not in phase
     assert "session.commit(" not in phase

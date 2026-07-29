@@ -23,8 +23,12 @@ from ocr_platform.control.domains.manifests.commands import (
     update_work_shard,
 )
 from ocr_platform.control.domains.workers.commands import (
+    claim_next_pool_job,
     heartbeat_server,
     register_server,
+)
+from ocr_platform.control.domains.workers.registration import (
+    ensure_pool_server,
 )
 from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.domains.workers import core as workers_core
@@ -162,7 +166,7 @@ def _seed_case(
             ]
         )
         if assigned_server_id == POOL_SERVER_ID:
-            workers_core.ensure_pool_server(session)
+            ensure_pool_server(session)
         job = Job(
             id=job_id,
             input_dir="/shared/input",
@@ -275,7 +279,7 @@ def _seed_scan_unit_case() -> PostgresScanUnitCase:
                 for server_id in server_ids
             ]
         )
-        workers_core.ensure_pool_server(session)
+        ensure_pool_server(session)
         session.add(
             Job(
                 id=job_id,
@@ -370,7 +374,7 @@ def _seed_scan_claim_case(
                     last_heartbeat_at=utcnow(),
                 )
             )
-        workers_core.ensure_pool_server(session)
+            ensure_pool_server(session)
         for job_index in job_indexes:
             session.add(
                 Job(
@@ -1323,13 +1327,13 @@ def test_postgres_no_candidate_reconciliation_persists_after_session_close(
                 case.session_factory,
                 case.engine,
             ) as (session, _):
-                workers_core.ensure_pool_server(session)
+                ensure_pool_server(session)
                 session.commit()
             with _postgres_session(
                 case.session_factory,
                 case.engine,
             ) as (session, _):
-                assert workers_core.claim_next_pool_job(
+                assert claim_next_pool_job(
                     session,
                     case.server_ids[1],
                 ) is None
@@ -1479,7 +1483,9 @@ def test_postgres_heartbeat_waits_for_server_before_reregistered_shards(
         session.commit()
     reregister_holds_server = threading.Event()
     release_reregister = threading.Event()
-    original_fence = workers_core._fence_running_work_for_restarted_server
+    original_fence = (
+        scheduling_core._fence_running_work_for_restarted_server
+    )
 
     def paused_fence(session, server_id, *, now):
         reregister_holds_server.set()
@@ -1488,7 +1494,7 @@ def test_postgres_heartbeat_waits_for_server_before_reregistered_shards(
         return original_fence(session, server_id, now=now)
 
     monkeypatch.setattr(
-        workers_core,
+        scheduling_core,
         "_fence_running_work_for_restarted_server",
         paused_fence,
     )

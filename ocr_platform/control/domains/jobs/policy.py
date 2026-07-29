@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Any
 
 from ocr_parser.infra.failure_category import infer_failure_category
-from sqlalchemy import distinct, func, select
+from sqlalchemy import distinct, func, select, update
 from sqlalchemy.orm import Session
 
 from ...models import Job
@@ -31,6 +31,36 @@ def request_stop(job: Job) -> None:
 def archive(job: Job) -> None:
     if job.archived_at is None:
         job.archived_at = utcnow()
+
+
+def stop_for_archived_worker(job: Job, *, now) -> None:
+    job.stop_requested = True
+    job.status = "stopped"
+    if job.failure_category is None:
+        job.failure_category = "operator_stopped"
+    if job.finished_at is None:
+        job.finished_at = now
+
+
+def claim_queued(
+    session: Session,
+    job_id: str,
+    *,
+    started_at,
+) -> bool:
+    result = session.execute(
+        update(Job)
+        .where(Job.id == job_id)
+        .where(Job.status == "queued")
+        .values(status="running", started_at=started_at)
+    )
+    return result.rowcount == 1
+
+
+def start_if_queued(job: Job, *, started_at) -> None:
+    if job.status == "queued":
+        job.status = "running"
+        job.started_at = started_at
 
 
 def apply_terminal_event(

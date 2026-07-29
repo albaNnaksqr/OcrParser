@@ -12,9 +12,11 @@ from ...limits import ControlLimits
 from ...settings import ControlSettings
 from ..common import json_loads_object
 from . import operations
-from ..workers.core import (
+from ..workers.identity import (
     effective_server_status,
     is_server_stale,
+)
+from ..workers.projection import (
     list_servers,
 )
 

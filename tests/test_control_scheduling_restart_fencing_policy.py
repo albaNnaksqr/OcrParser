@@ -10,7 +10,7 @@ from sqlalchemy.orm import sessionmaker
 
 from ocr_platform.control import scheduling
 from ocr_platform.control.database import init_db
-from ocr_platform.control.domains.workers import core as workers_core
+from ocr_platform.control.domains.workers import commands as worker_commands
 from ocr_platform.control.models import (
     Job,
     Manifest,
@@ -544,7 +544,7 @@ def test_register_restart_fencing_rolls_back_all_phases_on_scan_failure(
                 match="injected scan fencing failure",
             ):
                 with session_factory() as session:
-                    workers_core.register_server(
+                    worker_commands.register_server(
                         session,
                         ServerRegisterRequest(
                             id="server-a",
@@ -570,13 +570,13 @@ def test_register_restart_fencing_rolls_back_all_phases_on_scan_failure(
 def test_restart_fencing_policy_ownership_lock_and_call_order_are_static(
 ) -> None:
     scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
-    workers_path = (
+    registration_path = (
         ROOT
         / "ocr_platform"
         / "control"
         / "domains"
         / "workers"
-        / "core.py"
+        / "registration.py"
     )
 
     def function_source(path: Path, name: str) -> str:
@@ -624,22 +624,9 @@ def test_restart_fencing_policy_ownership_lock_and_call_order_are_static(
     assert "select(Server" not in policy_source
     assert "select(Job" not in policy_source
 
-    wrapper_source = function_source(
-        workers_path,
-        "_fence_running_work_for_restarted_server",
-    )
-    assert (
-        "from ...scheduling import "
-        "_fence_running_work_for_restarted_server as target"
-    ) in wrapper_source
-    assert "session.execute(" not in wrapper_source
-    assert "WorkShard" not in wrapper_source
-    assert "ShardAttempt" not in wrapper_source
-    assert "ScanUnit" not in wrapper_source
-
-    register_source = function_source(workers_path, "register_server")
+    register_source = function_source(registration_path, "register")
     assert register_source.index(
-        "__engine_provenance.sanitize_capabilities"
+        "engine_provenance.sanitize_capabilities"
     ) < register_source.index("select(Server)")
     assert register_source.index(
         "select(Server)"
@@ -650,17 +637,19 @@ def test_restart_fencing_policy_ownership_lock_and_call_order_are_static(
     assert register_source.index(
         "else:"
     ) < register_source.index(
-        "_fence_running_work_for_restarted_server("
+        "scheduling._fence_running_work_for_restarted_server("
     )
     assert register_source.index(
-        "_fence_running_work_for_restarted_server("
-    ) < register_source.index("server.name = request.name")
+        "scheduling._fence_running_work_for_restarted_server("
+    ) < register_source.index("policy.apply_registration(")
     assert register_source.index(
-        "server.archived_at = None"
-    ) < register_source.index("session.commit()")
+        "policy.apply_registration("
+    ) < register_source.index("session.flush()")
     assert register_source.index(
-        "session.commit()"
+        "session.flush()"
     ) < register_source.index("session.refresh(server)")
     assert register_source.count(
         "_fence_running_work_for_restarted_server("
     ) == 1
+    assert "session.commit(" not in register_source
+    assert "session.rollback(" not in register_source

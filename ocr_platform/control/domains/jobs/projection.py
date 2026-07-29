@@ -17,7 +17,7 @@ from ...schemas import JobEventRequest, JobRecentErrorListResponse, JobRecentErr
 from ..common import *
 
 def _job_worker_version_summary(*args, **kwargs):
-    from ..workers.core import _job_worker_version_summary as target
+    from ..workers.projection import job_worker_version_summary as target
     return target(*args, **kwargs)
 
 def _load_worker_integrity_report(*args, **kwargs):
@@ -29,11 +29,11 @@ def _manifest_integrity_freeze_summary(*args, **kwargs):
     return target(*args, **kwargs)
 
 def allowed_server_ids_for_job(*args, **kwargs):
-    from ..workers.core import allowed_server_ids_for_job as target
+    from ..workers.identity import allowed_server_ids_for_job as target
     return target(*args, **kwargs)
 
 def public_assigned_server_id(*args, **kwargs):
-    from ..workers.core import public_assigned_server_id as target
+    from ..workers.identity import public_assigned_server_id as target
     return target(*args, **kwargs)
 
 from .counters import (

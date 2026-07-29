@@ -16,6 +16,7 @@ from ...limits import ControlLimits, legacy_control_limits
 from ...models import Job, ScanUnit, Server, WorkShard
 from ...schemas import ScanUnitCompleteRequest, ScanUnitFailRequest
 from ..common import *
+from ..jobs import policy as job_policy
 from . import construction as manifest_ports
 from .freeze import fail_manifest_if_scan_complete, freeze_manifest_if_scan_complete
 from .paths import server_can_access_input_dir, server_is_allowed_for_job
@@ -70,9 +71,7 @@ def _claim_next_scan_unit_phase(
                 claim_statuses=claim_statuses,
                 now=now,
             )
-            if job.status == "queued":
-                job.status = "running"
-                job.started_at = now
+            job_policy.start_if_queued(job, started_at=now)
             session.refresh(unit)
             return unit, now, True
 

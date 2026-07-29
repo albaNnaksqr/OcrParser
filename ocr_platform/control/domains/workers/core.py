@@ -1,3 +1,9 @@
+"""Compatibility façade for the pre-PR7c worker core.
+
+Actual worker behavior lives in explicit owned modules.  These redirects
+remain until the v0.4 PR8 façade removal.
+"""
+
 from __future__ import annotations
 
 import json
@@ -8,161 +14,197 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
-from ocr_parser.infra.failure_category import infer_failure_category
 from ocr_parser.config import ParserConfig
+from ocr_parser.infra.failure_category import infer_failure_category
 from ocr_platform.manifest.models import ManifestItem
 from ocr_platform.manifest.scanner import scan_folder_snapshot
 from ocr_platform.manifest.sharder import write_manifest_snapshot
 from sqlalchemy import Integer, case, delete, distinct, func, select, update
 from sqlalchemy.orm import Session
+
 import ocr_platform.engine_provenance as __engine_provenance
 
-from ... import database
 from ... import certification_gate as __certification_gate
-from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ModelProfile, ScanUnit, Server, WorkShard
-from ...schemas import (
-    JobCreateRequest, JobEventRequest, JobLogListResponse, JobLogRequest, JobLogResponse,
-    ManifestFreezeReportResponse, ManifestIntegrityResponse, ManifestIntegrityWorkerCompleteRequest,
-    ManifestIntegrityWorkerRequestResponse, ManifestIntegrityWorkerTask, ManifestIntegrityWorkerShardTask,
-    ManifestIntegrityScanUnitIssue, ManifestIntegrityShardIssue, JobPreflightIssue, JobPreflightResponse,
-    JobRecentErrorListResponse, JobRecentErrorResponse, JobSummaryListResponse, JobShardProgressSummary,
-    JobSummaryResponse, JobWorkerShardSummary, ModelProfileRequest, ModelProfileResponse,
-    ScanUnitCompleteRequest, ScanUnitFailRequest, ServerHeartbeatRequest, ServerRegisterRequest,
-    ShardAttemptListResponse, WorkShardUpdateRequest, RemoteManifestRegisterRequest, ShardAttemptResponse,
-)
+from ... import database
 from ... import settings as __control_settings
 from ...limits import ControlLimits as __ControlLimits
 from ...limits import legacy_control_limits as __legacy_control_limits
+from ...models import (
+    Job,
+    JobCounter,
+    JobEvent,
+    JobFile,
+    JobLog,
+    Manifest,
+    ModelProfile,
+    ScanUnit,
+    Server,
+    WorkShard,
+)
+from ...schemas import (
+    JobCreateRequest,
+    JobEventRequest,
+    JobLogListResponse,
+    JobLogRequest,
+    JobLogResponse,
+    JobPreflightIssue,
+    JobPreflightResponse,
+    JobRecentErrorListResponse,
+    JobRecentErrorResponse,
+    JobShardProgressSummary,
+    JobSummaryListResponse,
+    JobSummaryResponse,
+    JobWorkerShardSummary,
+    ManifestFreezeReportResponse,
+    ManifestIntegrityResponse,
+    ManifestIntegrityScanUnitIssue,
+    ManifestIntegrityShardIssue,
+    ManifestIntegrityWorkerCompleteRequest,
+    ManifestIntegrityWorkerRequestResponse,
+    ManifestIntegrityWorkerShardTask,
+    ManifestIntegrityWorkerTask,
+    ModelProfileRequest,
+    ModelProfileResponse,
+    RemoteManifestRegisterRequest,
+    ScanUnitCompleteRequest,
+    ScanUnitFailRequest,
+    ServerHeartbeatRequest,
+    ServerRegisterRequest,
+    ShardAttemptListResponse,
+    ShardAttemptResponse,
+    WorkShardUpdateRequest,
+)
 from ..common import *
+from . import assignment as __assignment
+from . import commands as __commands
+from . import eligibility as __eligibility
+from . import identity as __identity
+from . import preflight as __preflight
+from . import projection as __projection
+from . import registration as __registration
+
 
 def _resolve_model_profile_api_key(*args, **kwargs):
-    from ..model_profiles.core import _resolve_model_profile_api_key as target
+    from ..model_profiles.queries import (
+        resolve_model_profile_api_key as target,
+    )
+
     return target(*args, **kwargs)
 
+
 def ensure_default_model_profiles(*args, **kwargs):
-    from ..model_profiles.core import ensure_default_model_profiles as target
+    from ...bootstrap import seed_default_model_profiles as target
+
     return target(*args, **kwargs)
+
 
 def infer_default_manifest_root(*args, **kwargs):
     from ..manifests.paths import infer_default_manifest_root as target
+
     return target(*args, **kwargs)
 
-def server_can_access_input_dir(*args, **kwargs):
-    from ..manifests.paths import server_can_access_input_dir as target
-    return target(*args, **kwargs)
 
 def stop_reclaimable_work_for_job(*args, **kwargs):
     from ...scheduling import stop_reclaimable_work_for_job as target
-    return target(*args, **kwargs)
-
-
-def allowed_server_ids_for_job(job: Job) -> list[str]:
-    return json_loads_list(job.allowed_server_ids_json)
-
-def server_is_allowed_for_job(job: Job, server_id: str) -> bool:
-    allowed_server_ids = allowed_server_ids_for_job(job)
-    return not allowed_server_ids or server_id in allowed_server_ids
-
-def register_server(session: Session, request: ServerRegisterRequest) -> Server:
-    safe_capabilities = __engine_provenance.sanitize_capabilities(request.capabilities)
-    server = session.execute(
-        select(Server)
-        .where(Server.id == request.id)
-        .with_for_update()
-    ).scalar_one_or_none()
-    if server is None:
-        server = Server(id=request.id, name=request.name, host=request.host)
-        session.add(server)
-    else:
-        _fence_running_work_for_restarted_server(
-            session,
-            request.id,
-            now=utcnow(),
-        )
-
-    server.name = request.name
-    server.host = request.host
-    server.capacity_slots = request.capacity_slots
-    server.capabilities_json = json_dumps(safe_capabilities)
-    server.status = "online"
-    server.last_heartbeat_at = utcnow()
-    server.archived_at = None
-    session.commit()
-    session.refresh(server)
-    return server
-
-
-def _fence_running_work_for_restarted_server(
-    *args,
-    **kwargs,
-):
-    from ...scheduling import _fence_running_work_for_restarted_server as target
 
     return target(*args, **kwargs)
 
-def ensure_pool_server(session: Session) -> Server:
-    server = session.get(Server, POOL_SERVER_ID)
-    if server is None:
-        server = Server(
-            id=POOL_SERVER_ID,
-            name="Server Pool",
-            host="pool",
-            status="online",
-            capacity_slots=0,
-            capabilities_json=json_dumps({"pool": True}),
-            archived_at=None,
-        )
-        session.add(server)
-        session.flush()
-    elif server.archived_at is not None:
-        server.archived_at = None
-    return server
 
-def public_assigned_server_id(job: Job) -> str | None:
-    return None if job.assigned_server_id == POOL_SERVER_ID else job.assigned_server_id
+allowed_server_ids_for_job = __identity.allowed_server_ids_for_job
+server_is_allowed_for_job = __identity.server_is_allowed_for_job
+public_assigned_server_id = __identity.public_assigned_server_id
+is_server_stale = __identity.is_server_stale
+effective_server_status = __identity.effective_server_status
 
-def heartbeat_server(session: Session, server_id: str, request: ServerHeartbeatRequest) -> Server:
-    safe_capabilities = __engine_provenance.sanitize_capabilities(request.capabilities)
-    server = session.execute(
-        select(Server)
-        .where(Server.id == server_id)
-        .with_for_update()
-        .execution_options(populate_existing=True)
-    ).scalar_one_or_none()
-    if server is None:
-        server = Server(id=server_id, name=server_id, host=server_id)
-        session.add(server)
+register_server = __commands.register_server
+heartbeat_server = __commands.heartbeat_server
+claim_next_job = __commands.claim_next_job
+claim_next_pool_job = __commands.claim_next_pool_job
+archive_server = __commands.archive_server
+ensure_pool_server = __registration.ensure_pool_server
 
-    now = utcnow()
-    existing_capabilities = json_loads_object(server.capabilities_json)
-    merged_capabilities = {**existing_capabilities, **safe_capabilities}
-    server.status = request.status
-    server.capabilities_json = json_dumps(merged_capabilities)
-    server.last_heartbeat_at = now
-    server.archived_at = None
-    if request.status == "busy" and request.current_job_id:
-        renew_running_shard_leases(
-            session,
-            server_id,
-            job_id=request.current_job_id,
-            now=now,
-        )
-        renew_running_scan_unit_leases(
-            session,
-            server_id,
-            job_id=request.current_job_id,
-            now=now,
-        )
-    session.commit()
-    session.refresh(server)
-    return server
+count_active_jobs_for_server = (
+    __projection.count_active_jobs_for_server
+)
+count_open_jobs_for_server = __projection.count_open_jobs_for_server
+count_running_shards_for_server = (
+    __projection.count_running_shards_for_server
+)
+list_servers = __projection.list_servers
+_server_versions = __projection.server_versions
+_job_worker_server_ids = __projection.job_worker_server_ids
+_job_worker_version_summary = (
+    __projection.job_worker_version_summary
+)
+_resource_constrained_workers = (
+    __projection.resource_constrained_workers
+)
+_nonnegative_int = __projection._nonnegative_int
+_workers_with_event_spool_backlog = (
+    __projection.workers_with_event_spool_backlog
+)
+_workers_with_pending_shard_update_backlog = (
+    __projection.workers_with_pending_shard_update_backlog
+)
+
+_normal_posix_path = __eligibility._normal_posix_path
+_path_is_under = __eligibility._path_is_under
+evaluate_server_path_access = (
+    __eligibility.evaluate_server_path_access
+)
+server_can_access_input_dir = (
+    __eligibility.server_can_access_input_dir
+)
+__candidate_workers_for_job = (
+    __eligibility.candidate_workers_for_job
+)
+list_server_eligibility = __eligibility.list_server_eligibility
+
+_preflight_issue = __preflight.preflight_issue
+_database_migration_preflight_issue = (
+    __preflight.database_migration_preflight_issue
+)
+_control_api_auth_preflight_issue = (
+    __preflight.control_api_auth_preflight_issue
+)
+
+
+def preflight_job(
+    session: Session,
+    request: JobCreateRequest,
+    *,
+    settings: __control_settings.ControlSettings | None = None,
+    limits: __ControlLimits | None = None,
+) -> JobPreflightResponse:
+    return __preflight.preflight_job(
+        session,
+        request,
+        settings=settings,
+        limits=(
+            limits
+            if limits is not None
+            else __legacy_control_limits()
+        ),
+    )
+
+
+def _fence_running_work_for_restarted_server(*args, **kwargs):
+    from ...scheduling import (
+        _fence_running_work_for_restarted_server as target,
+    )
+
+    return target(*args, **kwargs)
+
 
 def shard_lease_deadline(now: datetime | None = None) -> datetime:
     from ...scheduling import shard_lease_deadline as target
 
     return target(now)
 
-def scan_unit_lease_deadline(now: datetime | None = None) -> datetime:
+
+def scan_unit_lease_deadline(
+    now: datetime | None = None,
+) -> datetime:
     from ...scheduling import scan_unit_lease_deadline as target
 
     return target(now)
@@ -198,17 +240,29 @@ def reconcile_expired_shard_leases(
     now: datetime | None = None,
     job_id: str | None = None,
 ) -> None:
-    _reconcile_expired_shard_leases(session, now=now, job_id=job_id)
+    from ...scheduling import reconcile_expired_shard_leases as target
 
-def reconcile_expired_scan_unit_leases(session: Session, *, now: datetime | None = None, job_id: str | None = None) -> None:
-    from ...scheduling import reconcile_expired_scan_unit_leases as target
+    return target(session, now=now, job_id=job_id)
 
-    target(session, now=now, job_id=job_id)
+
+def reconcile_expired_scan_unit_leases(
+    session: Session,
+    *,
+    now: datetime | None = None,
+    job_id: str | None = None,
+) -> None:
+    from ...scheduling import (
+        reconcile_expired_scan_unit_leases as target,
+    )
+
+    return target(session, now=now, job_id=job_id)
+
 
 def _remaining_retry_status(job: Job, shard: WorkShard) -> str:
     from ...scheduling import _remaining_retry_status as target
 
     return target(job, shard)
+
 
 def renew_running_shard_leases(
     session: Session,
@@ -219,7 +273,13 @@ def renew_running_shard_leases(
 ) -> None:
     from ...scheduling import renew_running_shard_leases as target
 
-    target(session, server_id, job_id=job_id, now=now)
+    return target(
+        session,
+        server_id,
+        job_id=job_id,
+        now=now,
+    )
+
 
 def renew_running_scan_unit_leases(
     session: Session,
@@ -228,819 +288,39 @@ def renew_running_scan_unit_leases(
     job_id: str,
     now: datetime,
 ) -> None:
-    from ...scheduling import renew_running_scan_unit_leases as target
-
-    target(session, server_id, job_id=job_id, now=now)
-
-def is_server_stale(server: Server, now: datetime | None = None) -> bool:
-    if server.last_heartbeat_at is None:
-        return False
-    return (now or utcnow()) - server.last_heartbeat_at > timedelta(seconds=SERVER_STALE_AFTER_SECONDS)
-
-def effective_server_status(server: Server, now: datetime | None = None) -> str:
-    if is_server_stale(server, now):
-        return "offline"
-    return server.status
-
-def count_active_jobs_for_server(session: Session, server_id: str) -> int:
-    return int(
-        session.execute(
-            select(func.count(Job.id))
-            .where(Job.assigned_server_id == server_id)
-            .where(Job.status.in_({"running", "stopping"}))
-        ).scalar_one()
-        or 0
+    from ...scheduling import (
+        renew_running_scan_unit_leases as target,
     )
 
-def count_open_jobs_for_server(session: Session, server_id: str) -> int:
-    return int(
-        session.execute(
-            select(func.count(Job.id))
-            .where(Job.assigned_server_id == server_id)
-            .where(Job.status.not_in(TERMINAL_JOB_STATUSES))
-        ).scalar_one()
-        or 0
-    )
-
-def stop_assigned_queued_jobs_for_server(session: Session, server_id: str) -> None:
-    current_time = utcnow()
-    jobs = list(
-        session.execute(
-            select(Job)
-            .where(Job.assigned_server_id == server_id)
-            .where(Job.status == "queued")
-        ).scalars()
-    )
-    for job in jobs:
-        job.stop_requested = True
-        job.status = "stopped"
-        if job.failure_category is None:
-            job.failure_category = "operator_stopped"
-        if job.finished_at is None:
-            job.finished_at = current_time
-        stop_reclaimable_work_for_job(session, job)
-    if jobs:
-        session.flush()
-
-def count_running_shards_for_server(session: Session, server_id: str) -> int:
-    return int(
-        session.execute(
-            select(func.count(WorkShard.id))
-            .where(WorkShard.assigned_server_id == server_id)
-            .where(WorkShard.status == "running")
-        ).scalar_one()
-        or 0
-    )
-
-def _normal_posix_path(path: str) -> str:
-    normalized = posixpath.normpath(path)
-    return normalized if normalized.startswith("/") else f"/{normalized}"
-
-def _path_is_under(root: str, candidate: str) -> bool:
-    normalized_root = _normal_posix_path(root).rstrip("/")
-    normalized_candidate = _normal_posix_path(candidate)
-    if not normalized_root:
-        normalized_root = "/"
-    return normalized_candidate == normalized_root or normalized_candidate.startswith(
-        normalized_root + "/"
-    )
-
-def evaluate_server_path_access(
-    server: Server,
-    input_dir: str,
-    *,
-    require_writable: bool = False,
-) -> dict[str, Any]:
-    if server.archived_at is not None:
-        return {
-            "server_id": server.id,
-            "name": server.name,
-            "host": server.host,
-            "status": "archived",
-            "is_stale": True,
-            "can_access": False,
-            "matched_path": None,
-            "reason": "server_archived",
-        }
-
-    status = effective_server_status(server)
-    stale = is_server_stale(server)
-    if status == "offline" or stale:
-        return {
-            "server_id": server.id,
-            "name": server.name,
-            "host": server.host,
-            "status": status,
-            "is_stale": stale,
-            "can_access": False,
-            "matched_path": None,
-            "reason": "server_offline",
-        }
-
-    try:
-        capabilities = json_loads_object(server.capabilities_json)
-    except (TypeError, ValueError):
-        capabilities = {}
-    checks = capabilities.get("shared_paths") or []
-    if not isinstance(checks, list) or not checks:
-        return {
-            "server_id": server.id,
-            "name": server.name,
-            "host": server.host,
-            "status": status,
-            "is_stale": stale,
-            "can_access": False,
-            "matched_path": None,
-            "reason": "no_path_checks",
-        }
-
-    matched_unavailable = None
-    for check in checks:
-        if not isinstance(check, dict) or not check.get("path"):
-            continue
-        path = str(check["path"])
-        if not _path_is_under(path, input_dir):
-            continue
-        has_required_access = (
-            check.get("exists")
-            and check.get("is_dir")
-            and check.get("readable")
-            and (not require_writable or check.get("writable"))
-        )
-        if has_required_access:
-            return {
-                "server_id": server.id,
-                "name": server.name,
-                "host": server.host,
-                "status": status,
-                "is_stale": stale,
-                "can_access": True,
-                "matched_path": path,
-                "reason": "ok",
-            }
-        matched_unavailable = path
-
-    reason = "shared_root_unavailable" if matched_unavailable else "no_matching_shared_root"
-    if matched_unavailable and require_writable:
-        reason = "shared_root_not_writable"
-    return {
-        "server_id": server.id,
-        "name": server.name,
-        "host": server.host,
-        "status": status,
-        "is_stale": stale,
-        "can_access": False,
-        "matched_path": matched_unavailable,
-        "reason": reason,
-    }
-
-
-def __candidate_workers_for_job(
-    session: Session,
-    request: JobCreateRequest,
-) -> list[Server | None]:
-    """Return every current worker that could execute a job request."""
-
-    explicit_ids: list[str] = []
-    if (
-        request.assigned_server_id
-        and request.assigned_server_id != POOL_SERVER_ID
-    ):
-        explicit_ids.append(request.assigned_server_id)
-    explicit_ids.extend(request.allowed_server_ids or [])
-    explicit_ids = list(dict.fromkeys(explicit_ids))
-    if explicit_ids:
-        candidates: list[Server | None] = []
-        for server_id in explicit_ids:
-            server = (
-                session.get(Server, server_id)
-                if server_id != POOL_SERVER_ID
-                else None
-            )
-            candidates.append(
-                server
-                if server is not None and server.archived_at is None
-                else None
-            )
-        return candidates
-
-    possible = session.execute(
-        select(Server)
-        .where(Server.id != POOL_SERVER_ID)
-        .where(Server.archived_at.is_(None))
-        .order_by(Server.id.asc())
-    ).scalars().all()
-    return [
-        server
-        for server in possible
-        if evaluate_server_path_access(
-            server,
-            request.input_dir,
-        ).get("can_access")
-    ]
-
-
-def list_server_eligibility(session: Session, input_dir: str) -> list[dict[str, Any]]:
-    return [
-        evaluate_server_path_access(server, input_dir)
-        for server in list_servers(session)
-    ]
-
-def _preflight_issue(
-    severity: str,
-    code: str,
-    message: str,
-    **details: Any,
-) -> JobPreflightIssue:
-    return JobPreflightIssue(
-        severity=severity,
-        code=code,
-        message=message,
-        details=details,
-    )
-
-def _database_migration_preflight_issue(database_status: dict[str, Any]) -> JobPreflightIssue | None:
-    dialect = str(database_status.get("dialect") or "")
-    if dialect != "postgresql":
-        return None
-
-    known_migrations = [str(item) for item in database_status.get("known_migrations") or []]
-    latest_known_migration = known_migrations[-1] if known_migrations else None
-    if not database_status.get("schema_migrations_table_exists"):
-        return _preflight_issue(
-            "error",
-            "database_migrations_missing",
-            "PostgreSQL control database is missing schema_migrations; apply the SQL migration baseline before creating production jobs.",
-            dialect=dialect,
-            known_migrations=known_migrations,
-            latest_known_migration=latest_known_migration,
-        )
-
-    applied_versions: set[str] = set()
-    for item in database_status.get("applied_migrations") or []:
-        if isinstance(item, dict) and item.get("version"):
-            applied_versions.add(str(item["version"]))
-        elif item:
-            applied_versions.add(str(item))
-    missing_migrations = [version for version in known_migrations if version not in applied_versions]
-    if missing_migrations:
-        return _preflight_issue(
-            "error",
-            "database_migration_not_current",
-            "PostgreSQL control database has unapplied SQL migrations; apply migrations before creating production jobs.",
-            dialect=dialect,
-            known_migrations=known_migrations,
-            missing_migrations=missing_migrations,
-            latest_known_migration=latest_known_migration,
-            latest_applied_migration=database_status.get("latest_applied_migration"),
-        )
-
-    checksum_mismatches = database_status.get("checksum_mismatches") or []
-    missing_checksums = database_status.get("missing_checksums") or []
-    unexpected_migrations = database_status.get("unexpected_migrations") or []
-    if checksum_mismatches or missing_checksums or unexpected_migrations:
-        return _preflight_issue(
-            "error",
-            "database_migration_verification_failed",
-            "PostgreSQL control database migration history failed checksum verification.",
-            dialect=dialect,
-            checksum_mismatches=checksum_mismatches,
-            missing_checksums=missing_checksums,
-            unexpected_migrations=unexpected_migrations,
-        )
-
-    return None
-
-def _control_api_auth_preflight_issue(
-    settings: __control_settings.ControlSettings | None = None,
-) -> JobPreflightIssue | None:
-    control_settings = (
-        settings
-        if settings is not None
-        else __control_settings.ControlSettings.from_environment()
-    )
-    if control_settings.api_token:
-        return None
-    return _preflight_issue(
-        "warning",
-        "control_api_auth_disabled",
-        "Control API token authentication is not configured; set OCR_PLATFORM_API_TOKEN before exposing production endpoints.",
-        require_api_token=control_settings.require_api_token,
-    )
-
-def _server_versions(session: Session, server_ids: set[str]) -> dict[str, list[str]]:
-    versions: dict[str, list[str]] = {}
-    if not server_ids:
-        return versions
-    servers = session.execute(
-        select(Server)
-        .where(Server.id.in_(server_ids))
-        .where(Server.archived_at.is_(None))
-    ).scalars().all()
-    for server in servers:
-        capabilities = json_loads_object(server.capabilities_json)
-        key = " / ".join(
-            [
-                str(capabilities.get("git_ref") or "unknown git"),
-                str(capabilities.get("script_version") or "unknown script"),
-            ]
-        )
-        versions.setdefault(key, []).append(server.id)
-    return versions
-
-def _job_worker_server_ids(session: Session, job: Job) -> set[str]:
-    server_ids = {
-        str(server_id)
-        for server_id in allowed_server_ids_for_job(job)
-        if server_id and server_id != POOL_SERVER_ID
-    }
-    if job.assigned_server_id and job.assigned_server_id != POOL_SERVER_ID:
-        server_ids.add(job.assigned_server_id)
-    assigned_shard_servers = session.execute(
-        select(WorkShard.assigned_server_id)
-        .where(WorkShard.job_id == job.id)
-        .where(WorkShard.assigned_server_id.is_not(None))
-    ).scalars().all()
-    server_ids.update(str(server_id) for server_id in assigned_shard_servers if server_id)
-    return server_ids
-
-def _job_worker_version_summary(session: Session, job: Job) -> dict[str, Any]:
-    versions = _server_versions(session, _job_worker_server_ids(session, job))
-    if not versions:
-        return {
-            "worker_version_status": "unknown",
-            "worker_version_warning": None,
-            "worker_version_refs": {},
-        }
-    if len(versions) == 1:
-        return {
-            "worker_version_status": "consistent",
-            "worker_version_warning": None,
-            "worker_version_refs": versions,
-        }
-    return {
-        "worker_version_status": "mixed",
-        "worker_version_warning": "assigned workers report different git_ref or script_version values",
-        "worker_version_refs": versions,
-    }
-
-def _resource_constrained_workers(session: Session, server_ids: set[str]) -> list[dict[str, Any]]:
-    if not server_ids:
-        return []
-    servers = session.execute(
-        select(Server)
-        .where(Server.id.in_(server_ids))
-        .where(Server.archived_at.is_(None))
-        .order_by(Server.id.asc())
-    ).scalars().all()
-    constrained: list[dict[str, Any]] = []
-    for server in servers:
-        capabilities = json_loads_object(server.capabilities_json)
-        pressure = capabilities.get("resource_pressure")
-        if not isinstance(pressure, dict) or not pressure.get("constrained"):
-            continue
-        reasons = pressure.get("reasons")
-        constrained.append(
-            {
-                "server_id": server.id,
-                "level": str(pressure.get("level") or "constrained"),
-                "reasons": [str(item) for item in reasons] if isinstance(reasons, list) else [],
-            }
-        )
-    return constrained
-
-def _nonnegative_int(value: Any) -> int:
-    try:
-        number = int(value)
-    except (TypeError, ValueError):
-        return 0
-    return max(number, 0)
-
-def _workers_with_event_spool_backlog(session: Session, server_ids: set[str]) -> list[dict[str, Any]]:
-    if not server_ids:
-        return []
-    servers = session.execute(
-        select(Server)
-        .where(Server.id.in_(server_ids))
-        .where(Server.archived_at.is_(None))
-        .order_by(Server.id.asc())
-    ).scalars().all()
-    workers: list[dict[str, Any]] = []
-    for server in servers:
-        capabilities = json_loads_object(server.capabilities_json)
-        spool = capabilities.get("event_spool")
-        if not isinstance(spool, dict):
-            continue
-        pending_events = _nonnegative_int(spool.get("pending_events"))
-        pending_logs = _nonnegative_int(spool.get("pending_logs"))
-        failed_events = _nonnegative_int(spool.get("failed_events"))
-        failed_logs = _nonnegative_int(spool.get("failed_logs"))
-        dropped_events = _nonnegative_int(spool.get("dropped_events"))
-        dropped_logs = _nonnegative_int(spool.get("dropped_logs"))
-        total_backlog = (
-            pending_events
-            + pending_logs
-            + failed_events
-            + failed_logs
-            + dropped_events
-            + dropped_logs
-        )
-        if total_backlog <= 0:
-            continue
-        workers.append(
-            {
-                "server_id": server.id,
-                "dir": str(spool.get("dir") or ""),
-                "pending_events": pending_events,
-                "pending_logs": pending_logs,
-                "failed_events": failed_events,
-                "failed_logs": failed_logs,
-                "dropped_events": dropped_events,
-                "dropped_logs": dropped_logs,
-                "total_backlog": total_backlog,
-            }
-        )
-    return workers
-
-def _workers_with_pending_shard_update_backlog(session: Session, server_ids: set[str]) -> list[dict[str, Any]]:
-    if not server_ids:
-        return []
-    servers = session.execute(
-        select(Server)
-        .where(Server.id.in_(server_ids))
-        .where(Server.archived_at.is_(None))
-        .order_by(Server.id.asc())
-    ).scalars().all()
-    workers: list[dict[str, Any]] = []
-    for server in servers:
-        capabilities = json_loads_object(server.capabilities_json)
-        pending_updates = capabilities.get("pending_shard_updates")
-        if not isinstance(pending_updates, dict):
-            continue
-        pending = _nonnegative_int(pending_updates.get("pending"))
-        failed = _nonnegative_int(pending_updates.get("failed"))
-        total_backlog = pending + failed
-        if total_backlog <= 0:
-            continue
-        workers.append(
-            {
-                "server_id": server.id,
-                "pending": pending,
-                "failed": failed,
-                "total_backlog": total_backlog,
-            }
-        )
-    return workers
-
-def preflight_job(
-    session: Session,
-    request: JobCreateRequest,
-    *,
-    settings: __control_settings.ControlSettings | None = None,
-    limits: __ControlLimits | None = None,
-) -> JobPreflightResponse:
-    control_settings = (
-        settings
-        if settings is not None
-        else __control_settings.ControlSettings.from_environment()
-    )
-    control_limits = (
-        limits if limits is not None else __legacy_control_limits()
-    )
-    ensure_pool_server(session)
-    issues: list[JobPreflightIssue] = []
-    database_status = database.describe_database_status(session.get_bind())
-    database_dialect = str(database_status.get("dialect") or session.get_bind().dialect.name)
-    if database_dialect != "postgresql":
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "database_not_postgres",
-                "Production jobs should use PostgreSQL; SQLite is for local development.",
-                dialect=database_dialect,
-                require_postgres=control_settings.require_postgres,
-            )
-        )
-    migration_issue = _database_migration_preflight_issue(database_status)
-    if migration_issue is not None:
-        issues.append(migration_issue)
-    auth_issue = _control_api_auth_preflight_issue(control_settings)
-    if auth_issue is not None:
-        issues.append(auth_issue)
-
-    allowed_ids = set(request.allowed_server_ids or [])
-    if request.assigned_server_id:
-        allowed_ids.add(request.assigned_server_id)
-    eligibilities = [
-        item
-        for item in list_server_eligibility(session, request.input_dir)
-        if item["server_id"] != POOL_SERVER_ID
-        and (not allowed_ids or item["server_id"] in allowed_ids)
-    ]
-    eligible = [item for item in eligibilities if item.get("can_access")]
-    ready = [item for item in eligible if item.get("status") in {"online", "idle"} and not item.get("is_stale")]
-    if not eligible:
-        issues.append(
-            _preflight_issue(
-                "error",
-                "no_eligible_workers",
-                "No selected worker can read the input shared path.",
-                input_dir=request.input_dir,
-            )
-        )
-    eligible_ids = {str(item["server_id"]) for item in eligible}
-
-    def writable_workers_for(path: str) -> list[dict[str, Any]]:
-        checks = [
-            evaluate_server_path_access(server, path, require_writable=True)
-            for server in list_servers(session)
-            if server.id in eligible_ids
-        ]
-        return [item for item in checks if item.get("can_access")]
-
-    output_writers = {str(item["server_id"]) for item in writable_workers_for(request.output_dir)}
-    missing_output_writers = sorted(eligible_ids - output_writers)
-    if missing_output_writers:
-        issues.append(
-            _preflight_issue(
-                "error",
-                "output_path_not_writable",
-                "One or more eligible workers cannot confirm write access to output_dir.",
-                path=request.output_dir,
-                eligible_workers=sorted(eligible_ids),
-                writable_workers=sorted(output_writers),
-                unwritable_workers=missing_output_writers,
-            )
-        )
-    effective_manifest_root = request.manifest_root or infer_default_manifest_root(
+    return target(
         session,
-        input_dir=request.input_dir,
-        input_mode=request.input_mode,
-        assigned_server_id=request.assigned_server_id,
-        allowed_server_ids=request.allowed_server_ids,
-    )
-    if effective_manifest_root:
-        manifest_writers = {str(item["server_id"]) for item in writable_workers_for(effective_manifest_root)}
-        missing_manifest_writers = sorted(eligible_ids - manifest_writers)
-        if missing_manifest_writers:
-            issues.append(
-                _preflight_issue(
-                    "error",
-                    "manifest_root_not_writable",
-                    "One or more eligible workers cannot confirm write access to manifest_root.",
-                    path=effective_manifest_root,
-                    inferred=not bool(request.manifest_root),
-                    eligible_workers=sorted(eligible_ids),
-                    writable_workers=sorted(manifest_writers),
-                    unwritable_workers=missing_manifest_writers,
-                )
-            )
-    versions = _server_versions(session, {str(item["server_id"]) for item in eligible})
-    if len(versions) > 1:
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "mixed_worker_versions",
-                "Selected eligible workers report different git_ref or script_version values.",
-                versions=versions,
-            )
-        )
-    constrained_workers = _resource_constrained_workers(session, eligible_ids)
-    if constrained_workers:
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "resource_constrained_workers",
-                "One or more eligible workers currently report resource pressure and may delay claiming work.",
-                workers=constrained_workers,
-            )
-        )
-    backlog_workers = _workers_with_event_spool_backlog(session, eligible_ids)
-    if backlog_workers:
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "worker_event_spool_backlog",
-                "One or more eligible workers report unreplayed, quarantined, or dropped local event/log spool records.",
-                workers=backlog_workers,
-            )
-        )
-    pending_update_workers = _workers_with_pending_shard_update_backlog(session, eligible_ids)
-    if pending_update_workers:
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "worker_pending_shard_update_backlog",
-                "One or more eligible workers report unreplayed or quarantined local shard progress updates.",
-                workers=pending_update_workers,
-            )
-        )
-
-    if request.model_profile_id:
-        profile = session.get(ModelProfile, request.model_profile_id)
-        if profile is None:
-            issues.append(
-                _preflight_issue(
-                    "error",
-                    "unknown_model_profile",
-                    "Selected model profile does not exist.",
-                    model_profile_id=request.model_profile_id,
-                )
-            )
-        elif profile.requires_api_key and not (_resolve_model_profile_api_key(profile) or request.extra_args.get("api_key")):
-            issues.append(
-                _preflight_issue(
-                    "error",
-                    "model_profile_missing_api_key",
-                    "Selected model profile requires an API key, but no saved or per-job key is available.",
-                    model_profile_id=request.model_profile_id,
-                )
-            )
-        elif profile.api_key:
-            issues.append(
-                _preflight_issue(
-                    "warning",
-                    "model_profile_saved_api_key",
-                    "Selected model profile stores a legacy API key in the control database; save the profile with clear_api_key=true and migrate to api_key_env_var.",
-                    model_profile_id=request.model_profile_id,
-                    api_key_env_var=profile.api_key_env_var,
-                )
-            )
-        certification_result = (
-            __certification_gate.evaluate_job_model_profile_certification(
-                session,
-                request,
-                candidates=__candidate_workers_for_job(session, request),
-            )
-        )
-        if not certification_result.allowed:
-            issues.append(
-                _preflight_issue(
-                    "error",
-                    str(certification_result.code),
-                    str(certification_result.message),
-                    **certification_result.details,
-                )
-            )
-
-    if (
-        control_limits.job_file_detail_limit > 100000
-        or control_limits.job_event_detail_limit > 100000
-    ):
-        issues.append(
-            _preflight_issue(
-                "warning",
-                "high_detail_row_limits",
-                "Large per-file or raw-event retention limits can grow quickly on million-scale jobs.",
-                job_file_detail_limit=(
-                    control_limits.job_file_detail_limit
-                ),
-                job_event_detail_limit=(
-                    control_limits.job_event_detail_limit
-                ),
-            )
-        )
-
-    return JobPreflightResponse(
-        ok=not any(issue.severity == "error" for issue in issues),
-        database_dialect=database_dialect,
-        total_workers=len(eligibilities),
-        eligible_workers=len(eligible),
-        ready_workers=len(ready),
-        issues=issues,
-    )
-
-def claim_next_job(session: Session, server_id: str) -> Job | None:
-    server = session.get(Server, server_id)
-    if server is None or server.archived_at is not None:
-        return None
-
-    select_stmt = (
-        select(Job)
-        .where(Job.assigned_server_id == server_id)
-        .where(Job.status == "queued")
-        .order_by(Job.created_at)
-        .limit(1)
-    )
-    job = session.execute(select_stmt).scalar_one_or_none()
-    if job is None:
-        running_jobs = session.execute(
-            select(Job)
-            .where(Job.assigned_server_id == server_id)
-            .where(Job.status == "running")
-            .order_by(Job.created_at)
-        ).scalars().all()
-        for running_job in running_jobs:
-            if _pool_job_has_claimable_shards(session, running_job.id, utcnow()):
-                return running_job
-        return claim_next_pool_job(session, server_id)
-
-    started_at = utcnow()
-    claim_stmt = (
-        update(Job)
-        .where(Job.id == job.id)
-        .where(Job.status == "queued")
-        .values(status="running", started_at=started_at)
-    )
-    result = session.execute(claim_stmt)
-    if result.rowcount != 1:
-        session.rollback()
-        return claim_next_job(session, server_id)
-
-    session.commit()
-    return session.get(Job, job.id)
-
-def _pool_job_has_claimable_shards(session: Session, job_id: str, now: datetime) -> bool:
-    reconciliation = _reconcile_expired_shard_leases(
-        session,
-        now=now,
+        server_id,
         job_id=job_id,
+        now=now,
     )
-    claimable_count = session.execute(
-        select(func.count(WorkShard.id))
-        .join(Job, Job.id == WorkShard.job_id)
-        .where(WorkShard.job_id == job_id)
-        .where(WorkShard.status.in_(RECLAIMABLE_SHARD_STATUSES))
-        .where(WorkShard.attempt_count < Job.max_shard_attempts)
-    ).scalar_one()
-    if reconciliation.changed:
-        from ...scheduling import _commit_reconciliation
 
-        _commit_reconciliation(session)
-    return bool(claimable_count)
 
-def claim_next_pool_job(session: Session, server_id: str) -> Job | None:
-    now = utcnow()
-    candidates = session.execute(
-        select(Job)
-        .where(Job.assigned_server_id == POOL_SERVER_ID)
-        .where(Job.status.in_({"queued", "running"}))
-        .order_by(Job.created_at)
-    ).scalars().all()
-    for job in candidates:
-        if not server_is_allowed_for_job(job, server_id):
-            continue
-        if not server_can_access_input_dir(session, server_id, job.input_dir):
-            continue
-        if job.input_mode in REMOTE_STATIC_INPUT_MODES and job.status == "queued":
-            claim_stmt = (
-                update(Job)
-                .where(Job.id == job.id)
-                .where(Job.status == "queued")
-                .values(status="running", started_at=now)
-            )
-            result = session.execute(claim_stmt)
-            if result.rowcount != 1:
-                session.rollback()
-                return claim_next_job(session, server_id)
-            session.commit()
-            return session.get(Job, job.id)
-        if not _pool_job_has_claimable_shards(session, job.id, now):
-            continue
-        if job.status == "queued":
-            claim_stmt = (
-                update(Job)
-                .where(Job.id == job.id)
-                .where(Job.status == "queued")
-                .values(status="running", started_at=now)
-            )
-            result = session.execute(claim_stmt)
-            if result.rowcount != 1:
-                session.rollback()
-                return claim_next_job(session, server_id)
-            session.commit()
-            return session.get(Job, job.id)
-        return job
-    return None
+def stop_assigned_queued_jobs_for_server(*args, **kwargs):
+    from ..jobs.lifecycle import (
+        stop_assigned_queued_jobs_for_server as target,
+    )
 
-def archive_server(session: Session, server_id: str) -> None:
-    if server_id == POOL_SERVER_ID:
-        raise ServerArchiveError("The internal server pool cannot be archived.")
-    server = session.get(Server, server_id)
-    if server is None:
-        raise UnknownServerError(f"Unknown server: {server_id}")
-    if server.archived_at is not None:
-        return
-    if effective_server_status(server) != "offline":
-        raise ServerArchiveError("Only offline or stale servers can be archived.")
-    stop_assigned_queued_jobs_for_server(session, server_id)
-    if count_open_jobs_for_server(session, server_id) > 0 or count_running_shards_for_server(session, server_id) > 0:
-        raise ServerArchiveError("Server still has active work.")
+    return target(*args, **kwargs)
 
-    server.archived_at = utcnow()
-    session.commit()
 
-def list_servers(session: Session, *, include_archived: bool = False) -> list[Server]:
-    stmt = select(Server).order_by(Server.id.asc())
-    if not include_archived:
-        stmt = stmt.where(Server.archived_at.is_(None))
-    return list(session.execute(stmt).scalars().all())
+def _pool_job_has_claimable_shards(*args, **kwargs):
+    return __assignment.pool_job_has_claimable_shards(
+        *args,
+        **kwargs,
+    )
+
 
 __all__ = [
     name
     for name in globals()
     if not name.startswith("__")
-    and name not in {
+    and name
+    not in {
         "_SHARD_LEASE_ATTEMPTS_EXHAUSTED_ERROR",
         "_ShardLeaseReconcileResult",
         "_deterministic_failed_shard",

@@ -5,11 +5,13 @@ from sqlalchemy.orm import Session
 from ...models import Server
 from ...schemas import ServerResponse
 from ..common import json_loads_object
-from .core import (
-    count_active_jobs_for_server,
-    count_running_shards_for_server,
+from .identity import (
     effective_server_status,
     is_server_stale,
+)
+from .projection import (
+    count_active_jobs_for_server,
+    count_running_shards_for_server,
 )
 
 

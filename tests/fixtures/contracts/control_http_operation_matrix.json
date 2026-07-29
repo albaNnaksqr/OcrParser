@@ -7611,7 +7611,7 @@
     ],
     "forbidden_dependencies": [],
     "scan_root": "ocr_platform/control",
-    "scanned_file_count": 79,
+    "scanned_file_count": 87,
     "unresolved_status_calls": []
   }
 }

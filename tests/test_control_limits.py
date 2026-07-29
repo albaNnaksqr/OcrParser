@@ -26,6 +26,7 @@ import ocr_platform.control.domains.manifests.use_cases as manifest_use_cases
 import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
 import ocr_platform.control.domains.diagnostics.operations as diagnostics_operations
 import ocr_platform.control.domains.workers.core as workers_core
+import ocr_platform.control.domains.workers.preflight as workers_preflight
 import ocr_platform.control.limits as limits_module
 from ocr_platform.control.app import create_app
 from ocr_platform.control.bootstrap import build_control_runtime
@@ -1266,8 +1267,8 @@ def test_explicit_router_limits_do_not_reread_legacy_globals(
         fail_legacy_read,
     )
     monkeypatch.setattr(
-        workers_core,
-        "__legacy_control_limits",
+        workers_preflight,
+        "legacy_control_limits",
         fail_legacy_read,
     )
     assert client.post(
@@ -1322,7 +1323,11 @@ def test_direct_python_entries_resolve_one_legacy_snapshot(
 
     monkeypatch.setattr(jobs_events, "__legacy_control_limits", job_limits)
     monkeypatch.setattr(jobs_projection, "__legacy_control_limits", job_limits)
-    monkeypatch.setattr(workers_core, "__legacy_control_limits", worker_limits)
+    monkeypatch.setattr(
+        workers_preflight,
+        "legacy_control_limits",
+        worker_limits,
+    )
     with session_factory() as session:
         jobs_events.record_event(
             session,
@@ -1340,7 +1345,7 @@ def test_direct_python_entries_resolve_one_legacy_snapshot(
         jobs_projection.list_job_summaries(session)
         assert job_limits_calls == 1
         job_limits_calls = 0
-        workers_core.preflight_job(
+        workers_preflight.preflight_job(
             session,
             JobCreateRequest(
                 input_dir="/shared/input",

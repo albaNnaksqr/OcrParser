@@ -94,7 +94,7 @@
       "authority": {
         "sources": [
           "ocr_platform/control/schemas.py:166",
-          "ocr_platform/control/domains/jobs/policy.py:68"
+          "ocr_platform/control/domains/jobs/policy.py:98"
         ],
         "type": "event_payload_string"
       },
@@ -491,7 +491,6 @@
         ],
         "sources": [
           "ocr_platform/control/domains/manifests/construction.py",
-          "ocr_platform/control/domains/workers/core.py",
           "ocr_platform/control/scheduling.py"
         ],
         "type": "ast_domain_transitions",

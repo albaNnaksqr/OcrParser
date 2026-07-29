@@ -24,6 +24,13 @@ from ..domains.manifests import projection as __manifest_projection
 from ..domains.manifests import use_cases as __manifest_use_cases
 from ..domains.model_profiles import core as _model_profiles
 from ..domains.workers import core as _workers
+from ..domains.workers import assignment as __worker_assignment
+from ..domains.workers import eligibility as __worker_eligibility
+from ..domains.workers import identity as __worker_identity
+from ..domains.workers import preflight as __worker_preflight
+from ..domains.workers import projection as __worker_projection
+from ..domains.workers import registration as __worker_registration
+from ..domains.workers import use_cases as __worker_use_cases
 from ..domains.common import *
 from ..domains.jobs.core import *
 from ..domains.manifests.core import *
@@ -124,6 +131,13 @@ class _CompatibilityModule(ModuleType):
             globals()["__manifest_use_cases"],
             _model_profiles,
             _workers,
+            globals()["__worker_assignment"],
+            globals()["__worker_eligibility"],
+            globals()["__worker_identity"],
+            globals()["__worker_preflight"],
+            globals()["__worker_projection"],
+            globals()["__worker_registration"],
+            globals()["__worker_use_cases"],
         ):
             if hasattr(target, name):
                 if (

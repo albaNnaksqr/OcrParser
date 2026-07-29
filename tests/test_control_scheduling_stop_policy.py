@@ -369,11 +369,11 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
     assert "session.rollback()" not in request_stop_source
 
     worker_stop_source = function_source(
-        workers_path,
+        jobs_lifecycle_path,
         "stop_assigned_queued_jobs_for_server",
     )
     assert worker_stop_source.index(
-        'job.status = "stopped"'
+        "policy.stop_for_archived_worker(job"
     ) < worker_stop_source.index(
         "stop_reclaimable_work_for_job(session, job)"
     )

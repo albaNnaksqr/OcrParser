@@ -4023,6 +4023,8 @@ def build_status_contract() -> dict[str, Any]:
     workers_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "workers" / "core.py"
     )
+    workers_policy_path = workers_path.with_name("policy.py")
+    workers_registration_path = workers_path.with_name("registration.py")
     jobs_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
     )
@@ -4091,7 +4093,7 @@ def build_status_contract() -> dict[str, Any]:
         )
 
     scan_evidence = _status_transition_evidence(
-        [manifests_construction_path, scheduling_path, workers_path],
+        [manifests_construction_path, scheduling_path],
         constructor="ScanUnit",
         sql_model="ScanUnit",
         instance_field=("unit", "status"),
@@ -4214,7 +4216,7 @@ def build_status_contract() -> dict[str, Any]:
         str(ServerHeartbeatRequest.model_fields["status"].default),
     }
     server_transition_evidence = _status_transition_evidence(
-        [workers_path],
+        [workers_policy_path, workers_registration_path],
         constructor="Server",
         instance_field=("server", "status"),
     )
@@ -4305,7 +4307,6 @@ def build_status_contract() -> dict[str, Any]:
                     for path in [
                         manifests_construction_path,
                         scheduling_path,
-                        workers_path,
                     ]
                 ],
                 scan_evidence,
