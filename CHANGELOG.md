@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.4.0rc2 - 2026-07-30
+
+- Fixed a worker event/log spool race where replay could overwrite records
+  appended while an HTTP request was in flight.
+- Serialized replay per spool type and changed acknowledgement to remove only
+  the completed record from the latest on-disk JSONL state. New records remain
+  durable without holding the file lock across network requests.
+- Added deterministic coverage for concurrent append, concurrent replay,
+  bounded replay, and acknowledgement after spool trimming.
+- Preserved CLI, HTTP/OpenAPI, database, payload, JSONL spool, scheduling,
+  Agent lane, Parser, manifest, and output contracts.
+
 ## 0.4.0rc1 - 2026-07-29
 
 - Made PostgreSQL migration readiness explicit: startup auto-migration is

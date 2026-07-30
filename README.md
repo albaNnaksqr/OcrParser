@@ -1,12 +1,13 @@
 # OcrParser
 
-> v0.4.0rc1 is the Control operational-maturity release candidate. It adds
+> v0.4.0rc2 is the Control operational-maturity release candidate. It adds
 > explicit migration readiness, certified-profile preflight, bounded
-> observability, and completed Control domain ownership while keeping this
-> public repository as the single source-code mainline. See
+> observability, completed Control domain ownership, and a concurrency-safe
+> Agent event/log replay path while keeping this public repository as the
+> single source-code mainline. See
 > [architecture](docs/architecture.md), the
 > [v0.4 upgrade guide](docs/migration-v0.4.md), and the
-> [v0.4.0rc1 release notes](docs/release-v0.4.0rc1.md).
+> [v0.4.0rc2 release notes](docs/release-v0.4.0rc2.md).
 
 English | [中文](README.zh-CN.md)
 
