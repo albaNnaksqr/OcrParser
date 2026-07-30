@@ -457,3 +457,248 @@ def test_replay_quarantines_non_object_spool_lines_and_continues(monkeypatch, tm
     assert requests == [
         ("http://control:8080/api/jobs/job-1/events", {"type": "page_done", "payload": {"page_no": 2}}),
     ]
+
+
+def test_event_replay_preserves_record_appended_while_request_is_in_flight(tmp_path):
+    spool_dir = tmp_path / "event-spool"
+
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=spool_dir,
+        )
+        client._spool_event("job-old", {"type": "page_done", "payload": {"page_no": 1}})
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+        delivered = []
+
+        async def post_event(job_id, event):
+            delivered.append((job_id, event))
+            request_started.set()
+            await release_request.wait()
+
+        client._post_event_direct = post_event
+        replay_task = asyncio.create_task(client.replay_spooled_events(limit=1))
+        await request_started.wait()
+        client._spool_event("job-new", {"type": "page_done", "payload": {"page_no": 2}})
+        before_release = [record["job_id"] for record in client._event_spool.read_records()]
+        release_request.set()
+        first_replayed = await replay_task
+        after_first_replay = [record["job_id"] for record in client._event_spool.read_records()]
+        second_replayed = await client.replay_spooled_events()
+        remaining = client._event_spool.read_records()
+        await client.close()
+        return first_replayed, second_replayed, before_release, after_first_replay, remaining, delivered
+
+    first, second, before, after, remaining, delivered = asyncio.run(exercise())
+
+    assert first == 1
+    assert second == 1
+    assert before == ["job-old", "job-new"]
+    assert after == ["job-new"]
+    assert remaining == []
+    assert [job_id for job_id, _event in delivered] == ["job-old", "job-new"]
+
+
+def test_log_replay_preserves_record_appended_while_request_is_in_flight(tmp_path):
+    spool_dir = tmp_path / "event-spool"
+
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=spool_dir,
+        )
+        client._spool_log("job-old", "stdout", "old")
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+        delivered = []
+
+        async def post_log(job_id, stream, line, *, server_id=None):
+            delivered.append((job_id, stream, line, server_id))
+            request_started.set()
+            await release_request.wait()
+
+        client._post_log_direct = post_log
+        replay_task = asyncio.create_task(client.replay_spooled_logs(limit=1))
+        await request_started.wait()
+        client._spool_log("job-new", "stderr", "new")
+        before_release = [record["job_id"] for record in client._log_spool.read_records()]
+        release_request.set()
+        first_replayed = await replay_task
+        after_first_replay = [record["job_id"] for record in client._log_spool.read_records()]
+        second_replayed = await client.replay_spooled_logs()
+        remaining = client._log_spool.read_records()
+        await client.close()
+        return first_replayed, second_replayed, before_release, after_first_replay, remaining, delivered
+
+    first, second, before, after, remaining, delivered = asyncio.run(exercise())
+
+    assert first == 1
+    assert second == 1
+    assert before == ["job-old", "job-new"]
+    assert after == ["job-new"]
+    assert remaining == []
+    assert [job_id for job_id, _stream, _line, _server_id in delivered] == [
+        "job-old",
+        "job-new",
+    ]
+
+
+def test_concurrent_event_replays_do_not_send_the_same_record_twice(tmp_path):
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=tmp_path / "event-spool",
+        )
+        client._spool_event("job-1", {"type": "page_done", "payload": {"page_no": 1}})
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+        second_started = asyncio.Event()
+        delivered = []
+
+        async def post_event(job_id, event):
+            delivered.append((job_id, event))
+            request_started.set()
+            await release_request.wait()
+
+        async def second_replay():
+            second_started.set()
+            return await client.replay_spooled_events()
+
+        client._post_event_direct = post_event
+        first_task = asyncio.create_task(client.replay_spooled_events())
+        await request_started.wait()
+        second_task = asyncio.create_task(second_replay())
+        await second_started.wait()
+        release_request.set()
+        results = await asyncio.gather(first_task, second_task)
+        remaining = client._event_spool.read_records()
+        await client.close()
+        return results, delivered, remaining
+
+    results, delivered, remaining = asyncio.run(exercise())
+
+    assert sorted(results) == [0, 1]
+    assert [job_id for job_id, _event in delivered] == ["job-1"]
+    assert remaining == []
+
+
+def test_concurrent_log_replays_do_not_send_the_same_record_twice(tmp_path):
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=tmp_path / "event-spool",
+        )
+        client._spool_log("job-1", "stdout", "line")
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+        second_started = asyncio.Event()
+        delivered = []
+
+        async def post_log(job_id, stream, line, *, server_id=None):
+            delivered.append((job_id, stream, line, server_id))
+            request_started.set()
+            await release_request.wait()
+
+        async def second_replay():
+            second_started.set()
+            return await client.replay_spooled_logs()
+
+        client._post_log_direct = post_log
+        first_task = asyncio.create_task(client.replay_spooled_logs())
+        await request_started.wait()
+        second_task = asyncio.create_task(second_replay())
+        await second_started.wait()
+        release_request.set()
+        results = await asyncio.gather(first_task, second_task)
+        remaining = client._log_spool.read_records()
+        await client.close()
+        return results, delivered, remaining
+
+    results, delivered, remaining = asyncio.run(exercise())
+
+    assert sorted(results) == [0, 1]
+    assert [job_id for job_id, _stream, _line, _server_id in delivered] == ["job-1"]
+    assert remaining == []
+
+
+def test_event_replay_acknowledgement_does_not_remove_records_kept_after_trim(tmp_path):
+    spool_dir = tmp_path / "event-spool"
+
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=spool_dir,
+            event_spool_max_bytes=900,
+        )
+        client._spool_event(
+            "job-old",
+            {"type": "page_done", "payload": {"page_no": 1, "message": "x" * 120}},
+        )
+        request_started = asyncio.Event()
+        release_request = asyncio.Event()
+
+        async def post_event(_job_id, _event):
+            request_started.set()
+            await release_request.wait()
+
+        client._post_event_direct = post_event
+        replay_task = asyncio.create_task(client.replay_spooled_events(limit=1))
+        await request_started.wait()
+        for page_no in range(2, 7):
+            client._spool_event(
+                f"job-{page_no}",
+                {
+                    "type": "page_done",
+                    "payload": {"page_no": page_no, "message": "x" * 120},
+                },
+            )
+        before_release = client._event_spool.read_records()
+        release_request.set()
+        replayed = await replay_task
+        after_replay = client._event_spool.read_records()
+        await client.close()
+        return replayed, before_release, after_replay
+
+    replayed, before, after = asyncio.run(exercise())
+
+    expected_ids = [record["id"] for record in before if record["job_id"] != "job-old"]
+    assert replayed == 1
+    assert [record["id"] for record in after] == expected_ids
+    assert all(record["job_id"] != "job-old" for record in after)
+
+
+def test_event_replay_limit_zero_and_one_preserve_pending_order(tmp_path):
+    async def exercise():
+        client = ControlClient(
+            "http://control:8080",
+            "server-a",
+            event_spool_dir=tmp_path / "event-spool",
+        )
+        client._spool_event("job-1", {"type": "page_done", "payload": {"page_no": 1}})
+        client._spool_event("job-2", {"type": "page_done", "payload": {"page_no": 2}})
+        delivered = []
+
+        async def post_event(job_id, event):
+            delivered.append((job_id, event))
+
+        client._post_event_direct = post_event
+        zero_replayed = await client.replay_spooled_events(limit=0)
+        after_zero = [record["job_id"] for record in client._event_spool.read_records()]
+        one_replayed = await client.replay_spooled_events(limit=1)
+        after_one = [record["job_id"] for record in client._event_spool.read_records()]
+        await client.close()
+        return zero_replayed, one_replayed, after_zero, after_one, delivered
+
+    zero, one, after_zero, after_one, delivered = asyncio.run(exercise())
+
+    assert zero == 0
+    assert one == 1
+    assert after_zero == ["job-1", "job-2"]
+    assert after_one == ["job-2"]
+    assert [job_id for job_id, _event in delivered] == ["job-1"]

@@ -2,7 +2,7 @@
 
 English | [中文](migration-v0.4.zh-CN.md)
 
-This guide covers the `0.4.0rc1` candidate. Validate the exact candidate wheel
+This guide covers the `0.4.0rc2` candidate. Validate the exact candidate wheel
 in an isolated environment before production use. The public repository remains
 the only source-code mainline.
 
@@ -46,7 +46,7 @@ Install the exact RC wheel with the required extras, then apply and verify
 migrations explicitly:
 
 ```bash
-python -m pip install 'ocrparser-platform[platform]==0.4.0rc1'
+python -m pip install 'ocrparser-platform[platform]==0.4.0rc2'
 ocr-platform-migrate apply --database-url "$OCR_PLATFORM_DATABASE_URL"
 ocr-platform-migrate verify --database-url "$OCR_PLATFORM_DATABASE_URL"
 ```
@@ -80,7 +80,7 @@ paths, or document content in that file.
   advisory and do not automatically scale workers or model services.
 - Verify certification preflight before enabling `verified` or `certified`
   enforcement.
-- Confirm `/source.json` reports version `0.4.0rc1`, the exact wheel revision,
+- Confirm `/source.json` reports version `0.4.0rc2`, the exact wheel revision,
   `build_dirty=false`, and `release_build=true`.
 
 ## Rollback

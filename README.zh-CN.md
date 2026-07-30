@@ -1,11 +1,11 @@
 # OcrParser
 
-> v0.4.0rc1 是 Control 运维成熟度候选版本，新增显式 migration readiness、
-> engine profile 认证 preflight、有界可观测性，并完成 Control domain ownership；
-> 本公开仓库继续作为唯一源码主线。参见
+> v0.4.0rc2 是 Control 运维成熟度候选版本，新增显式 migration readiness、
+> engine profile 认证 preflight、有界可观测性，完成 Control domain ownership，
+> 并修复 Agent event/log replay 的并发持久性问题；本公开仓库继续作为唯一源码主线。参见
 > [架构说明](docs/architecture.zh-CN.md)、
 > [v0.4 升级指南](docs/migration-v0.4.zh-CN.md)和
-> [v0.4.0rc1 发布说明](docs/release-v0.4.0rc1.zh-CN.md)。
+> [v0.4.0rc2 发布说明](docs/release-v0.4.0rc2.zh-CN.md)。
 
 [English](README.md) | 中文
 

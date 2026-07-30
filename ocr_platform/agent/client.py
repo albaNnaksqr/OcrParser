@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-import uuid
 import os
+import threading
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
@@ -14,6 +16,38 @@ import httpx
 
 DEFAULT_EVENT_SPOOL_MAX_BYTES = 256 * 1024**2
 JSONL_SPOOL_TRIM_TARGET_RATIO = 0.8
+
+
+def _jsonl_record_matches_line(record: dict[str, Any], line: str) -> bool:
+    raw_line = record.get("raw_line")
+    if isinstance(raw_line, str):
+        return line.rstrip("\r\n") == raw_line
+    try:
+        candidate = json.loads(line)
+    except json.JSONDecodeError:
+        return False
+    record_id = record.get("id")
+    if record_id and isinstance(candidate, dict):
+        return str(candidate.get("id") or "") == str(record_id)
+    return candidate == record
+
+
+def _acknowledge_jsonl_record(path: Path, record: dict[str, Any]) -> bool:
+    if not path.exists():
+        return False
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        if not line.strip() or not _jsonl_record_matches_line(record, line):
+            continue
+        del lines[index]
+        temp_path = path.with_suffix(".jsonl.tmp")
+        with temp_path.open("w", encoding="utf-8") as handle:
+            handle.writelines(lines)
+            handle.flush()
+            os.fsync(handle.fileno())
+        temp_path.replace(path)
+        return True
+    return False
 
 
 def _read_dropped_count(path: Path) -> int:
@@ -94,102 +128,112 @@ class EventSpool:
         self.failed_path = self.spool_dir / "events.failed.jsonl"
         self.dropped_path = self.spool_dir / "events.dropped.json"
         self.max_pending_bytes = max_pending_bytes
+        self._file_lock = threading.RLock()
 
     def append(self, *, server_id: str, job_id: str, event: dict[str, Any]) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        record = {
-            "id": str(uuid.uuid4()),
-            "server_id": server_id,
-            "job_id": job_id,
-            "event": event,
-            "spooled_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        _enforce_jsonl_max_bytes(
-            self.path,
-            dropped_path=self.dropped_path,
-            max_pending_bytes=self.max_pending_bytes,
-        )
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            record = {
+                "id": str(uuid.uuid4()),
+                "server_id": server_id,
+                "job_id": job_id,
+                "event": event,
+                "spooled_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            _enforce_jsonl_max_bytes(
+                self.path,
+                dropped_path=self.dropped_path,
+                max_pending_bytes=self.max_pending_bytes,
+            )
 
     def read_records(self) -> list[dict[str, Any]]:
-        if not self.path.exists():
-            return []
-        records: list[dict[str, Any]] = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line_number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError as exc:
+        with self._file_lock:
+            if not self.path.exists():
+                return []
+            records: list[dict[str, Any]] = []
+            with self.path.open("r", encoding="utf-8") as handle:
+                for line_number, line in enumerate(handle, start=1):
+                    if not line.strip():
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        records.append(
+                            {
+                                "id": f"malformed-spool-line-{line_number}",
+                                "server_id": "",
+                                "job_id": "",
+                                "event": None,
+                                "raw_line": line.rstrip("\n"),
+                                "spool_parse_error": str(exc),
+                            }
+                        )
+                        continue
+                    if isinstance(record, dict):
+                        records.append(record)
+                        continue
                     records.append(
                         {
-                            "id": f"malformed-spool-line-{line_number}",
+                            "id": f"invalid-spool-line-{line_number}",
                             "server_id": "",
                             "job_id": "",
                             "event": None,
                             "raw_line": line.rstrip("\n"),
-                            "spool_parse_error": str(exc),
+                            "spool_parse_error": "spool record must be a JSON object",
                         }
                     )
-                    continue
-                if isinstance(record, dict):
-                    records.append(record)
-                    continue
-                records.append(
-                    {
-                        "id": f"invalid-spool-line-{line_number}",
-                        "server_id": "",
-                        "job_id": "",
-                        "event": None,
-                        "raw_line": line.rstrip("\n"),
-                        "spool_parse_error": "spool record must be a JSON object",
-                    }
-                )
-        return records
+            return records
 
     def replace_records(self, records: list[dict[str, Any]]) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        temp_path = self.path.with_suffix(".jsonl.tmp")
-        with temp_path.open("w", encoding="utf-8") as handle:
-            for record in records:
-                handle.write(json.dumps(record, ensure_ascii=False, default=str))
-                handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        temp_path.replace(self.path)
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            temp_path = self.path.with_suffix(".jsonl.tmp")
+            with temp_path.open("w", encoding="utf-8") as handle:
+                for record in records:
+                    handle.write(json.dumps(record, ensure_ascii=False, default=str))
+                    handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            temp_path.replace(self.path)
+
+    def acknowledge(self, record: dict[str, Any]) -> bool:
+        with self._file_lock:
+            return _acknowledge_jsonl_record(self.path, record)
 
     def quarantine(self, record: dict[str, Any], exc: httpx.HTTPStatusError) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        quarantined = dict(record)
-        quarantined["replay_error"] = {
-            "status_code": exc.response.status_code,
-            "message": str(exc),
-            "quarantined_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.failed_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            quarantined = dict(record)
+            quarantined["replay_error"] = {
+                "status_code": exc.response.status_code,
+                "message": str(exc),
+                "quarantined_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.failed_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
 
     def quarantine_invalid(self, record: dict[str, Any], message: str) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        quarantined = dict(record)
-        quarantined["replay_error"] = {
-            "error_type": "spool_parse_error",
-            "message": message,
-            "quarantined_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.failed_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            quarantined = dict(record)
+            quarantined["replay_error"] = {
+                "error_type": "spool_parse_error",
+                "message": message,
+                "quarantined_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.failed_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
 
 
 class LogSpool:
@@ -199,106 +243,116 @@ class LogSpool:
         self.failed_path = self.spool_dir / "logs.failed.jsonl"
         self.dropped_path = self.spool_dir / "logs.dropped.json"
         self.max_pending_bytes = max_pending_bytes
+        self._file_lock = threading.RLock()
 
     def append(self, *, server_id: str, job_id: str, stream: str, line: str) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        record = {
-            "id": str(uuid.uuid4()),
-            "server_id": server_id,
-            "job_id": job_id,
-            "log": {
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            record = {
+                "id": str(uuid.uuid4()),
                 "server_id": server_id,
-                "stream": stream,
-                "line": line,
-            },
-            "spooled_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(record, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        _enforce_jsonl_max_bytes(
-            self.path,
-            dropped_path=self.dropped_path,
-            max_pending_bytes=self.max_pending_bytes,
-        )
+                "job_id": job_id,
+                "log": {
+                    "server_id": server_id,
+                    "stream": stream,
+                    "line": line,
+                },
+                "spooled_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(record, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            _enforce_jsonl_max_bytes(
+                self.path,
+                dropped_path=self.dropped_path,
+                max_pending_bytes=self.max_pending_bytes,
+            )
 
     def read_records(self) -> list[dict[str, Any]]:
-        if not self.path.exists():
-            return []
-        records: list[dict[str, Any]] = []
-        with self.path.open("r", encoding="utf-8") as handle:
-            for line_number, line in enumerate(handle, start=1):
-                if not line.strip():
-                    continue
-                try:
-                    record = json.loads(line)
-                except json.JSONDecodeError as exc:
+        with self._file_lock:
+            if not self.path.exists():
+                return []
+            records: list[dict[str, Any]] = []
+            with self.path.open("r", encoding="utf-8") as handle:
+                for line_number, line in enumerate(handle, start=1):
+                    if not line.strip():
+                        continue
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError as exc:
+                        records.append(
+                            {
+                                "id": f"malformed-log-spool-line-{line_number}",
+                                "server_id": "",
+                                "job_id": "",
+                                "log": None,
+                                "raw_line": line.rstrip("\n"),
+                                "spool_parse_error": str(exc),
+                            }
+                        )
+                        continue
+                    if isinstance(record, dict):
+                        records.append(record)
+                        continue
                     records.append(
                         {
-                            "id": f"malformed-log-spool-line-{line_number}",
+                            "id": f"invalid-log-spool-line-{line_number}",
                             "server_id": "",
                             "job_id": "",
                             "log": None,
                             "raw_line": line.rstrip("\n"),
-                            "spool_parse_error": str(exc),
+                            "spool_parse_error": "spool record must be a JSON object",
                         }
                     )
-                    continue
-                if isinstance(record, dict):
-                    records.append(record)
-                    continue
-                records.append(
-                    {
-                        "id": f"invalid-log-spool-line-{line_number}",
-                        "server_id": "",
-                        "job_id": "",
-                        "log": None,
-                        "raw_line": line.rstrip("\n"),
-                        "spool_parse_error": "spool record must be a JSON object",
-                    }
-                )
-        return records
+            return records
 
     def replace_records(self, records: list[dict[str, Any]]) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        temp_path = self.path.with_suffix(".jsonl.tmp")
-        with temp_path.open("w", encoding="utf-8") as handle:
-            for record in records:
-                handle.write(json.dumps(record, ensure_ascii=False, default=str))
-                handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
-        temp_path.replace(self.path)
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            temp_path = self.path.with_suffix(".jsonl.tmp")
+            with temp_path.open("w", encoding="utf-8") as handle:
+                for record in records:
+                    handle.write(json.dumps(record, ensure_ascii=False, default=str))
+                    handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            temp_path.replace(self.path)
+
+    def acknowledge(self, record: dict[str, Any]) -> bool:
+        with self._file_lock:
+            return _acknowledge_jsonl_record(self.path, record)
 
     def quarantine(self, record: dict[str, Any], exc: httpx.HTTPStatusError) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        quarantined = dict(record)
-        quarantined["replay_error"] = {
-            "status_code": exc.response.status_code,
-            "message": str(exc),
-            "quarantined_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.failed_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            quarantined = dict(record)
+            quarantined["replay_error"] = {
+                "status_code": exc.response.status_code,
+                "message": str(exc),
+                "quarantined_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.failed_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
 
     def quarantine_invalid(self, record: dict[str, Any], message: str) -> None:
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        quarantined = dict(record)
-        quarantined["replay_error"] = {
-            "error_type": "spool_parse_error",
-            "message": message,
-            "quarantined_at": datetime.now(timezone.utc).isoformat(),
-        }
-        with self.failed_path.open("a", encoding="utf-8") as handle:
-            handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
-            handle.write("\n")
-            handle.flush()
-            os.fsync(handle.fileno())
+        with self._file_lock:
+            self.spool_dir.mkdir(parents=True, exist_ok=True)
+            quarantined = dict(record)
+            quarantined["replay_error"] = {
+                "error_type": "spool_parse_error",
+                "message": message,
+                "quarantined_at": datetime.now(timezone.utc).isoformat(),
+            }
+            with self.failed_path.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(quarantined, ensure_ascii=False, default=str))
+                handle.write("\n")
+                handle.flush()
+                os.fsync(handle.fileno())
 
 
 class ControlClient:
@@ -326,6 +380,8 @@ class ControlClient:
             if event_spool_dir
             else None
         )
+        self._event_replay_lock = asyncio.Lock()
+        self._log_replay_lock = asyncio.Lock()
 
     async def close(self) -> None:
         await self._client.aclose()
@@ -409,40 +465,37 @@ class ControlClient:
             return
 
     async def replay_spooled_events(self, limit: int | None = None) -> int:
-        if self._event_spool is None:
-            return 0
-        records = self._event_spool.read_records()
-        if not records:
-            return 0
-        replay_limit = len(records) if limit is None else max(limit, 0)
-        replayed = 0
-        remaining = list(records)
-        for record in records[:replay_limit]:
-            job_id = str(record.get("job_id") or "")
-            event = record.get("event")
-            if not job_id or not isinstance(event, dict):
-                self._event_spool.quarantine_invalid(
-                    record,
-                    str(record.get("spool_parse_error") or "invalid spooled event record"),
-                )
-                remaining.pop(0)
-                self._event_spool.replace_records(remaining)
-                continue
-            try:
-                await self._post_event_direct(job_id, event)
-            except httpx.RequestError:
-                break
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code >= 500:
+        async with self._event_replay_lock:
+            if self._event_spool is None:
+                return 0
+            records = self._event_spool.read_records()
+            if not records:
+                return 0
+            replay_limit = len(records) if limit is None else max(limit, 0)
+            replayed = 0
+            for record in records[:replay_limit]:
+                job_id = str(record.get("job_id") or "")
+                event = record.get("event")
+                if not job_id or not isinstance(event, dict):
+                    self._event_spool.quarantine_invalid(
+                        record,
+                        str(record.get("spool_parse_error") or "invalid spooled event record"),
+                    )
+                    self._event_spool.acknowledge(record)
+                    continue
+                try:
+                    await self._post_event_direct(job_id, event)
+                except httpx.RequestError:
                     break
-                self._event_spool.quarantine(record, exc)
-                remaining.pop(0)
-                self._event_spool.replace_records(remaining)
-                continue
-            remaining.pop(0)
-            replayed += 1
-            self._event_spool.replace_records(remaining)
-        return replayed
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code >= 500:
+                        break
+                    self._event_spool.quarantine(record, exc)
+                    self._event_spool.acknowledge(record)
+                    continue
+                self._event_spool.acknowledge(record)
+                replayed += 1
+            return replayed
 
     async def _post_log_direct(
         self,
@@ -480,45 +533,42 @@ class ControlClient:
             return
 
     async def replay_spooled_logs(self, limit: int | None = None) -> int:
-        if self._log_spool is None:
-            return 0
-        records = self._log_spool.read_records()
-        if not records:
-            return 0
-        replay_limit = len(records) if limit is None else max(limit, 0)
-        replayed = 0
-        remaining = list(records)
-        for record in records[:replay_limit]:
-            job_id = str(record.get("job_id") or "")
-            log = record.get("log")
-            if not job_id or not isinstance(log, dict):
-                self._log_spool.quarantine_invalid(
-                    record,
-                    str(record.get("spool_parse_error") or "invalid spooled log record"),
-                )
-                remaining.pop(0)
-                self._log_spool.replace_records(remaining)
-                continue
-            try:
-                await self._post_log_direct(
-                    job_id,
-                    str(log.get("stream") or "stdout"),
-                    str(log.get("line") or ""),
-                    server_id=str(log.get("server_id") or self.server_id),
-                )
-            except httpx.RequestError:
-                break
-            except httpx.HTTPStatusError as exc:
-                if exc.response.status_code >= 500:
+        async with self._log_replay_lock:
+            if self._log_spool is None:
+                return 0
+            records = self._log_spool.read_records()
+            if not records:
+                return 0
+            replay_limit = len(records) if limit is None else max(limit, 0)
+            replayed = 0
+            for record in records[:replay_limit]:
+                job_id = str(record.get("job_id") or "")
+                log = record.get("log")
+                if not job_id or not isinstance(log, dict):
+                    self._log_spool.quarantine_invalid(
+                        record,
+                        str(record.get("spool_parse_error") or "invalid spooled log record"),
+                    )
+                    self._log_spool.acknowledge(record)
+                    continue
+                try:
+                    await self._post_log_direct(
+                        job_id,
+                        str(log.get("stream") or "stdout"),
+                        str(log.get("line") or ""),
+                        server_id=str(log.get("server_id") or self.server_id),
+                    )
+                except httpx.RequestError:
                     break
-                self._log_spool.quarantine(record, exc)
-                remaining.pop(0)
-                self._log_spool.replace_records(remaining)
-                continue
-            remaining.pop(0)
-            replayed += 1
-            self._log_spool.replace_records(remaining)
-        return replayed
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code >= 500:
+                        break
+                    self._log_spool.quarantine(record, exc)
+                    self._log_spool.acknowledge(record)
+                    continue
+                self._log_spool.acknowledge(record)
+                replayed += 1
+            return replayed
 
     async def claim_shard(self, job_id: str, server_id: str) -> Optional[dict[str, Any]]:
         response = await self._client.post(
