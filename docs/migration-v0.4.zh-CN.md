@@ -2,8 +2,8 @@
 
 [English](migration-v0.4.md) | 中文
 
-本文适用于 `0.4.0rc2` 候选版本。生产部署前必须在隔离环境验证准确 wheel。公开
-仓库继续作为唯一源码主线。
+本文适用于 `0.4.0` 正式版本。生产部署前必须在隔离环境验证准确 release wheel。
+公开仓库继续作为唯一源码主线。
 
 ## 兼容范围
 
@@ -36,10 +36,10 @@ change。自定义 Python 集成必须在升级前按照
 
 ## 部署
 
-安装准确 RC wheel 和所需 extra，然后显式 apply/verify migration：
+安装准确 release wheel 和所需 extra，然后显式 apply/verify migration：
 
 ```bash
-python -m pip install 'ocrparser-platform[platform]==0.4.0rc2'
+python -m pip install 'ocrparser-platform[platform]==0.4.0'
 ocr-platform-migrate apply --database-url "$OCR_PLATFORM_DATABASE_URL"
 ocr-platform-migrate verify --database-url "$OCR_PLATFORM_DATABASE_URL"
 ```
@@ -69,7 +69,7 @@ revision/digest；文件中不得包含 endpoint、凭据、本地路径或文�
 - 检查 diagnostics 的 `capacity`、`audit` 和 `alerts`。容量结果只提供建议，不会
   自动扩缩 Worker 或模型服务。
 - 启用 `verified` 或 `certified` enforcement 前先验证认证 preflight。
-- 确认 `/source.json` 显示版本 `0.4.0rc2`、准确 wheel revision、
+- 确认 `/source.json` 显示版本 `0.4.0`、准确 wheel revision、
   `build_dirty=false` 和 `release_build=true`。
 
 ## 回滚
