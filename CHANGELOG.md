@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-08-03
+
+- Promoted the accepted v0.4 release candidate after the full Python,
+  PostgreSQL, package, mock end-to-end, recovery, and observation gates passed.
+- Added explicit migration readiness, optional provenance-aware Model Profile
+  certification, bounded operational metrics, capacity and audit diagnostics,
+  and operator-owned alert templates.
+- Completed Control transaction, scheduling, jobs, manifests, and workers
+  domain ownership while preserving HTTP/OpenAPI, database, state, manifest,
+  output, and scheduling contracts.
+- Removed the legacy `ocr_platform.control.service` Python façade. HTTP remains
+  the stable interface; the documented domain commands, queries, and schemas
+  are the supported Python integration surface.
+- Included the rc2 Agent event/log spool durability fix so records appended
+  during replay remain durable and concurrent replay is serialized per spool.
+- Revalidated DotsOCR, MinerU, and PaddleOCR-VL integration with public
+  fixtures. Existing engine quality and runtime limitations remain documented,
+  and no engine is automatically upgraded to Certified.
+
 ## 0.4.0rc2 - 2026-07-30
 
 - Fixed a worker event/log spool race where replay could overwrite records
