@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.4.2 - 2026-08-11
+
+- Reorganized the dependency-free Control UI into hash-routed Jobs, Workers,
+  and System workspaces while preserving every HTTP, database, scheduling,
+  Parser, manifest, and output contract.
+- Added a four-step, in-memory job wizard with explicit Input, Engine, Workers
+  and Capacity, and Review stages. Job submission stays disabled until the
+  existing backend preflight passes, and request-only API keys are cleared on
+  cancel or successful creation.
+- Turned Deployment Doctor findings into read-only, guided remediation cards
+  for database, migration, authentication, worker readiness, shared-path,
+  resource-pressure, and spool-backlog conditions.
+- Reduced the UI entrypoint to application composition and moved Jobs,
+  Workers, Profiles, Diagnostics, Remote Admin, navigation, DOM, and formatting
+  behavior into acyclic native ES modules shipped in the wheel.
+- Added a dedicated Playwright Chromium release-wheel smoke gate for hash
+  navigation, authentication, diagnostics, job creation, worker inspection,
+  desktop layouts, keyboard focus, labels, and package-data integrity.
+
 ## 0.4.1 - 2026-08-11
 
 - Added the production Ansible + systemd deployment bundle for one Control and
