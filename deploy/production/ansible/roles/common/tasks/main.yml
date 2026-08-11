@@ -252,18 +252,39 @@
   check_mode: false
   when: not ansible_check_mode
 
-- name: Write the release install requirement (local wheel with platform extra)
+- name: Verify the release dependency constraints exist in the exact source checkout
+  ansible.builtin.stat:
+    path: "{{ ocr_platform_constraints_path }}"
+  register: ocr_platform_constraints_stat
+  when: not ansible_check_mode
+
+- name: Refuse an unconstrained production installation
+  ansible.builtin.assert:
+    that:
+      - ocr_platform_constraints_stat.stat.exists
+      - ocr_platform_constraints_stat.stat.isreg
+      - ocr_platform_constraints_stat.stat.size | int > 0
+    fail_msg: >-
+      The exact release source does not contain the production dependency
+      constraints at {{ ocr_platform_constraints_path }}. Refusing to let pip
+      resolve a different environment for the same release wheel.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Write the constrained release install requirement
   # A requirements-file spec is the robust way to combine a local wheel path
   # with an extra: some pip resolver versions mishandle extras appended
   # directly to a bare file-path argument on the command line.
   ansible.builtin.copy:
     dest: "{{ ocr_wheel_dir }}/requirements.release.txt"
-    content: "{{ ocr_wheel_path }}[platform]\n"
+    content: |-
+      --constraint {{ ocr_platform_constraints_path }}
+      {{ ocr_wheel_path }}[platform]
     owner: root
     group: "{{ ocr_service_group }}"
     mode: "0640"
 
-- name: Install the release wheel with the platform extra, never editable
+- name: Install the release wheel with the platform extra and locked dependencies
   ansible.builtin.pip:
     requirements: "{{ ocr_wheel_dir }}/requirements.release.txt"
     virtualenv: "{{ ocr_venv_dir }}"

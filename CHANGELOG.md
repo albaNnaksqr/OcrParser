@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.4.1 - 2026-08-11
+
+- Added the production Ansible + systemd deployment bundle for one Control and
+  multiple Workers, with compact inventory defaults, an explicit pre-mutation
+  sudo contract, rolling deployment, verification, synthetic canary, and
+  fail-closed rollback.
+- Added release-manifest generation so new releases can resolve an exact tag,
+  source revision, canonical repository, wheel URL, wheel SHA256, and clean
+  build provenance from one deployment identity document.
+- Locked the complete Parser + Platform production dependency graph in the
+  exact release source checkout and made the deployment bundle refuse
+  unconstrained installation. The lock is validated on Python 3.10-3.12.
+- Preserved Parser, CLI, HTTP, database, manifest, output, scheduling, and
+  engine behavior; this release changes deployment tooling only.
+
 ## 0.4.0 - 2026-08-03
 
 - Promoted the accepted v0.4 release candidate after the full Python,

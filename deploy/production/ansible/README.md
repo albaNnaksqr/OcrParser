@@ -132,6 +132,12 @@ release-operator artifact. The operator must attach both unchanged files to
 the matching GitHub Release; the bundle never manufactures identity locally
 on a managed host.
 
+The exact source checkout also contains `constraints/platform.txt`, which
+pins the complete Parser + Platform production dependency graph shared by
+Python 3.10-3.12. The bundle installs the verified wheel with this constraint
+and refuses to continue when it is missing, so a release cannot resolve
+different dependencies on different hosts or deployment dates.
+
 Historical `v0.4.0` and offline deployments provide `ocr_release_commit`,
 `ocr_source_repo_url`, `ocr_wheel_url`, and `ocr_wheel_sha256` together.
 Partial or mixed identities are refused.

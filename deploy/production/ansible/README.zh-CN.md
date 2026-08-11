@@ -118,6 +118,11 @@ Tag CI 会把 wheel 和 `deployment-manifest.json` 一起保存为发布操作�
 artifact。操作员必须将这两个未经修改的文件附加到同名 GitHub Release;
 受管主机不会自行生成发布身份。
 
+准确源码 checkout 还包含 `constraints/platform.txt`,锁定 Python 3.10-3.12
+共同使用的完整 Parser + Platform 生产依赖图。Bundle 使用该约束安装已校验的
+wheel;约束缺失时直接拒绝继续,因此同一 Release 不会在不同主机或部署日期解析出
+不同依赖。
+
 历史 `v0.4.0` 和离线部署需要同时显式填写 `ocr_release_commit`、
 `ocr_source_repo_url`、`ocr_wheel_url`、`ocr_wheel_sha256`。四项必须完整
 提供;部分填写或混用 manifest/显式身份都会被拒绝。

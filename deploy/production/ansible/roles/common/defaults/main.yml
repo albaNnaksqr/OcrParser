@@ -14,6 +14,8 @@ ocr_source_dir: "{{ ocr_install_root }}/source"
 ocr_venv_dir: "{{ ocr_install_root }}/venv"
 ocr_wheel_dir: "{{ ocr_install_root }}/wheels"
 ocr_wheel_path: "{{ ocr_wheel_dir }}/{{ ocr_wheel_url | basename }}"
+ocr_platform_constraints_path: >-
+  {{ ocr_source_dir }}/deploy/production/ansible/constraints/platform.txt
 
 # Release identity has no default on purpose. An unset value must fail the
 # assertion below rather than silently deploy something else.

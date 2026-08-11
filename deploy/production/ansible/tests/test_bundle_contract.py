@@ -264,6 +264,47 @@ def test_common_role_guards_the_post_download_wheel_digest_assertion():
     assert task.get("when") == "not ansible_check_mode"
 
 
+def test_common_role_refuses_unconstrained_release_installation():
+    defaults = _load_yaml_document(ROLES_DIR / "common" / "defaults" / "main.yml")
+    assert defaults["ocr_platform_constraints_path"].endswith(
+        "/deploy/production/ansible/constraints/platform.txt"
+    )
+
+    constraints = BUNDLE_ROOT / "constraints" / "platform.txt"
+    assert constraints.is_file()
+    pins = {
+        line.strip()
+        for line in _read(constraints).splitlines()
+        if line.strip() and not line.startswith("#")
+    }
+    assert "fastapi==0.141.1" in pins
+    assert "sqlalchemy==2.0.51" in pins
+    assert "psycopg==3.3.4" in pins
+    assert all("==" in pin for pin in pins)
+
+    tasks = _load_yaml_document(ROLES_DIR / "common" / "tasks" / "main.yml")
+    refusal = next(
+        task
+        for task in _iter_tasks(tasks)
+        if task.get("name") == "Refuse an unconstrained production installation"
+    )
+    assert refusal.get("when") == "not ansible_check_mode"
+    assert refusal["ansible.builtin.assert"]["that"] == [
+        "ocr_platform_constraints_stat.stat.exists",
+        "ocr_platform_constraints_stat.stat.isreg",
+        "ocr_platform_constraints_stat.stat.size | int > 0",
+    ]
+
+    requirement = next(
+        task
+        for task in _iter_tasks(tasks)
+        if task.get("name") == "Write the constrained release install requirement"
+    )
+    content = requirement["ansible.builtin.copy"]["content"]
+    assert "--constraint {{ ocr_platform_constraints_path }}" in content
+    assert "{{ ocr_wheel_path }}[platform]" in content
+
+
 def test_assert_conditions_do_not_use_string_valued_regex_search():
     """Ansible 2.19 requires assert conditions to evaluate to real bools."""
 
