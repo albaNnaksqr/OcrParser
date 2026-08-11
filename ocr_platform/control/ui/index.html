@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -22,15 +22,24 @@
       </div>
     </header>
 
+    <nav class="workbench-nav" aria-label="Control workspace">
+      <a href="#jobs" data-route-link="jobs" aria-current="page">Jobs</a>
+      <a href="#workers" data-route-link="workers">Workers</a>
+      <a href="#system" data-route-link="system">System</a>
+    </nav>
+
     <div class="ops-shell">
-      <main class="ops-main">
+      <main class="ops-main" data-view="jobs">
         <section class="panel jobs-panel" id="jobsPanel">
           <div class="header">
             <div>
               <h2>Jobs</h2>
               <div class="small">Live work queue.</div>
             </div>
-            <div class="small">Refreshes every 3s.</div>
+            <div class="toolbar compact-toolbar">
+              <span class="small">Refreshes every 3s.</span>
+              <a class="button-link primary" id="openNewJobBtn" href="#jobs/new">New Job</a>
+            </div>
           </div>
           <div class="jobs-toolbar">
             <label for="jobStatusFilter">status
@@ -80,7 +89,7 @@
       </main>
 
       <aside class="ops-sidebar">
-        <section class="panel ops-summary-panel">
+        <section class="panel ops-summary-panel" data-view="jobs">
           <div class="header">
             <div>
               <h2>System Summary</h2>
@@ -111,11 +120,24 @@
           </div>
         </section>
 
-        <details class="panel job-create-panel" id="newJobPanel">
+        <details class="panel job-create-panel" id="newJobPanel" data-view="jobs/new" open>
           <summary>
             <span>New Job</span>
-            <span class="summary-action">Create OCR work</span>
+            <span class="summary-action">Four-step preflight workflow</span>
           </summary>
+          <div class="wizard-header">
+            <div>
+              <h2>Create OCR work</h2>
+              <div class="small">Complete input, engine, worker, and review checks before submission.</div>
+            </div>
+            <a class="button-link" id="cancelJobWizardBtn" href="#jobs">Cancel</a>
+          </div>
+          <ol class="wizard-steps" id="wizardStepList" aria-label="Job creation progress">
+            <li data-wizard-indicator="1" aria-current="step"><span>1</span>Input</li>
+            <li data-wizard-indicator="2"><span>2</span>Engine</li>
+            <li data-wizard-indicator="3"><span>3</span>Workers</li>
+            <li data-wizard-indicator="4"><span>4</span>Review</li>
+          </ol>
           <form id="jobForm">
         <div class="row grid-3">
           <div>
@@ -187,7 +209,7 @@
             </div>
             <div>
               <label for="profileApiKey">saved_api_key</label>
-              <input id="profileApiKey" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="New key; blank keeps existing key" />
+              <input id="profileApiKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="New key; blank keeps existing key" />
               <label for="profileApiKeyEnvVar">api_key_env_var</label>
               <input id="profileApiKeyEnvVar" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Optional env var name on control server" />
               <div class="small">Saved API keys are disabled by default. Prefer api_key_env_var; set OCR_PLATFORM_ALLOW_SAVED_MODEL_PROFILE_KEYS=1 only for an explicitly accepted legacy deployment.</div>
@@ -311,21 +333,22 @@
         </div>
         <div class="toolbar">
           <button type="button" id="preflightJobBtn">Preflight</button>
-          <button type="button" id="createJobBtn">Create Job</button>
+          <button type="button" id="createJobBtn" disabled>Create Job</button>
         </div>
+          <section class="wizard-review" id="wizardReview" aria-live="polite"></section>
+          <div class="wizard-navigation">
+            <button type="button" id="wizardBackBtn">Back</button>
+            <button type="button" id="wizardNextBtn" class="primary">Next</button>
+          </div>
           </form>
           <div id="jobMessage" class="message"></div>
         </details>
       </aside>
     </div>
 
-    <details class="panel admin-operations-panel" id="adminOperationsPanel">
-      <summary>
-        <span>Admin / Advanced</span>
-        <span class="summary-action">Diagnostics, workers, scale, install</span>
-      </summary>
+    <div class="admin-operations-panel" id="adminOperationsPanel">
       <div class="admin-layout">
-        <section class="admin-block">
+        <section class="panel admin-block" data-view="system">
           <div class="header">
             <h2>Database</h2>
             <div class="small">Migration status from the live control database.</div>
@@ -335,7 +358,7 @@
           </div>
         </section>
 
-        <section class="admin-block">
+        <section class="panel admin-block" data-view="system">
           <div class="header">
             <h2>Deployment Doctor</h2>
             <button type="button" id="refreshDeploymentDoctorBtn">Refresh Doctor</button>
@@ -344,9 +367,10 @@
           <div class="metrics" id="deploymentDoctorStatus">
             <div class="metric"><strong>-</strong><span class="small">readiness</span></div>
           </div>
+          <div class="doctor-issues" id="deploymentDoctorIssues" aria-live="polite"></div>
         </section>
 
-        <section class="admin-block admin-block-wide">
+        <section class="panel admin-block admin-block-wide" data-view="workers">
           <h2>Workers</h2>
           <div class="small">Worker Readiness</div>
           <div class="metrics" id="serverMetrics"></div>
@@ -379,7 +403,6 @@
             </div>
             <div class="toolbar">
               <button type="button" id="registerServerBtn">Register/Update Server</button>
-              <button type="button" id="refreshServersBtn">Refresh Servers</button>
             </div>
           </form>
           </details>
@@ -510,6 +533,12 @@
             </div>
             <pre id="remoteWorkerOutput" class="log-box"></pre>
           </details>
+          <div class="jobs-toolbar">
+            <label for="workerFilter">Filter workers
+              <input id="workerFilter" type="search" placeholder="id, host, status, or readiness" />
+            </label>
+            <button type="button" class="link-button" id="refreshServersBtn">Refresh workers</button>
+          </div>
           <div class="table-scroll">
           <table class="compact-table">
             <thead>
@@ -529,8 +558,32 @@
           </div>
           <div id="serverMessage" class="message"></div>
         </section>
+
+        <section class="panel admin-block admin-block-wide" data-view="system" id="modelProfilesPanel">
+          <div class="header">
+            <div>
+              <h2>Model Profiles</h2>
+              <div class="small">Manage reusable engine configuration outside the job workflow.</div>
+            </div>
+          </div>
+          <div id="modelProfilesHost"></div>
+        </section>
+
+        <section class="panel admin-block admin-block-wide" data-view="system">
+          <div class="header">
+            <div>
+              <h2>Capacity, Audit & Alerts</h2>
+              <div class="small">Read-only operational evidence from Control diagnostics.</div>
+            </div>
+          </div>
+          <div class="system-evidence-grid">
+            <div><h3>Capacity</h3><div id="systemCapacity" class="metrics"></div></div>
+            <div><h3>Active alerts</h3><div id="systemAlerts" class="doctor-issues"></div></div>
+            <div><h3>Audit</h3><div id="systemAudit" class="metrics"></div></div>
+          </div>
+        </section>
       </div>
-    </details>
+    </div>
 
     <footer class="legal-notice" aria-label="Open-source legal notice">
       Copyright © 2026 OCR Parser contributors. Deployments using the AGPL build
