@@ -523,12 +523,14 @@
               <button type="button" id="remoteWorkerPreflightBtn">Preflight</button>
               <button type="button" id="remoteWorkerInstallDryRunBtn">Install Dry Run</button>
               <button type="button" id="remoteWorkerInstallApplyBtn">Install Apply</button>
-              <select id="remoteWorkerServiceAction">
-                <option value="restart">restart service</option>
-                <option value="start">start service</option>
-                <option value="stop">stop service</option>
-                <option value="disable">disable service</option>
-              </select>
+              <label class="toolbar-field" for="remoteWorkerServiceAction">Service action
+                <select id="remoteWorkerServiceAction">
+                  <option value="restart">restart service</option>
+                  <option value="start">start service</option>
+                  <option value="stop">stop service</option>
+                  <option value="disable">disable service</option>
+                </select>
+              </label>
               <button type="button" id="remoteWorkerServiceBtn">Run Service Action</button>
             </div>
             <pre id="remoteWorkerOutput" class="log-box"></pre>

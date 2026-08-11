@@ -246,6 +246,7 @@ def test_ui_exposes_remote_worker_lifecycle_controls():
     assert 'id="remoteWorkerInstallDryRunBtn"' in html
     assert 'id="remoteWorkerInstallApplyBtn"' in html
     assert 'id="remoteWorkerServiceAction"' in html
+    assert 'for="remoteWorkerServiceAction"' in html
     assert 'const ROOT = "/api/remote-workers"' in html
     assert "targets: `${ROOT}/targets`" in html
     assert "preflight: `${ROOT}/preflight`" in html

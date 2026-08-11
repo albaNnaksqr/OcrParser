@@ -543,6 +543,14 @@ button:disabled {
   border-color: #315f86;
 }
 
+.toolbar-field {
+  display: grid;
+  gap: 4px;
+  min-width: 160px;
+  margin: 0;
+  font-size: 12px;
+}
+
 .deleteBtn {
   background: #dc2626;
   border-color: #b91c1c;
