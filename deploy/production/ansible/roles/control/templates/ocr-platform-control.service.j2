@@ -1,0 +1,40 @@
+# Managed by Ansible. Local edits are overwritten on the next deploy.
+[Unit]
+Description=OcrParser Control
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User={{ ocr_service_user }}
+Group={{ ocr_service_group }}
+EnvironmentFile={{ ocr_control_env_path }}
+ExecStart={{ ocr_venv_dir }}/bin/python -m ocr_platform.control
+WorkingDirectory={{ ocr_install_root }}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+
+# Hardening. Control needs no filesystem writes of its own beyond what the
+# external PostgreSQL and shared-filesystem paths provide over the network or
+# an already-mounted path, so the root filesystem stays read-only.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadOnlyPaths={{ ocr_install_root }}
+{% if ocr_shared_root is defined and ocr_shared_root | length > 0 %}
+ReadWritePaths={{ ocr_shared_root }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

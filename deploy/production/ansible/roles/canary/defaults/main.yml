@@ -1,0 +1,21 @@
+---
+ocr_canary_enabled: false
+ocr_canary_engine: "dotsocr"
+ocr_canary_model_endpoint: ""
+ocr_canary_model_name: ""
+ocr_canary_model_api_key_env_var: ""
+ocr_canary_subdir: "canary"
+ocr_canary_document_count: 1
+ocr_canary_page_concurrency: 1
+ocr_canary_polls: 120
+ocr_canary_interval: 1
+ocr_api_token_secret_var: ""
+
+ocr_shared_root: ""
+ocr_input_root: "{{ ocr_shared_root }}/input"
+ocr_output_root: "{{ ocr_shared_root }}/output"
+ocr_platform_root: "{{ ocr_shared_root }}/ocr-platform"
+
+ocr_report_dir: "reports"
+ocr_canary_report_renderer: "{{ playbook_dir }}/../scripts/render_deployment_report.py"
+ocr_canary_verify_report: "{{ ocr_report_dir }}/verify-{{ ocr_release_commit }}.json"

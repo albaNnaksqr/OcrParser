@@ -1,0 +1,44 @@
+---
+# Worker agent defaults. Inventory (host and group vars) always wins.
+#
+# The core keys below are rendered into worker.env using the exact
+# environment-variable names ocr_platform.agent.config.parse_args() reads.
+# Do not rename them without checking config.py first.
+
+ocr_worker_env_path: "/etc/ocr-agent/worker.env"
+ocr_worker_service_name: "ocr-agent-worker"
+ocr_worker_config_dir: "/etc/ocr-agent"
+
+# Per-host values; inventory.example.yml sets these under each worker host.
+ocr_worker_server_id: "{{ inventory_hostname }}"
+ocr_worker_work_dir: "/var/lib/ocr-agent/{{ ocr_worker_server_id }}/work"
+ocr_worker_log_dir: "/var/log/ocr-agent/{{ ocr_worker_server_id }}"
+ocr_worker_spool_dir: "/var/lib/ocr-agent/{{ ocr_worker_server_id }}/spool"
+
+ocr_worker_poll_interval: 2
+ocr_worker_heartbeat_interval: 5
+ocr_worker_control_retry_initial: 1
+ocr_worker_control_retry_max: 30
+ocr_worker_event_spool_max_mb: 1024
+ocr_worker_termination_timeout: 10
+ocr_worker_stop_poll_interval: 1
+ocr_worker_resource_guard_memory_percent: 90
+ocr_worker_resource_guard_min_available_memory_gb: 4
+ocr_worker_resource_guard_disk_percent: 95
+ocr_worker_resource_guard_min_free_disk_gb: 10
+
+# Seconds to wait for the systemd unit to come up before the deploy play
+# gives up. Full registration-with-Control confirmation is the verify role's
+# job, not this one's.
+ocr_worker_registration_timeout: 120
+
+# Name of the environment variable on the Ansible controller holding the
+# Control API bearer token. Shared with the control role's
+# ocr_api_token_secret_var: it is the same fleet-wide token.
+ocr_api_token_secret_var: ""
+
+# External shared filesystem roots. Never mounted by this bundle.
+ocr_shared_root: ""
+ocr_input_root: "{{ ocr_shared_root }}/input"
+ocr_output_root: "{{ ocr_shared_root }}/output"
+ocr_platform_root: "{{ ocr_shared_root }}/ocr-platform"

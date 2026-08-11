@@ -1,0 +1,23 @@
+---
+ocr_service_user: "ocr-platform"
+ocr_service_group: "ocr-runtime"
+ocr_install_root: "/opt/ocr-platform"
+ocr_source_dir: "{{ ocr_install_root }}/source"
+ocr_venv_dir: "{{ ocr_install_root }}/venv"
+ocr_wheel_dir: "{{ ocr_install_root }}/wheels"
+
+ocr_control_config_dir: "/etc/ocr-platform"
+ocr_control_env_path: "{{ ocr_control_config_dir }}/control.env"
+ocr_control_service_name: "ocr-platform-control"
+
+ocr_worker_server_id: "{{ inventory_hostname }}"
+ocr_worker_config_dir: "/etc/ocr-agent"
+ocr_worker_env_path: "{{ ocr_worker_config_dir }}/worker.env"
+ocr_worker_service_name: "ocr-agent-worker"
+ocr_worker_work_dir: "/var/lib/ocr-agent/{{ ocr_worker_server_id }}/work"
+ocr_worker_log_dir: "/var/log/ocr-agent/{{ ocr_worker_server_id }}"
+ocr_worker_spool_dir: "/var/lib/ocr-agent/{{ ocr_worker_server_id }}/spool"
+
+ocr_shared_root: ""
+ocr_canary_enabled: false
+ocr_canary_subdir: "canary"

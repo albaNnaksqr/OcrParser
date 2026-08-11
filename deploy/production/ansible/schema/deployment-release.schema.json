@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/albaNnaksqr/OcrParser/deploy/production/ansible/schema/deployment-release.schema.json",
+  "title": "OcrParser deployment release manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "tag",
+    "source_revision",
+    "source_repository",
+    "release_build",
+    "wheel"
+  ],
+  "properties": {
+    "schema": { "const": "ocrparser.deployment-release/1" },
+    "tag": {
+      "type": "string",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z.]+)?$"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "source_repository": {
+      "const": "https://github.com/albaNnaksqr/OcrParser.git"
+    },
+    "release_build": { "const": true },
+    "wheel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["filename", "url", "sha256"],
+      "properties": {
+        "filename": {
+          "type": "string",
+          "pattern": "^[^/\\s]+\\.whl$"
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+\\.whl$"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

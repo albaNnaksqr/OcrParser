@@ -1,0 +1,46 @@
+---
+# Compact production inventory. Hostnames and URLs use the reserved .invalid
+# TLD; copy this file into a PRIVATE deployment repository and replace them.
+# Literal credentials are forbidden: *_secret_var values name environment
+# variables exported on the Ansible controller.
+
+all:
+  vars:
+    # From the first release that publishes deployment-manifest.json, the tag
+    # resolves commit, source repository, wheel URL, and wheel sha256.
+    ocr_release_tag: "v0.4.1"
+
+    # v0.4.0 and fully offline deployments instead provide all four fields
+    # below together; partial explicit identity is rejected.
+    # ocr_release_commit: "0000000000000000000000000000000000000000"
+    # ocr_source_repo_url: "https://git.example.invalid/OcrParser.git"
+    # ocr_wheel_url: "https://artifacts.example.invalid/ocrparser_platform-0.4.0-py3-none-any.whl"
+    # ocr_wheel_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    # ocr_release_manifest_url: "https://artifacts.example.invalid/deployment-manifest.json"
+
+    ocr_shared_root: "/srv/ocr-shared"
+    ocr_postgres_host: "postgres.example.invalid"
+    ocr_database_url_secret_var: "OCR_PLATFORM_DATABASE_URL_SECRET"
+    ocr_api_token_secret_var: "OCR_PLATFORM_API_TOKEN_SECRET"
+
+    # Optional canary fields are required only when this flag is true.
+    # ocr_canary_enabled: true
+    # ocr_canary_engine: "dotsocr"
+    # ocr_canary_model_endpoint: "https://model.example.invalid:18000"
+    # ocr_canary_model_name: "DotsOCR"
+    # ocr_canary_model_api_key_env_var: "OCR_CANARY_MODEL_API_KEY"
+
+  children:
+    ocr_control:
+      hosts:
+        control-1.example.invalid:
+          ocr_control_url: "https://ocr-control.example.invalid"
+
+    # Stable inventory aliases become Worker server IDs by default. Use
+    # ansible_host when the SSH address differs, and set
+    # ocr_worker_server_id only when an explicit stable override is needed.
+    ocr_workers:
+      hosts:
+        worker-1.example.invalid: {}
+        worker-2.example.invalid: {}
+        worker-3.example.invalid: {}

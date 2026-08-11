@@ -1,0 +1,8 @@
+---
+ocr_release_tag: ""
+ocr_release_commit: ""
+ocr_source_repo_url: ""
+ocr_wheel_url: ""
+ocr_wheel_sha256: ""
+ocr_release_manifest_url: ""
+ocr_release_identity_resolver: "{{ role_path }}/../../scripts/resolve_release_identity.py"

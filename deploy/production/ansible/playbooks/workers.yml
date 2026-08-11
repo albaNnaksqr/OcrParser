@@ -1,0 +1,31 @@
+---
+# Rolling deploy of the worker fleet.
+#
+# Run preflight.yml and control.yml first: workers register against the
+# Control URL (ocr_control_url) and refuse to start against a Control that
+# is not already serving the matching release.
+#
+# The rollout is driven by ocr_rollout_serial and
+# ocr_rollout_max_fail_percentage from inventory: Ansible processes at most
+# ocr_rollout_serial hosts per batch and aborts the whole play the moment the
+# failure rate in a batch exceeds ocr_rollout_max_fail_percentage, leaving
+# already-updated hosts on the new release and the rest untouched. There is
+# no automatic continuation past a failed batch — that is deliberate; see
+# README.md for the rollback procedure.
+
+- name: Roll out workers
+  hosts: ocr_workers
+  become: true
+  gather_facts: false
+  serial: "{{ ocr_rollout_serial | default(1) }}"
+  max_fail_percentage: "{{ ocr_rollout_max_fail_percentage | default(0) }}"
+  pre_tasks:
+    - name: Verify and explain privilege before Worker changes the host
+      ansible.builtin.include_role:
+        name: privilege_check
+  roles:
+    - release_identity
+    - common
+    - worker_identity
+    - worker
+  tags: [workers]

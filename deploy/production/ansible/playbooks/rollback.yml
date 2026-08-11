@@ -1,0 +1,103 @@
+---
+# Rollback: return Control and the worker fleet to a previously deployed
+# release. Never run this with implicit or default values — every identity
+# and compatibility variable below must be supplied explicitly with -e at
+# invocation time. group_vars/all.example.yml deliberately ships them empty
+# so a bare `ansible-playbook rollback.yml` fails closed before touching any
+# host.
+#
+# Required on the command line:
+#   -e ocr_rollback_release_tag=...        (the exact prior tag)
+#   -e ocr_rollback_release_commit=...     (its full 40-hex commit)
+#   -e ocr_rollback_wheel_url=...          (the prior release's wheel)
+#   -e ocr_rollback_wheel_sha256=...       (its sha256)
+# and exactly one of:
+#   -e ocr_rollback_migration_compatible=true
+#     — the prior release's code is compatible with the CURRENT database
+#       schema (no migration was applied, or the migration is additive and
+#       backward-compatible). This bundle never downgrades the database.
+#   -e ocr_rollback_restore_plan_reference="..."
+#     — a pointer (ticket, runbook, backup identifier) to the operator's own
+#       out-of-band plan for reconciling the database with the rolled-back
+#       release. This playbook does not act on the reference; it only
+#       records it in the verify report as evidence the operator has one.
+#
+# Order: Control is rolled back first (it is the schema-compatibility
+# boundary), then workers, serial/max_fail-guarded exactly as in workers.yml.
+# Run verify.yml again afterward.
+
+- name: Assert rollback identity and database-compatibility evidence are explicit
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  become: false
+  tasks:
+    - name: Assert the rollback release identity is complete
+      ansible.builtin.assert:
+        that:
+          - ocr_rollback_release_tag | default('', true) | length > 0
+          - (ocr_rollback_release_commit | default('', true)) is match('^[0-9a-f]{40}$')
+          - (ocr_rollback_wheel_url | default('', true)) is match('^https://.*\.whl$')
+          - (ocr_rollback_wheel_sha256 | default('', true)) is match('^[0-9a-f]{64}$')
+        fail_msg: >-
+          Rollback requires an explicit prior release identity. Pass
+          ocr_rollback_release_tag, a full 40-hex ocr_rollback_release_commit,
+          an https:// ocr_rollback_wheel_url, and a 64-hex
+          ocr_rollback_wheel_sha256 with -e on the command line.
+        quiet: true
+
+    - name: Assert exactly one migration-compatibility path is asserted
+      ansible.builtin.assert:
+        that:
+          - (ocr_rollback_migration_compatible | default(false) | bool)
+            != (ocr_rollback_restore_plan_reference | default('', true) | length > 0)
+        fail_msg: >-
+          Rollback never downgrades the database. Assert exactly one of
+          ocr_rollback_migration_compatible=true (the prior release's code is
+          compatible with the current schema) or a non-empty
+          ocr_rollback_restore_plan_reference (a pointer to your own
+          out-of-band schema-reconciliation plan). Supplying both, or
+          neither, is refused.
+        quiet: true
+
+- name: Roll Control back to the prior release
+  hosts: ocr_control
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  vars:
+    ocr_release_tag: "{{ ocr_rollback_release_tag }}"
+    ocr_release_commit: "{{ ocr_rollback_release_commit }}"
+    ocr_wheel_url: "{{ ocr_rollback_wheel_url }}"
+    ocr_wheel_sha256: "{{ ocr_rollback_wheel_sha256 }}"
+  pre_tasks:
+    - name: Verify and explain privilege before Control rollback changes the host
+      ansible.builtin.include_role:
+        name: privilege_check
+  roles:
+    - release_identity
+    - common
+    - control
+  tags: [rollback, control]
+
+- name: Roll workers back to the prior release
+  hosts: ocr_workers
+  become: true
+  gather_facts: false
+  serial: "{{ ocr_rollout_serial | default(1) }}"
+  max_fail_percentage: "{{ ocr_rollout_max_fail_percentage | default(0) }}"
+  vars:
+    ocr_release_tag: "{{ ocr_rollback_release_tag }}"
+    ocr_release_commit: "{{ ocr_rollback_release_commit }}"
+    ocr_wheel_url: "{{ ocr_rollback_wheel_url }}"
+    ocr_wheel_sha256: "{{ ocr_rollback_wheel_sha256 }}"
+  pre_tasks:
+    - name: Verify and explain privilege before Worker rollback changes the host
+      ansible.builtin.include_role:
+        name: privilege_check
+  roles:
+    - release_identity
+    - common
+    - worker
+  tags: [rollback, workers]

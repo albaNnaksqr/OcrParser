@@ -1,0 +1,26 @@
+---
+# Preflight: lay down the exact release on every Control and worker host, and
+# fail closed before any service is (re)started.
+#
+# The `common` role performs, in order: release-identity assertions, Python
+# and disk checks, service user/group and directory setup, an exact clean
+# checkout of ocr_release_commit, a verified wheel download, and a
+# non-editable virtualenv install proven to match that commit. It never
+# starts a service and never touches PostgreSQL, the shared filesystem, or
+# the model service — those remain external and are only asserted reachable
+# by the `verify` role later in the sequence.
+#
+# Run this first, against the whole fleet, before control.yml or workers.yml.
+
+- name: Preflight — release identity, host readiness, and package install
+  hosts: ocr_control:ocr_workers
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Verify and explain privilege before preflight changes the host
+      ansible.builtin.include_role:
+        name: privilege_check
+  roles:
+    - release_identity
+    - common
+  tags: [preflight]

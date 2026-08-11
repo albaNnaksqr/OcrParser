@@ -82,6 +82,29 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             python tools/verify_release_build.py "$WHEEL" --tag "${GITHUB_REF_NAME}"
           fi
+      - name: Generate the deployment release manifest
+        run: |
+          WHEEL="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          VERSION="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          TAG="v${VERSION}"
+          WHEEL_URL="https://github.com/albaNnaksqr/OcrParser/releases/download/${TAG}/$(basename "$WHEEL")"
+          python deploy/production/ansible/scripts/generate_release_manifest.py \
+            --tag "$TAG" \
+            --source-revision "$GITHUB_SHA" \
+            --source-repository "https://github.com/albaNnaksqr/OcrParser.git" \
+            --wheel-url "$WHEEL_URL" \
+            --wheel "$WHEEL" \
+            --output dist/deployment-manifest.json
+          python -m json.tool dist/deployment-manifest.json >/dev/null
+      - name: Preserve wheel and deployment manifest for the release operator
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ github.ref_name }}
+          path: |
+            dist/*.whl
+            dist/deployment-manifest.json
+          if-no-files-found: error
       - name: Install wheel in an empty environment
         run: |
           python -m venv /tmp/ocrparser-wheel
@@ -357,3 +380,30 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - name: Run Control to Artifact walkthrough
         run: python tools/run_mock_e2e.py
+
+  ansible-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: deploy/production/ansible/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r deploy/production/ansible/requirements.txt pytest
+      - name: Run the deployment bundle's own tests
+        run: pytest deploy/production/ansible/tests
+      - name: Validate the example inventory and group_vars against the deployment contract
+        run: |
+          python3 deploy/production/ansible/scripts/validate_inventory.py \
+            deploy/production/ansible/inventory.example.yml \
+            --group-vars deploy/production/ansible/group_vars/all.example.yml \
+            --json
+      - name: Syntax-check every playbook against the example inventory
+        working-directory: deploy/production/ansible
+        run: |
+          for playbook in privilege-check preflight control workers verify canary rollback; do
+            ansible-playbook -i inventory.example.yml "playbooks/${playbook}.yml" --syntax-check
+          done

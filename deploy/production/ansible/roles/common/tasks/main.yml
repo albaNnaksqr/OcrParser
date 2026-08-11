@@ -1,0 +1,354 @@
+---
+# Everything every OcrParser host needs, in fail-closed order:
+#   assert the release identity -> check Python and disk -> service identity and
+#   directories -> exact clean source revision -> verified wheel -> non-editable
+#   virtualenv install -> prove the installed build is that exact release.
+#
+# No task in this role handles a secret, so no task needs no_log. If you add one
+# that does, mark it no_log: true.
+
+- name: Warn that check mode only validates structure, not the live system
+  ansible.builtin.debug:
+    msg: >-
+      Running in --check mode: source checkout, wheel download, venv install,
+      and the exact-build assertions that depend on them are skipped. A clean
+      --check run proves the playbooks and inventory are syntax-valid, not
+      that this host is on the expected release. Re-run without --check for a
+      real validation.
+  when: ansible_check_mode
+
+# The final provenance re-read and package-resolution probes below run a
+# freshly-installed venv's python interpreter. Check mode never creates that
+# venv (the create/install tasks are themselves simulated no-ops under
+# --check), so those probes are explicitly skipped with
+# `when: not ansible_check_mode` rather than left to fail against a
+# nonexistent interpreter.
+
+- name: Assert the release identity is exact and complete
+  ansible.builtin.assert:
+    that:
+      - ocr_release_tag | default('', true) | length > 0
+      - (ocr_release_commit | default('', true)) is match('^[0-9a-f]{40}$')
+      - ocr_source_repo_url | default('', true) | length > 0
+      - (ocr_wheel_url | default('', true)) is match('^https://.*\.whl$')
+      - (ocr_wheel_sha256 | default('', true)) is match('^[0-9a-f]{64}$')
+    fail_msg: >-
+      The release identity is incomplete. ocr_release_tag, a full 40-hex
+      ocr_release_commit, ocr_source_repo_url, an https:// ocr_wheel_url, and a
+      64-hex ocr_wheel_sha256 are all required. Run
+      scripts/validate_inventory.py against your inventory first.
+    quiet: true
+
+- name: Read the target Python version
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_python_interpreter }}"
+      - "-c"
+      - "import sys; print('%d.%d' % sys.version_info[:2])"
+  register: ocr_python_probe
+  changed_when: false
+  check_mode: false
+
+- name: Assert the target Python is new enough for the platform package
+  ansible.builtin.assert:
+    that:
+      - ocr_python_probe.stdout | trim is version(ocr_min_python_version, '>=', version_type='loose')
+    fail_msg: >-
+      {{ ocr_python_interpreter }} reports Python {{ ocr_python_probe.stdout | trim }};
+      ocrparser-platform requires >= {{ ocr_min_python_version }}.
+    quiet: true
+
+- name: Ensure the service group exists
+  ansible.builtin.group:
+    name: "{{ ocr_service_group }}"
+    system: true
+    state: present
+
+- name: Ensure the service user exists
+  ansible.builtin.user:
+    name: "{{ ocr_service_user }}"
+    group: "{{ ocr_service_group }}"
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+    state: present
+
+- name: Create the install, source, and wheel directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: "{{ ocr_service_group }}"
+    mode: "0750"
+  loop:
+    - "{{ ocr_install_root }}"
+    - "{{ ocr_source_dir }}"
+    - "{{ ocr_wheel_dir }}"
+
+- name: Measure free space on the install root
+  ansible.builtin.command:
+    argv:
+      - "df"
+      - "-Pk"
+      - "{{ ocr_install_root }}"
+  register: ocr_install_df
+  changed_when: false
+  check_mode: false
+
+- name: Assert the install root has enough free space
+  ansible.builtin.assert:
+    that:
+      - (ocr_install_df.stdout_lines[-1].split()[3] | int) >= (ocr_min_free_mb | int * 1024)
+    fail_msg: >-
+      {{ ocr_install_root }} has less than {{ ocr_min_free_mb }} MiB free. The
+      release source checkout, wheel, and virtualenv will not fit.
+    quiet: true
+
+- name: Check out the exact release source revision
+  ansible.builtin.git:
+    repo: "{{ ocr_source_repo_url }}"
+    dest: "{{ ocr_source_dir }}"
+    version: "{{ ocr_release_commit }}"
+    # force discards any local modification so the deployed tree is clean by
+    # construction; the assertion below proves it rather than assuming it.
+    force: true
+    accept_hostkey: false
+  register: ocr_source_checkout
+
+- name: Resolve the checked-out source revision
+  ansible.builtin.command:
+    argv:
+      - "git"
+      - "-c"
+      - "safe.directory={{ ocr_source_dir }}"
+      - "-C"
+      - "{{ ocr_source_dir }}"
+      - "rev-parse"
+      - "HEAD"
+  register: ocr_source_head
+  changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Resolve the commit the release tag points at
+  ansible.builtin.command:
+    argv:
+      - "git"
+      - "-c"
+      - "safe.directory={{ ocr_source_dir }}"
+      - "-C"
+      - "{{ ocr_source_dir }}"
+      - "rev-list"
+      - "-n"
+      - "1"
+      - "refs/tags/{{ ocr_release_tag }}"
+  register: ocr_source_tag_commit
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Detect uncommitted or untracked changes in the deployed source tree
+  ansible.builtin.command:
+    argv:
+      - "git"
+      - "-c"
+      - "safe.directory={{ ocr_source_dir }}"
+      - "-C"
+      - "{{ ocr_source_dir }}"
+      - "status"
+      - "--porcelain"
+      - "--untracked-files=normal"
+  register: ocr_source_status
+  changed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Assert the source tree is the exact release commit, tagged, and clean
+  ansible.builtin.assert:
+    that:
+      - (ocr_source_head.stdout | trim) == ocr_release_commit
+      - (ocr_source_tag_commit.stdout | trim) == ocr_release_commit
+      - (ocr_source_status.stdout | trim) | length == 0
+    fail_msg: >-
+      {{ ocr_source_dir }} is not a clean checkout of {{ ocr_release_tag }}
+      ({{ ocr_release_commit }}). HEAD, the tag target, and a clean working tree
+      must all agree before anything is installed or started.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Set ownership on the deployed source tree
+  ansible.builtin.file:
+    path: "{{ ocr_source_dir }}"
+    state: directory
+    owner: root
+    group: "{{ ocr_service_group }}"
+    mode: "0750"
+    recurse: true
+
+- name: Make the worker helper script executable
+  ansible.builtin.file:
+    path: "{{ ocr_source_dir }}/scripts/ocr_agent_worker.sh"
+    mode: "0750"
+    owner: root
+    group: "{{ ocr_service_group }}"
+
+- name: Download the release wheel and verify its sha256
+  ansible.builtin.get_url:
+    url: "{{ ocr_wheel_url }}"
+    dest: "{{ ocr_wheel_path }}"
+    checksum: "sha256:{{ ocr_wheel_sha256 }}"
+    owner: root
+    group: "{{ ocr_service_group }}"
+    mode: "0640"
+    force: false
+
+- name: Re-read the wheel digest from disk
+  ansible.builtin.stat:
+    path: "{{ ocr_wheel_path }}"
+    get_checksum: true
+    checksum_algorithm: sha256
+  register: ocr_wheel_stat
+  when: not ansible_check_mode
+
+- name: Assert the on-disk wheel digest matches the inventory
+  ansible.builtin.assert:
+    that:
+      - ocr_wheel_stat.stat.exists
+      - ocr_wheel_stat.stat.checksum == ocr_wheel_sha256
+    fail_msg: >-
+      The wheel on disk does not match ocr_wheel_sha256. Refusing to install.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Create the platform virtualenv
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_python_interpreter }}"
+      - "-m"
+      - "venv"
+      - "{{ ocr_venv_dir }}"
+    creates: "{{ ocr_venv_dir }}/bin/python"
+
+# Always print valid JSON, even when the package is absent or its provenance
+# file is missing/corrupt, so the Ansible-side `from_json` filter below never
+# raises on empty or invalid stdout.
+- name: Read the currently installed build provenance
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/python"
+      - "-c"
+      - |-
+        import json
+        try:
+            from ocr_platform.legal import build_provenance
+            payload = build_provenance()
+        except Exception:
+            payload = {}
+        print(json.dumps(payload if isinstance(payload, dict) else {}))
+  register: ocr_installed_build
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Write the release install requirement (local wheel with platform extra)
+  # A requirements-file spec is the robust way to combine a local wheel path
+  # with an extra: some pip resolver versions mishandle extras appended
+  # directly to a bare file-path argument on the command line.
+  ansible.builtin.copy:
+    dest: "{{ ocr_wheel_dir }}/requirements.release.txt"
+    content: "{{ ocr_wheel_path }}[platform]\n"
+    owner: root
+    group: "{{ ocr_service_group }}"
+    mode: "0640"
+
+- name: Install the release wheel with the platform extra, never editable
+  ansible.builtin.pip:
+    requirements: "{{ ocr_wheel_dir }}/requirements.release.txt"
+    virtualenv: "{{ ocr_venv_dir }}"
+    virtualenv_command: "{{ ocr_python_interpreter }} -m venv"
+    editable: false
+    state: present
+    extra_args: >-
+      --no-input --no-cache-dir --disable-pip-version-check
+      {{ '--force-reinstall' if ocr_installed_revision != ocr_release_commit else '' }}
+  vars:
+    ocr_installed_build_json: "{{ (ocr_installed_build.stdout | default('', true) | trim) or '{}' }}"
+    ocr_installed_revision: "{{ (ocr_installed_build_json | from_json).get('source_revision', '') }}"
+
+- name: Read the installed build provenance
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/python"
+      - "-c"
+      - |-
+        import json
+        try:
+            from ocr_platform.legal import build_provenance
+            payload = build_provenance()
+        except Exception:
+            payload = {}
+        print(json.dumps(payload if isinstance(payload, dict) else {}))
+  register: ocr_build_info
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Assert the installed build is the exact clean release build
+  ansible.builtin.assert:
+    that:
+      - ocr_build_provenance.get('source_revision', '') == ocr_release_commit
+      - ocr_build_provenance.get('dirty', true) == false
+      - ocr_release_build_derived
+    fail_msg: >-
+      The virtualenv at {{ ocr_venv_dir }} does not contain the clean
+      {{ ocr_release_commit }} build. A dirty or mismatched wheel must never
+      reach production.
+    quiet: true
+  vars:
+    ocr_build_provenance_raw: "{{ (ocr_build_info.stdout | default('', true) | trim) or '{}' }}"
+    ocr_build_provenance: "{{ ocr_build_provenance_raw | from_json }}"
+    # build_provenance() has no literal "release_build" key: that semantic is
+    # only computed by ocr_platform.legal.source_offer() from source_revision
+    # and dirty. Derive the same boolean here so the assertion matches the
+    # runtime's own definition of a "release build".
+    ocr_release_build_derived: >-
+      {{ (ocr_build_provenance.get('dirty', true) == false)
+         and (ocr_build_provenance.get('source_revision', '') | length > 0) }}
+  when: not ansible_check_mode
+
+- name: Assert the platform package resolves inside the virtualenv, not a checkout
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/python"
+      - "-c"
+      - >-
+        import pathlib, sys, ocr_platform;
+        module = pathlib.Path(ocr_platform.__file__).resolve();
+        prefix = pathlib.Path(sys.prefix).resolve();
+        sys.exit(0 if str(module).startswith(str(prefix)) else 1)
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Probe native libraries required by the parser runtime
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/python"
+      - "-c"
+      - "import cv2; from pyzbar.pyzbar import decode"
+  register: ocr_native_runtime_probe
+  changed_when: false
+  failed_when: false
+  when: not ansible_check_mode
+
+- name: Assert the parser's native runtime libraries are available
+  ansible.builtin.assert:
+    that:
+      - ocr_native_runtime_probe.rc == 0
+    fail_msg: >-
+      The installed parser cannot import OpenCV and pyzbar because required
+      native libraries are missing. Install the OS packages providing
+      libGL.so.1, GLib, and zbar (Debian/Ubuntu: libgl1 libglib2.0-0 libzbar0;
+      RHEL-family: mesa-libGL glib2 zbar), then rerun preflight.
+    quiet: true
+  when: not ansible_check_mode

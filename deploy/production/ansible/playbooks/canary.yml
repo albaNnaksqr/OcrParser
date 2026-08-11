@@ -1,0 +1,43 @@
+---
+# Canary: push a small number of synthetic documents through the deployed
+# release and confirm they complete before declaring the rollout healthy.
+#
+# Opt-in only. This playbook refuses to run unless ocr_canary_enabled is
+# explicitly true in inventory or on the command line (-e ocr_canary_enabled=true).
+# Run it after verify.yml has already passed.
+#
+# The `canary` role writes ocr_canary_document_count synthetic input files
+# under {{ ocr_shared_root }}/{{ ocr_canary_subdir }} (never overlapping
+# ocr_input_root/ocr_output_root), submits them through Control, polls up to
+# ocr_canary_polls times at ocr_canary_interval seconds, and asserts they
+# reach a terminal success state. It never deploys, starts, or configures the
+# model service itself: ocr_canary_model_endpoint and ocr_canary_model_name
+# are only used to confirm the already-external, already-running model
+# service is reachable, and ocr_canary_model_api_key_env_var names an
+# environment variable — the bundle never accepts or logs a literal API key.
+
+- name: Canary — synthetic document run against the deployed release
+  hosts: ocr_control
+  become: true
+  gather_facts: false
+  pre_tasks:
+    - name: Verify and explain privilege before canary creates its isolated subtree
+      ansible.builtin.include_role:
+        name: privilege_check
+
+    - name: Refuse to run unless canary is explicitly enabled
+      ansible.builtin.assert:
+        that:
+          - ocr_canary_enabled | bool
+        fail_msg: >-
+          ocr_canary_enabled is false. Canary is opt-in: pass
+          -e ocr_canary_enabled=true, or set it in your private inventory,
+          to run this playbook.
+        quiet: true
+      become: false
+  roles:
+    - deployment_defaults
+    - release_identity
+    - worker_identity
+    - canary
+  tags: [canary]

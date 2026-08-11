@@ -1,0 +1,334 @@
+---
+# Post-deploy verification. Runs against ocr_control:ocr_workers in a single
+# play. Ansible executes each task across every matched host before moving
+# to the next task, so the worker-local shared-root and spool-quarantine
+# probes below are ordered ahead of the control-host report so their
+# per-host results are already in hostvars when the report is assembled.
+# Every fact this role builds is an allow-listed boolean, count, or
+# identifier — never a secret value, a full authenticated URL, a token, a
+# hostname, or a filesystem path.
+
+- name: Warn that check mode cannot verify a live deployment
+  ansible.builtin.debug:
+    msg: >-
+      Running in --check mode: none of the HTTP, migration, or filesystem
+      probes below run. A clean --check pass only proves this playbook is
+      syntax-valid, not that anything is healthy.
+  when: ansible_check_mode
+
+- name: Confirm the external shared filesystem roots are present, writable, and record the result
+  when:
+    - not ansible_check_mode
+    - inventory_hostname in groups['ocr_workers']
+  block:
+    - name: Assert this worker's shared roots are configured
+      ansible.builtin.assert:
+        that:
+          - ocr_shared_root | default('', true) | length > 0
+          - ocr_input_root | default('', true) | length > 0
+          - ocr_output_root | default('', true) | length > 0
+          - ocr_platform_root | default('', true) | length > 0
+        fail_msg: >-
+          ocr_shared_root, ocr_input_root, ocr_output_root, and ocr_platform_root
+          must all be set before verify can check the shared filesystem.
+        quiet: true
+
+    - name: Stat the required shared roots
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ ocr_shared_root }}"
+        - "{{ ocr_input_root }}"
+        - "{{ ocr_output_root }}"
+        - "{{ ocr_platform_root }}"
+      loop_control:
+        label: "{{ item }}"
+      register: ocr_verify_shared_stat
+
+    - name: Assert every shared root exists and is a directory
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+        fail_msg: >-
+          A required shared root is missing or not a directory on
+          {{ inventory_hostname }}. This bundle never mounts the shared
+          filesystem; the operator must fix the external mount before verify
+          can pass.
+        quiet: true
+      loop: "{{ ocr_verify_shared_stat.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Probe that the shared root is actually writable from this host
+      ansible.builtin.tempfile:
+        path: "{{ ocr_shared_root }}"
+        state: file
+        prefix: ".ocr-verify-"
+      register: ocr_verify_write_probe
+
+    - name: Remove the write probe file
+      ansible.builtin.file:
+        path: "{{ ocr_verify_write_probe.path }}"
+        state: absent
+      when: ocr_verify_write_probe.path is defined
+
+    - name: Record that this worker's shared roots are usable
+      ansible.builtin.set_fact:
+        ocr_worker_verify_shared_root_ok: true
+
+- name: Confirm this worker's event spool has no quarantined files and record the count
+  when:
+    - not ansible_check_mode
+    - inventory_hostname in groups['ocr_workers']
+    - ocr_worker_spool_dir | default('', true) | length > 0
+  block:
+    - name: Find quarantined spool files
+      ansible.builtin.find:
+        paths: "{{ ocr_worker_spool_dir }}/quarantine"
+        file_type: any
+      register: ocr_verify_quarantine
+      failed_when: false
+
+    - name: Record this worker's quarantined spool file count
+      ansible.builtin.set_fact:
+        ocr_worker_verify_quarantine_count: "{{ (ocr_verify_quarantine.files | default([])) | length }}"
+
+    - name: Assert the spool has no quarantined files
+      ansible.builtin.assert:
+        that:
+          - (ocr_worker_verify_quarantine_count | int) == 0
+        fail_msg: >-
+          This host's event spool quarantine directory contains
+          {{ ocr_worker_verify_quarantine_count }} file(s). A quarantined
+          spool entry means an event or log could not be delivered to
+          Control; investigate before declaring this rollout healthy.
+        quiet: true
+
+- name: Control health, release identity, migrations, fleet registration, and report
+  when:
+    - not ansible_check_mode
+    - inventory_hostname == groups['ocr_control'][0]
+  block:
+    - name: Assert Control's release identity is set
+      ansible.builtin.assert:
+        that:
+          - ocr_control_url | default('', true) | length > 0
+          - (ocr_release_commit | default('', true)) is match('^[0-9a-f]{40}$')
+          - ocr_release_tag | default('', true) | length > 0
+          - (ocr_wheel_sha256 | default('', true)) is match('^[0-9a-f]{64}$')
+        fail_msg: >-
+          ocr_control_url, a full 40-hex ocr_release_commit, ocr_release_tag,
+          and a 64-hex ocr_wheel_sha256 are all required to verify.
+        quiet: true
+
+    - name: GET /healthz
+      ansible.builtin.uri:
+        url: "{{ ocr_control_url }}/healthz"
+        method: GET
+        status_code: 200
+        return_content: false
+      register: ocr_verify_healthz
+      delegate_to: localhost
+
+    - name: GET /readyz
+      ansible.builtin.uri:
+        url: "{{ ocr_control_url }}/readyz"
+        method: GET
+        status_code: 200
+        return_content: false
+      register: ocr_verify_readyz
+      delegate_to: localhost
+
+    - name: GET /source.json
+      ansible.builtin.uri:
+        url: "{{ ocr_control_url }}/source.json"
+        method: GET
+        status_code: 200
+        return_content: true
+        body_format: json
+      register: ocr_verify_source
+      delegate_to: localhost
+
+    - name: Assert /source.json reports the exact deployed release
+      ansible.builtin.assert:
+        that:
+          - ocr_verify_source.json.source_revision == ocr_release_commit
+          - ocr_verify_source.json.release_build == true
+          - ocr_verify_source.json.build_dirty == false
+        fail_msg: >-
+          /source.json does not report the expected source_revision and
+          release_build=true, build_dirty=false. This deployment is not
+          serving the release it claims to.
+        quiet: true
+
+    - name: Assert the Control secrets are present in the controller environment
+      ansible.builtin.assert:
+        that:
+          - ocr_verify_api_token_check | length > 0
+          - ocr_verify_database_url_check | length > 0
+        fail_msg: >-
+          ocr_api_token_secret_var / ocr_database_url_secret_var were empty or
+          unset on the Ansible controller when verify ran.
+        quiet: true
+      vars:
+        ocr_verify_api_token_check: "{{ lookup('env', ocr_api_token_secret_var) }}"
+        ocr_verify_database_url_check: "{{ lookup('env', ocr_database_url_secret_var) }}"
+      no_log: true
+
+    - name: Verify the Control schema migration is current
+      ansible.builtin.command:
+        argv:
+          - "{{ ocr_venv_dir }}/bin/ocr-platform-migrate"
+          - "verify"
+      environment:
+        OCR_PLATFORM_DATABASE_URL: "{{ ocr_verify_database_url_local }}"
+      vars:
+        ocr_verify_database_url_local: "{{ lookup('env', ocr_database_url_secret_var) }}"
+      register: ocr_verify_migrate
+      changed_when: false
+      no_log: true
+
+    - name: Assert the migration is verified
+      ansible.builtin.assert:
+        that:
+          - (((ocr_verify_migrate.stdout | default('', true) | trim) or '{}') | from_json).get('verified', false) == true
+        fail_msg: "ocr-platform-migrate verify did not report verified: true."
+        quiet: true
+
+    - name: GET the authenticated fleet server list
+      ansible.builtin.uri:
+        url: "{{ ocr_control_url }}/api/servers"
+        method: GET
+        status_code: 200
+        return_content: true
+        body_format: json
+        headers:
+          Authorization: "Bearer {{ ocr_verify_api_token_local }}"
+      vars:
+        ocr_verify_api_token_local: "{{ lookup('env', ocr_api_token_secret_var) }}"
+      register: ocr_verify_servers
+      no_log: true
+      delegate_to: localhost
+
+    - name: Compute expected and observed server IDs
+      # GET /api/servers returns a top-level list of ServerResponse objects
+      # (id, name, host, status, capacity_slots, capabilities,
+      # last_heartbeat_at, is_stale, active_jobs, running_shards). There is
+      # no server_id field and no {servers: [...]} wrapper.
+      ansible.builtin.set_fact:
+        ocr_verify_expected_server_ids: >-
+          {{ ocr_worker_effective_server_ids | sort }}
+        ocr_verify_observed_server_ids: >-
+          {{ ocr_verify_servers.json | default([])
+             | rejectattr('id', 'equalto', '__server_pool__')
+             | map(attribute='id') | list | sort }}
+        ocr_verify_ready_server_ids: >-
+          {{ ocr_verify_servers.json | default([])
+             | rejectattr('id', 'equalto', '__server_pool__')
+             | selectattr('status', 'defined')
+             | selectattr('status', 'in', ['idle', 'online', 'busy'])
+             | selectattr('is_stale', 'defined')
+             | selectattr('is_stale', 'equalto', false)
+             | map(attribute='id') | list | sort }}
+
+    - name: Assert every expected worker is registered, ready, unique, and no unexpected active servers exist
+      ansible.builtin.assert:
+        that:
+          - ocr_verify_observed_server_ids == (ocr_verify_observed_server_ids | unique)
+          - (ocr_verify_expected_server_ids | difference(ocr_verify_ready_server_ids)) | length == 0
+          - (ocr_verify_observed_server_ids | difference(ocr_verify_expected_server_ids)) | length == 0
+        fail_msg: >-
+          Not every expected worker is ready in /api/servers, a duplicate id
+          was observed, or /api/servers reports servers beyond the expected
+          fleet (expected {{ ocr_verify_expected_server_ids | length }},
+          observed {{ ocr_verify_observed_server_ids | length }}). Check
+          worker counts, not IDs, in the rendered report.
+        quiet: true
+
+    - name: Determine worker version consistency
+      # Every observed server whose id is in the expected fleet must report
+      # capabilities.git_ref == ocr_release_commit and
+      # capabilities.script_version == ocr_release_tag. Missing provenance
+      # (no capabilities, or missing git_ref/script_version) is a mismatch,
+      # not a fallback to inventory: this is a production verification gate.
+      ansible.builtin.set_fact:
+        ocr_verify_workers_version_consistent: >-
+          {{
+            (ocr_verify_servers.json | default([])
+             | selectattr('id', 'in', ocr_verify_expected_server_ids)
+             | selectattr('capabilities', 'defined')
+             | selectattr('capabilities.git_ref', 'defined')
+             | selectattr('capabilities.script_version', 'defined')
+             | selectattr('capabilities.git_ref', 'equalto', ocr_release_commit)
+             | selectattr('capabilities.script_version', 'equalto', ocr_release_tag)
+             | list | length) == (ocr_verify_expected_server_ids | length)
+          }}
+
+    - name: Build the release/control/migrations/workers report matching the renderer's input schema
+      ansible.builtin.set_fact:
+        ocr_verify_report:
+          release_tag: "{{ ocr_release_tag }}"
+          release_commit: "{{ ocr_release_commit }}"
+          wheel_sha256: "{{ ocr_wheel_sha256 }}"
+          control:
+            healthy: "{{ ocr_verify_healthz.status == 200 }}"
+            ready: "{{ ocr_verify_readyz.status == 200 }}"
+            source_revision_matches: "{{ ocr_verify_source.json.source_revision == ocr_release_commit }}"
+          migrations:
+            verified: "{{ (((ocr_verify_migrate.stdout | default('', true) | trim) or '{}') | from_json).get('verified', false) }}"
+          workers:
+            total: "{{ groups['ocr_workers'] | length }}"
+            online: "{{ ocr_verify_ready_server_ids | length }}"
+            unique_server_ids: "{{ ocr_verify_observed_server_ids | unique | length }}"
+            shared_root_ok: >-
+              {{ groups['ocr_workers']
+                 | map('extract', hostvars, 'ocr_worker_verify_shared_root_ok')
+                 | select('equalto', true) | list | length }}
+            spool_quarantine: >-
+              {{ groups['ocr_workers']
+                 | map('extract', hostvars, 'ocr_worker_verify_quarantine_count')
+                 | map('int') | sum }}
+            version_consistent: "{{ ocr_verify_workers_version_consistent }}"
+
+    - name: Ensure the report directory exists on the controller
+      ansible.builtin.file:
+        path: "{{ ocr_report_dir }}"
+        state: directory
+        mode: "0750"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Write the structured, allow-listed verify report
+      ansible.builtin.copy:
+        dest: "{{ ocr_report_dir }}/verify-{{ ocr_release_commit }}.json"
+        content: "{{ ocr_verify_report | to_nice_json }}\n"
+        mode: "0640"
+      delegate_to: localhost
+
+    - name: Check whether a report renderer is available
+      ansible.builtin.stat:
+        path: "{{ ocr_verify_report_renderer }}"
+      register: ocr_verify_renderer_stat
+      delegate_to: localhost
+
+    - name: Render the human-facing deployment report
+      ansible.builtin.command:
+        argv:
+          - "python3"
+          - "{{ ocr_verify_report_renderer }}"
+          - "--verify"
+          - "{{ ocr_report_dir }}/verify-{{ ocr_release_commit }}.json"
+          - "--output-dir"
+          - "{{ ocr_report_dir }}"
+      changed_when: false
+      delegate_to: localhost
+      when: ocr_verify_renderer_stat.stat.exists
+
+    - name: Note that no report renderer was found
+      ansible.builtin.debug:
+        msg: >-
+          {{ ocr_verify_report_renderer }} was not found on the controller;
+          skipping report rendering. The structured JSON at
+          {{ ocr_report_dir }}/verify-{{ ocr_release_commit }}.json was still written.
+      when: not ocr_verify_renderer_stat.stat.exists

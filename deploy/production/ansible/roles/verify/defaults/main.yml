@@ -1,0 +1,26 @@
+---
+ocr_report_dir: "reports"
+
+# Optional: a script (delegated to localhost) that turns the structured
+# verify JSON this role writes into an operator-facing report. Not part of
+# this role's write scope; if it is not present on the controller, the
+# render step is skipped with a clear message instead of failing verify.
+# playbook_dir is the directory of the top-level playbook being run
+# (playbooks/), so ../scripts is the bundle's scripts/ directory regardless
+# of the caller's current working directory.
+ocr_verify_report_renderer: "{{ playbook_dir }}/../scripts/render_deployment_report.py"
+
+ocr_api_token_secret_var: ""
+ocr_database_url_secret_var: ""
+
+ocr_shared_root: ""
+ocr_input_root: "{{ ocr_shared_root }}/input"
+ocr_output_root: "{{ ocr_shared_root }}/output"
+ocr_platform_root: "{{ ocr_shared_root }}/ocr-platform"
+
+# Per-host results the control-host report aggregates from every worker.
+# Defaulted here so hostvars extraction never fails for a worker whose
+# shared-root or spool-quarantine block was skipped (e.g. no spool dir
+# configured).
+ocr_worker_verify_shared_root_ok: false
+ocr_worker_verify_quarantine_count: 0

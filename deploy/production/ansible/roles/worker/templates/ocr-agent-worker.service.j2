@@ -1,0 +1,36 @@
+# Managed by Ansible. Local edits are overwritten on the next deploy.
+[Unit]
+Description=OcrParser Agent Worker ({{ ocr_worker_server_id }})
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User={{ ocr_service_user }}
+Group={{ ocr_service_group }}
+EnvironmentFile={{ ocr_worker_env_path }}
+ExecStart={{ ocr_venv_dir }}/bin/python -u -m ocr_platform.agent
+WorkingDirectory={{ ocr_source_dir }}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec={{ ocr_worker_termination_timeout | int + 10 }}
+
+# Hardening, compatible with writes the worker genuinely needs: its own
+# work/log/spool directories and the external shared filesystem roots.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+ReadWritePaths={{ ocr_worker_work_dir }} {{ ocr_worker_log_dir }} {{ ocr_worker_spool_dir }} {{ ocr_worker_shared_roots_space_separated }}
+
+[Install]
+WantedBy=multi-user.target

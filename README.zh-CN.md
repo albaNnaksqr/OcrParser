@@ -312,6 +312,10 @@ sudo python3 tools/install_production.py worker --dry-run
 
 先使用 `--dry-run`，审核生成的计划后再应用到主机。
 
+完整的 Ansible + systemd 生产部署参考(版本溯源、worker 滚动上线、
+verify/canary、回滚),参见
+[deploy/production/ansible/README.zh-CN.md](deploy/production/ansible/README.zh-CN.md)。
+
 ## Benchmark 你的 Endpoint
 
 生成本地 synthetic fixtures：

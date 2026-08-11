@@ -1,0 +1,46 @@
+---
+# Resolve on the controller before any host mutation. The helper is pure
+# Python and deterministic in explicit/offline mode; tag-only mode fetches the
+# release manifest over HTTPS. Its stdout is an allow-listed identity object.
+
+- name: Resolve and validate the requested release identity on the controller
+  ansible.builtin.command:
+    argv:
+      - "python3"
+      - "{{ ocr_release_identity_resolver }}"
+      - "--tag"
+      - "{{ ocr_release_tag }}"
+      - "--manifest-url"
+      - "{{ ocr_release_manifest_url }}"
+      - "--source-revision"
+      - "{{ ocr_release_commit }}"
+      - "--source-repository"
+      - "{{ ocr_source_repo_url }}"
+      - "--wheel-url"
+      - "{{ ocr_wheel_url }}"
+      - "--wheel-sha256"
+      - "{{ ocr_wheel_sha256 }}"
+  register: ocr_release_identity_result
+  changed_when: false
+  run_once: true
+  delegate_to: localhost
+  become: false
+
+- name: Resolve the effective release identity for this managed host
+  ansible.builtin.set_fact:
+    ocr_release_commit: "{{ (ocr_release_identity_result.stdout | from_json)['source_revision'] }}"
+    ocr_source_repo_url: "{{ (ocr_release_identity_result.stdout | from_json)['source_repository'] }}"
+    ocr_wheel_url: "{{ (ocr_release_identity_result.stdout | from_json)['wheel_url'] }}"
+    ocr_wheel_sha256: "{{ (ocr_release_identity_result.stdout | from_json)['wheel_sha256'] }}"
+  become: false
+
+- name: Assert the resolved identity is complete before any installation
+  ansible.builtin.assert:
+    that:
+      - (ocr_release_commit | default('', true)) is match('^[0-9a-f]{40}$')
+      - (ocr_source_repo_url | default('', true)) is match('^(https://[^ ]+|ssh://[^ ]+|git@[^ :]+:[^ ]+)$')
+      - (ocr_wheel_url | default('', true)) is match('^https://.*\.whl$')
+      - (ocr_wheel_sha256 | default('', true)) is match('^[0-9a-f]{64}$')
+    fail_msg: "The effective release identity is incomplete or invalid."
+    quiet: true
+  become: false
