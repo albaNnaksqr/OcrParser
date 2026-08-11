@@ -74,11 +74,13 @@ failure/replay results are not reported after that boundary.
 
 ## Control UI modules
 
-The Control UI remains dependency-free native HTML, CSS, and JavaScript. Its ES
-module boundary separates API transport, session-only auth, shared state, jobs,
-workers, model profiles, diagnostics, remote administration, and the main
-entrypoint. No Node runtime or frontend framework is required in production;
-the wheel ships every module as static package data.
+The Control UI remains dependency-free native HTML, CSS, and JavaScript. Hash
+navigation exposes Jobs, the four-step New Job workflow, Workers, and System
+without adding server routes. Its acyclic ES module boundary separates API
+transport, session-only auth, DOM references, cross-view state, job operations,
+workers, model profiles, guided diagnostics, remote administration, navigation,
+and the composition-only entrypoint. No Node runtime or frontend framework is
+required in production; the wheel ships every module as static package data.
 
 ## Build provenance
 

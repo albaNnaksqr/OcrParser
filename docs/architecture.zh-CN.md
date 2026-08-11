@@ -63,10 +63,12 @@ polling、scan、shard execution、manifest integrity、spool/replay 六条命�
 
 ## Control UI modules
 
-Control UI 继续使用无构建依赖的原生 HTML、CSS 和 JavaScript。ES module 边界
-拆分 API transport、session-only auth、共享 state、jobs、workers、model profiles、
-diagnostics、remote administration 和 main entrypoint。生产环境不需要 Node 或前端
-框架，wheel 会把全部模块作为静态 package data 一并安装。
+Control UI 继续使用无构建依赖的原生 HTML、CSS 和 JavaScript。Hash 导航提供 Jobs、
+四步 New Job、Workers 和 System 视图，不增加服务端路由。无循环的 ES module 边界
+拆分 API transport、session-only auth、DOM 引用、跨视图 state、job operations、
+workers、model profiles、引导式 diagnostics、remote administration、navigation 和
+只负责装配的 main entrypoint。生产环境不需要 Node 或前端框架，wheel 会把全部模块
+作为静态 package data 一并安装。
 
 ## Build provenance
 

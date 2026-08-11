@@ -146,8 +146,9 @@ jobs:
           } <= names
           for ui_asset in (
               "index.html", "styles.css", "main.js", "api.js", "auth.js",
-              "state.js", "jobs.js", "workers.js", "profiles.js",
-              "diagnostics.js", "remote-admin.js",
+              "state.js", "dom.js", "navigation.js", "ui-helpers.js",
+              "ui-events.js", "job-wizard.js", "jobs.js", "workers.js",
+              "profiles.js", "diagnostics.js", "remote-admin.js",
           ):
               assert files("ocr_platform.control").joinpath(f"ui/{ui_asset}").is_file()
           assert files("ocr_platform.control").joinpath(
@@ -402,6 +403,44 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - name: Run Control to Artifact walkthrough
         run: python tools/run_mock_e2e.py
+
+  ui-browser-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Build the candidate wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+      - name: Install the wheel and fixed browser runtime
+        run: |
+          python -m venv /tmp/ocrparser-ui-browser
+          WHEEL="$(find "$GITHUB_WORKSPACE/dist" -maxdepth 1 -name '*.whl' -print -quit)"
+          /tmp/ocrparser-ui-browser/bin/python -m pip install \
+            --constraint deploy/production/ansible/constraints/platform.txt \
+            "${WHEEL}[platform]" \
+            playwright==1.54.0
+          /tmp/ocrparser-ui-browser/bin/python -m playwright install --with-deps chromium
+      - name: Run the Control UI browser smoke from installed package data
+        run: |
+          cp tools/run_control_ui_browser_smoke.py /tmp/run_control_ui_browser_smoke.py
+          cd /tmp
+          /tmp/ocrparser-ui-browser/bin/python /tmp/run_control_ui_browser_smoke.py \
+            --artifact-dir /tmp/ui-browser-smoke-artifacts
+      - name: Upload UI browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-browser-smoke-failure
+          path: /tmp/ui-browser-smoke-artifacts
+          if-no-files-found: warn
+          retention-days: 7
 
   ansible-bundle:
     runs-on: ubuntu-latest

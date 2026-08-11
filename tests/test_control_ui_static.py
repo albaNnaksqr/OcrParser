@@ -33,11 +33,16 @@ def test_ui_module_resources_load_without_404(tmp_path):
         "api.js",
         "auth.js",
         "diagnostics.js",
+        "dom.js",
+        "job-wizard.js",
         "jobs.js",
         "main.js",
+        "navigation.js",
         "profiles.js",
         "remote-admin.js",
         "state.js",
+        "ui-events.js",
+        "ui-helpers.js",
         "workers.js",
         "styles.css",
     ]
@@ -67,6 +72,115 @@ def test_ui_keeps_jobs_workers_and_legal_entry_points_visible():
     assert 'href="/legal/agpl-3.0"' in html
 
 
+def test_ui_exposes_hash_routed_workbench_views():
+    html = ui_source()
+
+    assert 'href="#jobs" data-route-link="jobs"' in html
+    assert 'href="#workers" data-route-link="workers"' in html
+    assert 'href="#system" data-route-link="system"' in html
+    assert 'data-view="jobs/new"' in html
+    assert 'const DEFAULT_ROUTE = "jobs"' in html
+    assert 'window.addEventListener("hashchange"' in html
+    assert 'window.history.replaceState(null, "", `#${route}`)' in html
+
+
+def test_ui_job_wizard_is_four_step_memory_only_and_secret_safe():
+    html = ui_source()
+    wizard = (UI_ROOT / "job-wizard.js").read_text(encoding="utf-8")
+
+    for number, label in enumerate(("Input", "Engine", "Workers", "Review"), start=1):
+        assert f'data-wizard-indicator="{number}"' in html
+        assert label in html
+    assert 'id="wizardBackBtn"' in html
+    assert 'id="wizardNextBtn"' in html
+    assert 'id="createJobBtn" disabled' in html
+    assert 'id="apiKey" type="password"' in html
+    assert 'id="profileApiKey" type="password"' in html
+    assert "API key override" in wizard
+    assert "Provided for this request only" in wizard
+    assert "clearSecret" in wizard
+    assert "localStorage" not in wizard
+    assert "sessionStorage" not in wizard
+    assert 'href = "#system"' in wizard
+
+
+def test_ui_guided_doctor_is_read_only_and_actionable():
+    html = ui_source()
+    diagnostics = (UI_ROOT / "diagnostics.js").read_text(encoding="utf-8")
+
+    assert 'id="deploymentDoctorIssues"' in html
+    assert "database_not_postgres" in diagnostics
+    assert "database_migrations_missing" in diagnostics
+    assert "database_migration_not_current" in diagnostics
+    assert "api_auth_disabled" in diagnostics
+    assert "no_workers" in diagnostics
+    assert "no_ready_workers" in diagnostics
+    assert "shared_root_unavailable" in diagnostics
+    assert "worker_spool_backlog" in diagnostics
+    assert "ocr-platform-migrate status" in diagnostics
+    assert 'route: "workers"' in diagnostics
+    assert "fetch(" not in diagnostics
+    assert "sudo" not in diagnostics
+    assert "function deploymentDoctorIssueLabel" in diagnostics
+    assert "app.deploymentDoctorIssueLabel(issue)" in ui_source()
+
+
+def test_ui_module_graph_is_acyclic_and_main_is_only_composition():
+    import re
+
+    sources = {path.name: path.read_text(encoding="utf-8") for path in UI_ROOT.glob("*.js")}
+    graph: dict[str, set[str]] = {}
+    for name, source in sources.items():
+        graph[name] = {
+            target
+            for target in re.findall(r'from "\./([^\"]+\.js)"', source)
+            if target in sources
+        }
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(name: str) -> None:
+        assert name not in visiting, f"circular UI import through {name}"
+        if name in visited:
+            return
+        visiting.add(name)
+        for dependency in graph[name]:
+            visit(dependency)
+        visiting.remove(name)
+        visited.add(name)
+
+    for module in graph:
+        visit(module)
+
+    main = sources["main.js"]
+    state = sources["state.js"]
+    assert len(main.splitlines()) <= 350
+    assert "document.getElementById" not in state
+    assert "export const ui" not in state
+    assert "export const ui" in sources["dom.js"]
+    for module in ("jobs.js", "workers.js", "profiles.js", "diagnostics.js", "job-wizard.js"):
+        assert "Module(app)" in sources[module]
+
+
+def test_ui_browser_smoke_is_a_single_fixed_python312_ci_job():
+    root = UI_ROOT.parents[2]
+    workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    smoke = (root / "tools" / "run_control_ui_browser_smoke.py").read_text(encoding="utf-8")
+
+    assert "ui-browser-smoke:" in workflow
+    assert 'python-version: "3.12"' in workflow
+    assert "playwright==1.54.0" in workflow
+    assert "python -m build --wheel" in workflow
+    assert '"${WHEEL}[platform]"' in workflow
+    assert "if: failure()" in workflow
+    assert "sync_playwright" in smoke
+    assert 'page.goto(f"{base_url}/ui/#jobs"' in smoke
+    assert "page.go_back()" in smoke
+    assert 'page.locator("#preflightJobBtn").click()' in smoke
+    assert 'page.locator("#createJobBtn").click()' in smoke
+
+
 def test_ui_exposes_worker_readiness_and_preflight_diagnostics():
     html = ui_source()
 
@@ -83,6 +197,8 @@ def test_ui_exposes_worker_readiness_and_preflight_diagnostics():
     assert "control API auth is disabled" in html
     assert "archiveServer" in html
     assert "removeServerBtn" in html
+    assert 'id="workerFilter" type="search"' in html
+    assert "No workers match this filter" in html
 
 
 def test_ui_exposes_deployment_doctor_as_first_class_panel():
@@ -130,6 +246,7 @@ def test_ui_exposes_remote_worker_lifecycle_controls():
     assert 'id="remoteWorkerInstallDryRunBtn"' in html
     assert 'id="remoteWorkerInstallApplyBtn"' in html
     assert 'id="remoteWorkerServiceAction"' in html
+    assert 'for="remoteWorkerServiceAction"' in html
     assert 'const ROOT = "/api/remote-workers"' in html
     assert "targets: `${ROOT}/targets`" in html
     assert "preflight: `${ROOT}/preflight`" in html
@@ -241,7 +358,7 @@ def test_model_profiles_can_be_loaded_and_saved_from_control_api():
     html = ui_source()
 
     assert 'id="modelProfileEditor"' in html
-    assert 'id="profileApiKey" type="text"' in html
+    assert 'id="profileApiKey" type="password"' in html
     assert 'id="saveModelProfileBtn"' in html
     assert 'id="profileHasApiKey"' in html
     assert 'id="profileApiKeyEnvVar"' in html
