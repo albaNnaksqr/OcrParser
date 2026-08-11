@@ -161,6 +161,24 @@ def test_ui_module_graph_is_acyclic_and_main_is_only_composition():
         assert "Module(app)" in sources[module]
 
 
+def test_ui_browser_smoke_is_a_single_fixed_python312_ci_job():
+    root = UI_ROOT.parents[2]
+    workflow = (root / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    smoke = (root / "tools" / "run_control_ui_browser_smoke.py").read_text(encoding="utf-8")
+
+    assert "ui-browser-smoke:" in workflow
+    assert 'python-version: "3.12"' in workflow
+    assert "playwright==1.54.0" in workflow
+    assert "python -m build --wheel" in workflow
+    assert '"${WHEEL}[platform]"' in workflow
+    assert "if: failure()" in workflow
+    assert "sync_playwright" in smoke
+    assert 'page.goto(f"{base_url}/ui/#jobs"' in smoke
+    assert "page.go_back()" in smoke
+    assert 'page.locator("#preflightJobBtn").click()' in smoke
+    assert 'page.locator("#createJobBtn").click()' in smoke
+
+
 def test_ui_exposes_worker_readiness_and_preflight_diagnostics():
     html = ui_source()
 
