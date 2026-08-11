@@ -334,6 +334,10 @@ sudo python3 tools/install_production.py worker --dry-run
 Run with `--dry-run` first, then review the generated plan before applying it
 to a host.
 
+For a full Ansible + systemd production deployment reference (release
+provenance, rolling worker rollout, verify/canary, rollback), see
+[deploy/production/ansible/README.md](deploy/production/ansible/README.md).
+
 ## Benchmarking Your Endpoint
 
 Generate local synthetic fixtures:

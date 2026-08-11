@@ -1,0 +1,89 @@
+---
+# OcrParser production deployment bundle — optional advanced overrides.
+#
+# The compact inventory works without this file. Copy it to
+# `group_vars/all.yml` in your PRIVATE deployment repository only when an
+# installation needs to override the safe defaults below.
+#
+# Nothing in this file may hold a secret. The validator rejects any key that
+# looks like a token, key, password, credential, or database URL unless it ends
+# in `_secret_var`, `_env_var`, or `_secret_ref` and names an environment
+# variable.
+
+# ---- Preflight thresholds ------------------------------------------------
+# Minimum free space required on the install root before anything is written.
+ocr_min_free_mb: 4096
+# Minimum controller-side Python for the platform package.
+ocr_min_python_version: "3.10"
+
+# ---- Control service -----------------------------------------------------
+ocr_control_env_path: "/etc/ocr-platform/control.env"
+ocr_control_service_name: "ocr-platform-control"
+ocr_control_config_dir: "/etc/ocr-platform"
+# Production defaults. Overriding any of these weakens the security posture
+# documented in README.md; do it consciously and record it in your change log.
+ocr_control_require_postgres: 1
+ocr_control_auto_migrate: 0
+ocr_control_require_current_migrations: 1
+ocr_control_api_auth_required: 1
+ocr_control_enable_remote_admin: 0
+ocr_control_allow_saved_model_profile_keys: 0
+# Seconds to wait for /healthz, /readyz, and /source.json after a restart.
+ocr_control_health_timeout: 120
+
+# ---- Control retention and recovery limits -------------------------------
+# See docs/recovery-model.md for what each timeout means operationally.
+ocr_job_stale_after_seconds: 120
+ocr_server_stale_after_seconds: 120
+ocr_shard_lease_seconds: 300
+ocr_scan_unit_claim_batch_size: 100
+ocr_job_file_detail_limit: 10000
+ocr_job_event_detail_limit: 50000
+ocr_job_log_detail_limit: 10000
+ocr_job_failed_file_sample_limit: 100
+ocr_job_recent_error_sample_limit: 100
+
+# ---- Worker agent --------------------------------------------------------
+ocr_worker_env_path: "/etc/ocr-agent/worker.env"
+ocr_worker_service_name: "ocr-agent-worker"
+ocr_worker_config_dir: "/etc/ocr-agent"
+ocr_worker_runner: "nohup"
+ocr_worker_poll_interval: 2
+ocr_worker_heartbeat_interval: 5
+ocr_worker_control_retry_initial: 1
+ocr_worker_control_retry_max: 30
+ocr_worker_event_spool_max_mb: 1024
+ocr_worker_termination_timeout: 10
+ocr_worker_stop_poll_interval: 1
+ocr_worker_resource_guard_memory_percent: 90
+ocr_worker_resource_guard_min_available_memory_gb: 4
+ocr_worker_resource_guard_disk_percent: 95
+ocr_worker_resource_guard_min_free_disk_gb: 10
+# Seconds to wait for the worker heartbeat and /api/servers registration.
+ocr_worker_registration_timeout: 120
+
+# ---- Verify --------------------------------------------------------------
+# Where the structured, redacted verify/canary facts are written on the Ansible
+# controller. Both directories are gitignored.
+ocr_report_dir: "reports"
+
+# ---- Canary --------------------------------------------------------------
+# Subdirectory under ocr_shared_root reserved for canary traffic. It must not
+# overlap production input/output trees.
+ocr_canary_subdir: "canary"
+ocr_canary_document_count: 1
+ocr_canary_page_concurrency: 1
+ocr_canary_polls: 120
+ocr_canary_interval: 1
+
+# ---- Rollback ------------------------------------------------------------
+# Rollback is fail-closed: every one of these must be supplied explicitly on the
+# command line (`-e`) at rollback time. Leaving them empty here is deliberate.
+ocr_rollback_release_tag: ""
+ocr_rollback_release_commit: ""
+ocr_rollback_wheel_url: ""
+ocr_rollback_wheel_sha256: ""
+# The bundle never downgrades the control database. Set exactly one of these to
+# assert how schema compatibility is handled, or rollback refuses to run.
+ocr_rollback_migration_compatible: false
+ocr_rollback_restore_plan_reference: ""

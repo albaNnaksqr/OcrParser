@@ -1,0 +1,12 @@
+---
+# Read-only permission contract. This playbook never uses become and never
+# writes to a managed host. Run it before preflight to see the exact paths and
+# system actions the production deployment requires.
+
+- name: Explain and verify the production deployment privilege boundary
+  hosts: "{{ ocr_privilege_target_hosts | default('ocr_control:ocr_workers') }}"
+  become: false
+  gather_facts: false
+  roles:
+    - privilege_check
+  tags: [privilege_check]

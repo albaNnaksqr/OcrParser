@@ -1,0 +1,17 @@
+---
+# Role defaults are scoped to the host currently executing a role. Build the
+# fleet-wide effective ID list explicitly so compact inventories can safely
+# derive IDs from inventory aliases before another worker has run any role.
+
+- name: Start a fresh effective worker ID list
+  ansible.builtin.set_fact:
+    ocr_worker_effective_server_ids: []
+  become: false
+
+- name: Resolve each worker's explicit ID or stable inventory alias
+  ansible.builtin.set_fact:
+    ocr_worker_effective_server_ids: >-
+      {{ ocr_worker_effective_server_ids
+         + [hostvars[item]['ocr_worker_server_id'] | default(item, true)] }}
+  loop: "{{ groups['ocr_workers'] | default([]) }}"
+  become: false

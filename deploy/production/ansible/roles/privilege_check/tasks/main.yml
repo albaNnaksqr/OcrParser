@@ -1,0 +1,96 @@
+---
+# This role is deliberately read-only and always runs without become. It is
+# the permission boundary: operators see the exact host-level changes before
+# any later play creates a user, directory, environment file, or systemd unit.
+
+- name: Show the host-specific privilege contract before any mutation
+  ansible.builtin.debug:
+    msg:
+      host: "{{ inventory_hostname }}"
+      service_identity: "{{ ocr_service_user }}:{{ ocr_service_group }}"
+      privileged_writes: >-
+        {{
+          [ocr_install_root, ocr_source_dir, ocr_venv_dir, ocr_wheel_dir]
+          + (
+              [
+                ocr_control_config_dir,
+                ocr_control_env_path,
+                '/etc/systemd/system/' ~ ocr_control_service_name ~ '.service',
+              ]
+              if inventory_hostname in (groups['ocr_control'] | default([]))
+              else []
+            )
+          + (
+              [
+                ocr_worker_config_dir,
+                ocr_worker_env_path,
+                ocr_worker_work_dir,
+                ocr_worker_log_dir,
+                ocr_worker_spool_dir,
+                '/etc/systemd/system/' ~ ocr_worker_service_name ~ '.service',
+              ]
+              if inventory_hostname in (groups['ocr_workers'] | default([]))
+              else []
+            )
+          + (
+              [(ocr_shared_root ~ '/' ~ ocr_canary_subdir) | regex_replace('/+', '/')]
+              if (
+                inventory_hostname in (groups['ocr_control'] | default([]))
+                and ocr_canary_enabled | bool
+                and ocr_shared_root | length > 0
+              )
+              else []
+            )
+        }}
+      privileged_actions:
+        - "create the dedicated non-root service user and group"
+        - "set ownership and restrictive file modes"
+        - "reload, enable, start, or restart the declared systemd service"
+      database_action: >-
+        Control deployment separately runs migration plan, apply, and verify
+        with the externally supplied database account; this is not a sudo action.
+      explicitly_not_performed:
+        - "install operating-system packages"
+        - "create PostgreSQL instances, databases, or users"
+        - "mount or format storage"
+        - "start model services"
+        - "change firewall, DNS, TLS, or SSH configuration"
+        - "downgrade the database schema"
+  become: false
+
+- name: Read the remote connection user id without privilege escalation
+  ansible.builtin.command:
+    argv: ["id", "-u"]
+  register: ocr_privilege_connection_uid
+  changed_when: false
+  check_mode: false
+  become: false
+
+- name: Probe non-interactive sudo without prompting
+  ansible.builtin.command:
+    argv: ["sudo", "-n", "true"]
+  register: ocr_privilege_sudo_probe
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: (ocr_privilege_connection_uid.stdout | trim) != '0'
+  become: false
+
+- name: Refuse mutation unless root, non-interactive sudo, or explicit become credentials are available
+  ansible.builtin.assert:
+    that:
+      - >-
+        (ocr_privilege_connection_uid.stdout | trim) == '0'
+        or (ocr_privilege_sudo_probe.rc | default(1)) == 0
+        or (
+          ansible_become_password is defined
+          and ansible_become_password | string | length > 0
+        )
+    fail_msg: >-
+      This deployment requires controlled root escalation for the paths and
+      systemd actions listed above. The non-interactive `sudo -n true` probe
+      failed, and no explicit --ask-become-pass credential was supplied.
+      Nothing has been changed on this host. Configure an approved deployment
+      account, or rerun intentionally with --ask-become-pass.
+    quiet: true
+  become: false

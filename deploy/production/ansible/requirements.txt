@@ -1,0 +1,17 @@
+# Ansible controller requirements for the OcrParser production deployment
+# bundle. Install into a dedicated virtualenv on the operator's machine:
+#
+#   python3 -m venv .venv-deploy
+#   .venv-deploy/bin/python -m pip install -r requirements.txt
+#
+# This file is intentionally NOT wired into pyproject.toml extras: the deploy
+# tooling is an operator dependency, not a runtime dependency of the platform.
+#
+# ansible-core is pinned to a single minor series so a controller upgrade is an
+# explicit, reviewable change rather than something that happens on a rebuild.
+ansible-core>=2.19,<2.20
+
+# scripts/validate_inventory.py uses the standard library plus PyYAML, which
+# ansible-core already requires. Pinned here so the deploy virtualenv is
+# self-describing.
+PyYAML>=6.0

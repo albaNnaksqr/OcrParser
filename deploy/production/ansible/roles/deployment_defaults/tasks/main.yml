@@ -1,0 +1,12 @@
+---
+- name: Assert the derived deployment paths are absolute
+  ansible.builtin.assert:
+    that:
+      - ocr_install_root is match('^/')
+      - ocr_source_dir is match('^/')
+      - ocr_venv_dir is match('^/')
+      - ocr_wheel_dir is match('^/')
+    fail_msg: >-
+      ocr_install_root and its source, venv, and wheel paths must be absolute.
+    quiet: true
+  become: false

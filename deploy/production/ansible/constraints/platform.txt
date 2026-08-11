@@ -1,0 +1,55 @@
+# Production dependency constraints for ocrparser-platform[platform].
+#
+# This file pins the complete base Parser and Platform dependency graph shared
+# by supported Python 3.10, 3.11, and 3.12 Linux deployments. The deployment
+# bundle reads it from the already revision-verified source checkout before
+# installing the release wheel. Update it only as part of a tested release.
+
+aiofiles==25.1.0
+annotated-doc==0.0.5
+annotated-types==0.8.0
+anyio==4.14.2
+beautifulsoup4==4.15.0
+certifi==2026.7.22
+charset-normalizer==3.4.9
+click==8.4.2
+distro==1.9.0
+exceptiongroup==1.3.1
+fastapi==0.141.1
+greenlet==3.5.5
+h11==0.16.0
+httpcore==1.0.9
+httptools==0.8.0
+httpx==0.28.1
+idna==3.18
+imagehash==4.3.2
+jiter==0.16.0
+json-repair==0.51.0
+numpy==2.1.2
+openai==1.90.0
+opencv-python==4.12.0.88
+pillow==12.0.0
+prometheus-client==0.26.0
+psycopg==3.3.4
+psycopg-binary==3.3.4
+pydantic==2.13.4
+pydantic-core==2.46.4
+pymupdf==1.26.3
+python-dotenv==1.2.2
+pywavelets==1.8.0
+pyyaml==6.0.3
+pyzbar==0.1.9
+requests==2.32.4
+scipy==1.15.3
+sniffio==1.3.1
+soupsieve==2.9.2
+sqlalchemy==2.0.51
+starlette==1.6.0
+tqdm==4.67.1
+typing-extensions==4.16.0
+typing-inspection==0.4.3
+urllib3==2.7.0
+uvicorn==0.52.1
+uvloop==0.22.1
+watchfiles==1.2.0
+websockets==16.1.1

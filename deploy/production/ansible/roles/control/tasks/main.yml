@@ -1,0 +1,150 @@
+---
+# Render Control's environment and unit, prove the pending schema migration
+# is safe to apply, apply it, verify it landed, and only then (re)start the
+# service. No task in this role ever puts a secret in a fact, a log line, or
+# a command's argv: secrets are resolved with lookup('env', ref) directly
+# into a task-local, no_log `vars:` block on the one template/command task
+# that needs them, and passed to the child process through `environment:` or
+# the template context, never `--database-url` or similar, and never
+# `set_fact`.
+
+- name: Warn that check mode skips the live migration and restart
+  ansible.builtin.debug:
+    msg: >-
+      Running in --check mode: rendering control.env and the systemd unit is
+      simulated, and the migration plan/apply/verify steps and the service
+      (re)start are skipped entirely. This does not prove the database or the
+      running service are healthy.
+  when: ansible_check_mode
+
+- name: Assert Control's core deployment identity is set
+  ansible.builtin.assert:
+    that:
+      - ocr_control_url | default('', true) | length > 0
+      - ocr_database_url_secret_var | default('', true) | length > 0
+      - ocr_api_token_secret_var | default('', true) | length > 0
+    fail_msg: >-
+      ocr_control_url, ocr_database_url_secret_var, and ocr_api_token_secret_var
+      must all be set in inventory before Control can be deployed.
+    quiet: true
+
+- name: Create the Control config directory
+  ansible.builtin.file:
+    path: "{{ ocr_control_config_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Assert the Control secrets are present in the controller environment
+  ansible.builtin.assert:
+    that:
+      - ocr_resolved_database_url_check | length > 0
+      - ocr_resolved_api_token_check | length > 0
+    fail_msg: >-
+      The environment variables named by ocr_database_url_secret_var and
+      ocr_api_token_secret_var were empty or unset on the Ansible controller
+      when this play ran. Export them before running this playbook.
+    quiet: true
+  vars:
+    ocr_resolved_database_url_check: "{{ lookup('env', ocr_database_url_secret_var) }}"
+    ocr_resolved_api_token_check: "{{ lookup('env', ocr_api_token_secret_var) }}"
+  no_log: true
+
+- name: Render the Control environment file
+  ansible.builtin.template:
+    src: control.env.j2
+    dest: "{{ ocr_control_env_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    ocr_resolved_database_url: "{{ lookup('env', ocr_database_url_secret_var) }}"
+    ocr_resolved_api_token: "{{ lookup('env', ocr_api_token_secret_var) }}"
+    ocr_resolved_canary_model_api_key: >-
+      {{
+        (ocr_canary_enabled | default(false) | bool and ocr_canary_model_api_key_env_var | default('', true) | length > 0)
+        | ternary(lookup('env', ocr_canary_model_api_key_env_var | default('', true)), '')
+      }}
+  no_log: true
+  register: ocr_control_env_render
+
+- name: Plan the pending Control schema migration
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/ocr-platform-migrate"
+      - "plan"
+  environment:
+    OCR_PLATFORM_DATABASE_URL: "{{ ocr_resolved_database_url_local }}"
+  vars:
+    ocr_resolved_database_url_local: "{{ lookup('env', ocr_database_url_secret_var) }}"
+  register: ocr_migrate_plan
+  changed_when: false
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Apply the Control schema migration
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/ocr-platform-migrate"
+      - "apply"
+  environment:
+    OCR_PLATFORM_DATABASE_URL: "{{ ocr_resolved_database_url_local }}"
+  vars:
+    ocr_resolved_database_url_local: "{{ lookup('env', ocr_database_url_secret_var) }}"
+  register: ocr_migrate_apply
+  changed_when: true
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Verify the Control schema migration is current
+  ansible.builtin.command:
+    argv:
+      - "{{ ocr_venv_dir }}/bin/ocr-platform-migrate"
+      - "verify"
+  environment:
+    OCR_PLATFORM_DATABASE_URL: "{{ ocr_resolved_database_url_local }}"
+  vars:
+    ocr_resolved_database_url_local: "{{ lookup('env', ocr_database_url_secret_var) }}"
+  register: ocr_migrate_verify
+  changed_when: false
+  no_log: true
+  when: not ansible_check_mode
+
+- name: Assert the migration is applied and verified before Control starts
+  ansible.builtin.assert:
+    that:
+      - (((ocr_migrate_verify.stdout | default('', true) | trim) or '{}') | from_json).get('verified', false) == true
+    fail_msg: >-
+      ocr-platform-migrate verify did not report verified: true after apply.
+      Refusing to start Control against an unverified schema.
+    quiet: true
+  when: not ansible_check_mode
+
+- name: Render the Control systemd unit
+  ansible.builtin.template:
+    src: ocr-platform-control.service.j2
+    dest: "/etc/systemd/system/{{ ocr_control_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ocr_control_unit_render
+  notify: "reload control systemd"
+
+- name: Flush handlers so the unit is loaded before the next task
+  ansible.builtin.meta: flush_handlers
+
+- name: Start or restart Control
+  ansible.builtin.systemd:
+    name: "{{ ocr_control_service_name }}"
+    state: >-
+      {{ 'restarted' if (ocr_control_env_render.changed or ocr_control_unit_render.changed or ocr_migrate_apply.changed | default(false)) else 'started' }}
+    enabled: true
+  when: not ansible_check_mode
+
+- name: Wait for Control to accept TCP connections
+  ansible.builtin.wait_for:
+    host: "{{ ocr_control_listen_host if ocr_control_listen_host != '0.0.0.0' else '127.0.0.1' }}"
+    port: "{{ ocr_control_listen_port }}"
+    timeout: "{{ ocr_control_health_timeout }}"
+  when: not ansible_check_mode

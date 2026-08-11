@@ -34,7 +34,21 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install \
+            --constraint deploy/production/ansible/constraints/platform.txt \
+            -e ".[dev]"
+
+      - name: Verify the production dependency lock on Python ${{ matrix.python-version }}
+        run: |
+          python -m build --wheel --outdir /tmp/constraints-dist
+          python -m venv /tmp/constraints-venv
+          WHEEL="$(find /tmp/constraints-dist -maxdepth 1 -name '*.whl' -print -quit)"
+          /tmp/constraints-venv/bin/python -m pip install \
+            --constraint deploy/production/ansible/constraints/platform.txt \
+            "${WHEEL}[platform]"
+          /tmp/constraints-venv/bin/python \
+            deploy/production/ansible/scripts/verify_platform_constraints.py \
+            deploy/production/ansible/constraints/platform.txt
 
       - name: Compile packages
         run: python -m compileall ocr_parser dots_ocr ocr_platform
@@ -82,12 +96,37 @@ jobs:
           if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
             python tools/verify_release_build.py "$WHEEL" --tag "${GITHUB_REF_NAME}"
           fi
+      - name: Generate the deployment release manifest
+        run: |
+          WHEEL="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
+          VERSION="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
+          TAG="v${VERSION}"
+          WHEEL_URL="https://github.com/albaNnaksqr/OcrParser/releases/download/${TAG}/$(basename "$WHEEL")"
+          python deploy/production/ansible/scripts/generate_release_manifest.py \
+            --tag "$TAG" \
+            --source-revision "$GITHUB_SHA" \
+            --source-repository "https://github.com/albaNnaksqr/OcrParser.git" \
+            --wheel-url "$WHEEL_URL" \
+            --wheel "$WHEEL" \
+            --output dist/deployment-manifest.json
+          python -m json.tool dist/deployment-manifest.json >/dev/null
+      - name: Preserve wheel and deployment manifest for the release operator
+        if: github.ref_type == 'tag'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ github.ref_name }}
+          path: |
+            dist/*.whl
+            dist/deployment-manifest.json
+          if-no-files-found: error
       - name: Install wheel in an empty environment
         run: |
           python -m venv /tmp/ocrparser-wheel
           WHEEL="$(find dist -maxdepth 1 -name '*.whl' -print -quit)"
           EXPECTED_VERSION="$(python -c 'import pathlib, tomllib; print(tomllib.loads(pathlib.Path("pyproject.toml").read_text())["project"]["version"])')"
-          /tmp/ocrparser-wheel/bin/python -m pip install "${WHEEL}[platform]"
+          /tmp/ocrparser-wheel/bin/python -m pip install \
+            --constraint deploy/production/ansible/constraints/platform.txt \
+            "${WHEEL}[platform]"
           /tmp/ocrparser-wheel/bin/python tools/check_installed_console_scripts.py --bin-dir /tmp/ocrparser-wheel/bin
           # Avoid the build-created source-tree egg-info shadowing the wheel's
           # installed dist-info during metadata and license inventory checks.
@@ -154,7 +193,13 @@ jobs:
           if [[ "$PROFILE" != "base" ]]; then
             SPEC="${WHEEL}[${PROFILE}]"
           fi
-          "$VENV/bin/python" -m pip install "$SPEC"
+          if [[ "$PROFILE" == "platform" ]]; then
+            "$VENV/bin/python" -m pip install \
+              --constraint deploy/production/ansible/constraints/platform.txt \
+              "$SPEC"
+          else
+            "$VENV/bin/python" -m pip install "$SPEC"
+          fi
           "$VENV/bin/python" tools/check_install_profile.py \
             --profile "$PROFILE" \
             --bin-dir "$VENV/bin" \
@@ -357,3 +402,30 @@ jobs:
       - run: python -m pip install -e ".[dev]"
       - name: Run Control to Artifact walkthrough
         run: python tools/run_mock_e2e.py
+
+  ansible-bundle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: deploy/production/ansible/requirements.txt
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install -r deploy/production/ansible/requirements.txt pytest
+      - name: Run the deployment bundle's own tests
+        run: pytest deploy/production/ansible/tests
+      - name: Validate the example inventory and group_vars against the deployment contract
+        run: |
+          python3 deploy/production/ansible/scripts/validate_inventory.py \
+            deploy/production/ansible/inventory.example.yml \
+            --group-vars deploy/production/ansible/group_vars/all.example.yml \
+            --json
+      - name: Syntax-check every playbook against the example inventory
+        working-directory: deploy/production/ansible
+        run: |
+          for playbook in privilege-check preflight control workers verify canary rollback; do
+            ansible-playbook -i inventory.example.yml "playbooks/${playbook}.yml" --syntax-check
+          done

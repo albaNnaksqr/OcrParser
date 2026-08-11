@@ -1,0 +1,28 @@
+---
+# Deploy and (re)start the single Control host.
+#
+# Run preflight.yml first. This playbook re-runs `common` (idempotent: it is
+# a no-op if the release is already installed) and then applies the
+# `control` role, which renders the systemd unit and environment file,
+# verifies the external PostgreSQL and shared-filesystem prerequisites are
+# reachable, and restarts ocr-platform-control. It never provisions
+# PostgreSQL, mounts the shared filesystem, or starts the model service.
+#
+# There is exactly one Control host in this topology; serial/max_fail here
+# only guard against accidentally matching more than one.
+
+- name: Deploy Control
+  hosts: ocr_control
+  become: true
+  gather_facts: false
+  serial: 1
+  max_fail_percentage: 0
+  pre_tasks:
+    - name: Verify and explain privilege before Control changes the host
+      ansible.builtin.include_role:
+        name: privilege_check
+  roles:
+    - release_identity
+    - common
+    - control
+  tags: [control]

@@ -1,0 +1,37 @@
+---
+# Post-deploy verification.
+#
+# Run after control.yml and workers.yml (and again after rollback.yml). This
+# is a single play across ocr_control:ocr_workers; Ansible runs each task
+# across every matched host before moving to the next task, so the
+# worker-local shared-root and spool-quarantine probes are ordered ahead of
+# the control-host block in roles/verify/tasks/main.yml, and their per-host
+# results are already in hostvars by the time the control-host report is
+# assembled. The `verify` role checks Control's /healthz, /readyz, and
+# /source.json against the expected release identity, confirms every worker
+# in the inventory has registered and reports the expected release, and
+# asserts the external PostgreSQL connection and shared-filesystem paths
+# (ocr_shared_root, ocr_input_root, ocr_output_root, ocr_platform_root) are
+# reachable from every worker. It never provisions or repairs any of those
+# external dependencies — a failure here means the operator must fix the
+# external system, not that this bundle will attempt to.
+#
+# The role writes one structured, allow-listed JSON fact file per run under
+# ocr_report_dir (gitignored, controller-local), matching the input schema of
+# scripts/render_deployment_report.py exactly, then invokes that renderer
+# (--verify FILE --output-dir DIR) to produce the redacted operator-facing
+# report. No secret, token, database URL, hostname, filesystem path, or
+# worker/server ID ever reaches the verify report; only counts and booleans
+# do — only the *_secret_var / *_env_var names are ever recorded, never their
+# values.
+
+- name: Verify Control and worker health, write a redacted report
+  hosts: ocr_control:ocr_workers
+  become: true
+  gather_facts: false
+  roles:
+    - deployment_defaults
+    - release_identity
+    - worker_identity
+    - verify
+  tags: [verify]

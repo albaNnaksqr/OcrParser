@@ -1,0 +1,11 @@
+---
+# Shared path and service-identity defaults needed by read-only verification
+# and canary playbooks that intentionally do not execute the mutating common
+# installation role.
+
+ocr_service_user: "ocr-platform"
+ocr_service_group: "ocr-runtime"
+ocr_install_root: "/opt/ocr-platform"
+ocr_source_dir: "{{ ocr_install_root }}/source"
+ocr_venv_dir: "{{ ocr_install_root }}/venv"
+ocr_wheel_dir: "{{ ocr_install_root }}/wheels"

@@ -1,0 +1,152 @@
+---
+# Render this worker's environment and unit, then (re)start it. Never passes
+# the Control API token on argv or in a fact: it is resolved with
+# lookup('env', ref) directly into a no_log task var and written only into
+# the root-owned, mode-0600 environment file systemd reads.
+
+- name: Warn that check mode skips the live restart
+  ansible.builtin.debug:
+    msg: >-
+      Running in --check mode: rendering worker.env and the systemd unit is
+      simulated, and the service (re)start is skipped entirely. This does not
+      prove the worker registers with Control.
+  when: ansible_check_mode
+
+- name: Assert this worker's identity and shared roots are set
+  ansible.builtin.assert:
+    that:
+      - ocr_worker_server_id | default('', true) | length > 0
+      - ocr_worker_work_dir | default('', true) | length > 0
+      - ocr_worker_log_dir | default('', true) | length > 0
+      - ocr_worker_spool_dir | default('', true) | length > 0
+      - ocr_shared_root | default('', true) | length > 0
+      - ocr_input_root | default('', true) | length > 0
+      - ocr_output_root | default('', true) | length > 0
+      - ocr_platform_root | default('', true) | length > 0
+      - ocr_api_token_secret_var | default('', true) | length > 0
+      - (groups['ocr_control'] | default([])) | length == 1
+      - (ocr_worker_server_id | default('', true)) is match('^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$')
+    fail_msg: >-
+      ocr_worker_server_id, ocr_worker_work_dir, ocr_worker_log_dir,
+      ocr_worker_spool_dir, ocr_shared_root, ocr_input_root, ocr_output_root,
+      ocr_platform_root, and ocr_api_token_secret_var must all be set, and
+      the inventory must define exactly one ocr_control host.
+    quiet: true
+
+- name: Assert this worker's server_id is unique across the fleet
+  ansible.builtin.assert:
+    that:
+      - >-
+        ocr_worker_effective_server_ids
+        | select('equalto', ocr_worker_server_id)
+        | list | length == 1
+    fail_msg: >-
+      ocr_worker_server_id={{ ocr_worker_server_id }} is used by more than one
+      host in the ocr_workers group. Every worker must have a unique server_id.
+    quiet: true
+
+- name: Resolve the Control URL from the Control host's inventory vars
+  ansible.builtin.set_fact:
+    ocr_worker_control_url: "{{ hostvars[groups['ocr_control'][0]]['ocr_control_url'] }}"
+
+- name: Assert the Control URL was resolved
+  ansible.builtin.assert:
+    that:
+      - ocr_worker_control_url | default('', true) | length > 0
+    fail_msg: >-
+      ocr_control_url is not set on the ocr_control host in inventory; workers
+      cannot be configured without it.
+    quiet: true
+
+- name: Compute this worker's shared-root list
+  # All four roots are asserted required above, so no filtering is needed
+  # here: just dedupe and join.
+  ansible.builtin.set_fact:
+    ocr_worker_shared_roots: >-
+      {{ [ocr_shared_root, ocr_input_root, ocr_output_root, ocr_platform_root] | unique | join(':') }}
+    ocr_worker_shared_roots_space_separated: >-
+      {{ [ocr_shared_root, ocr_input_root, ocr_output_root, ocr_platform_root] | unique | join(' ') }}
+
+- name: Create the worker config, work, log, and spool directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ ocr_service_user }}"
+    group: "{{ ocr_service_group }}"
+    mode: "0750"
+  loop:
+    - "{{ ocr_worker_config_dir }}"
+    - "{{ ocr_worker_work_dir }}"
+    - "{{ ocr_worker_log_dir }}"
+    - "{{ ocr_worker_spool_dir }}"
+
+- name: Assert the Control API token is non-empty
+  ansible.builtin.assert:
+    that:
+      - ocr_worker_api_token_check | length > 0
+    fail_msg: >-
+      The environment variable named by ocr_api_token_secret_var was empty or
+      unset on the Ansible controller when this play ran.
+    quiet: true
+  vars:
+    ocr_worker_api_token_check: "{{ lookup('env', ocr_api_token_secret_var) }}"
+  no_log: true
+
+- name: Render the worker environment file
+  ansible.builtin.template:
+    src: worker.env.j2
+    dest: "{{ ocr_worker_env_path }}"
+    owner: root
+    group: root
+    mode: "0600"
+  vars:
+    ocr_resolved_api_token: "{{ lookup('env', ocr_api_token_secret_var) }}"
+  no_log: true
+  register: ocr_worker_env_render
+
+- name: Render the worker systemd unit
+  ansible.builtin.template:
+    src: ocr-agent-worker.service.j2
+    dest: "/etc/systemd/system/{{ ocr_worker_service_name }}.service"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ocr_worker_unit_render
+  notify: "reload worker systemd"
+
+- name: Flush handlers so the unit is loaded before the next task
+  ansible.builtin.meta: flush_handlers
+
+- name: Start or restart the worker
+  ansible.builtin.systemd:
+    name: "{{ ocr_worker_service_name }}"
+    state: >-
+      {{ 'restarted' if (ocr_worker_env_render.changed or ocr_worker_unit_render.changed) else 'started' }}
+    enabled: true
+  when: not ansible_check_mode
+
+- name: Wait for the worker service to report active
+  ansible.builtin.command:
+    argv:
+      - "systemctl"
+      - "is-active"
+      - "{{ ocr_worker_service_name }}"
+  register: ocr_worker_is_active
+  changed_when: false
+  failed_when: false
+  retries: "{{ (ocr_worker_registration_timeout | int / 5) | round(0, 'ceil') | int }}"
+  delay: 5
+  until: ocr_worker_is_active.stdout | trim == 'active'
+  when: not ansible_check_mode
+
+- name: Assert the worker service came up
+  ansible.builtin.assert:
+    that:
+      - ocr_worker_is_active.stdout | trim == 'active'
+    fail_msg: >-
+      {{ ocr_worker_service_name }} did not reach the active state within
+      {{ ocr_worker_registration_timeout }}s. Check
+      `journalctl -u {{ ocr_worker_service_name }}` on this host. Full
+      registration with Control is confirmed separately by the verify role.
+    quiet: true
+  when: not ansible_check_mode

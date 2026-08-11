@@ -1,0 +1,34 @@
+# Real deployment state never belongs in this public bundle.
+# Only the *.example.* files are tracked.
+
+# Real inventories and host/group vars.
+inventory.yml
+inventory.yaml
+inventory*.yml
+inventory*.yaml
+!inventory.example.yml
+group_vars/*
+!group_vars/*.example.yml
+host_vars/
+hosts
+hosts.yml
+
+# Ansible Vault material and any decrypted copy of it.
+vault/
+vault.yml
+vault.yaml
+*.vault
+*.vault.yml
+vault-password*
+.vault-pass*
+
+# Generated deployment reports.
+reports/
+report.json
+report.md
+
+# Ansible run artifacts.
+*.retry
+.ansible/
+ansible.log
+fact_cache/

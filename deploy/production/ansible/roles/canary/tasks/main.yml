@@ -1,0 +1,225 @@
+---
+# Canary: push ocr_canary_document_count synthetic documents through the
+# deployed release via tools/run_distributed_walkthrough.py and confirm they
+# succeed. Runs on the Control host only. The model service is external and
+# already running; this role only confirms it is reachable through Control,
+# using --api-token-env-var / --api-key-env-var so neither the Control bearer
+# token nor the model API key ever appears in argv, a fact, or the report.
+# The Control API token is resolved with lookup('env', ref) directly into a
+# task-local, no_log `vars:` block on the one task that needs it and never
+# reaches set_fact/hostvars. Canary never resolves the model API key itself
+# — Control does, once, when its own environment file is rendered.
+
+- name: Warn that check mode skips the live canary run
+  ansible.builtin.debug:
+    msg: >-
+      Running in --check mode: the canary submission, poll, and cleanup below
+      are skipped entirely. This proves nothing about the model service or
+      the deployed release's ability to actually process a document.
+  when: ansible_check_mode
+
+- name: Assert canary configuration is complete
+  ansible.builtin.assert:
+    that:
+      - ocr_canary_enabled | bool
+      - ocr_control_url | default('', true) | length > 0
+      - ocr_shared_root | default('', true) | length > 0
+      - ocr_canary_subdir | default('', true) | length > 0
+      - (ocr_canary_model_endpoint | default('', true)) is match('^https?://')
+      - ocr_canary_model_name | default('', true) | length > 0
+      - ocr_canary_model_api_key_env_var | default('', true) | length > 0
+      - ocr_api_token_secret_var | default('', true) | length > 0
+      - (groups['ocr_workers'] | default([])) | length > 0
+    fail_msg: >-
+      Canary requires ocr_canary_enabled, ocr_control_url, ocr_shared_root,
+      ocr_canary_subdir, an http(s) ocr_canary_model_endpoint,
+      ocr_canary_model_name, ocr_canary_model_api_key_env_var,
+      ocr_api_token_secret_var, and at least one worker in inventory.
+    quiet: true
+
+- name: Compute the isolated canary root and assert it never overlaps production paths
+  ansible.builtin.set_fact:
+    ocr_canary_root: "{{ (ocr_shared_root ~ '/' ~ ocr_canary_subdir) | regex_replace('/+', '/') }}"
+
+- name: Assert the canary root does not overlap the production input/output roots
+  ansible.builtin.assert:
+    that:
+      - not (ocr_input_root | default('') | length > 0 and (ocr_canary_root == ocr_input_root or ocr_canary_root.startswith(ocr_input_root ~ '/') or ocr_input_root.startswith(ocr_canary_root ~ '/')))
+      - not (ocr_output_root | default('') | length > 0 and (ocr_canary_root == ocr_output_root or ocr_canary_root.startswith(ocr_output_root ~ '/') or ocr_output_root.startswith(ocr_canary_root ~ '/')))
+    fail_msg: >-
+      Computed canary root {{ ocr_canary_root }} overlaps ocr_input_root or
+      ocr_output_root. Change ocr_canary_subdir so canary traffic can never
+      collide with production input/output.
+    quiet: true
+
+- name: Create the isolated canary subtree
+  ansible.builtin.file:
+    path: "{{ ocr_canary_root }}"
+    state: directory
+    owner: "{{ ocr_service_user }}"
+    group: "{{ ocr_service_group }}"
+    mode: "0750"
+    recurse: true
+
+- name: Parse the model endpoint host and port, never the endpoint's own credentials
+  ansible.builtin.set_fact:
+    ocr_canary_model_host: "{{ ocr_canary_model_endpoint | urlsplit('hostname') }}"
+    ocr_canary_model_port: "{{ ocr_canary_model_endpoint | urlsplit('port') | default((ocr_canary_model_endpoint | urlsplit('scheme') == 'https') | ternary(443, 80), true) }}"
+
+- name: Assert the Control API token is present in the controller environment
+  ansible.builtin.assert:
+    that:
+      - ocr_canary_api_token_check | length > 0
+    fail_msg: "ocr_api_token_secret_var was empty or unset on the Ansible controller when canary ran."
+    quiet: true
+  vars:
+    ocr_canary_api_token_check: "{{ lookup('env', ocr_api_token_secret_var) }}"
+  no_log: true
+
+- name: Compute the --allowed-worker-id argv fragment for every worker in inventory
+  # Worker server_ids are plain identifiers (asserted unique, non-empty
+  # strings elsewhere); joining/splitting on a single space is safe here.
+  ansible.builtin.set_fact:
+    ocr_canary_allowed_worker_args: >-
+      {{ (ocr_worker_effective_server_ids
+          | map('regex_replace', '^(.*)$', '--allowed-worker-id \1') | join(' ')).split(' ') }}
+
+- name: Run the synthetic-document walkthrough against the deployed release
+  ansible.builtin.command:
+    argv: >-
+      {{
+        [
+          ocr_venv_dir ~ '/bin/python',
+          ocr_source_dir ~ '/tools/run_distributed_walkthrough.py',
+          '--control-url', ocr_control_url,
+          '--api-token-env-var', ocr_api_token_secret_var,
+          '--shared-root', ocr_canary_root,
+          '--worker-id', ocr_worker_effective_server_ids[0],
+        ]
+        + ocr_canary_allowed_worker_args
+        + [
+          '--document-count', ocr_canary_document_count | string,
+          '--engine', ocr_canary_engine,
+          '--ocr-host', ocr_canary_model_host,
+          '--ocr-port', ocr_canary_model_port | string,
+          '--model-name', ocr_canary_model_name,
+          '--api-key-env-var', ocr_canary_model_api_key_env_var,
+          '--polls', ocr_canary_polls | string,
+          '--interval', ocr_canary_interval | string,
+        ]
+      }}
+  environment: "{{ {ocr_api_token_secret_var: ocr_canary_api_token_local} }}"
+  vars:
+    ocr_canary_api_token_local: "{{ lookup('env', ocr_api_token_secret_var) }}"
+  register: ocr_canary_run
+  changed_when: true
+  no_log: true
+  become: true
+  become_user: "{{ ocr_service_user }}"
+
+- name: Assert the canary run succeeded
+  ansible.builtin.assert:
+    that:
+      - ocr_canary_run.rc == 0
+      - "'FINAL_SUMMARY' in ocr_canary_run.stdout"
+      - >-
+        (ocr_canary_run.stdout | regex_findall('FINAL_SUMMARY (.*)')
+         | last | default('{}') | from_json).get('status', '') == 'succeeded'
+    fail_msg: >-
+      The canary walkthrough did not report a succeeded final status
+      (rc={{ ocr_canary_run.rc }}). Check the Control and worker logs before
+      trusting this rollout.
+    quiet: true
+
+- name: Assert canary output artifacts were produced
+  ansible.builtin.find:
+    paths: "{{ ocr_canary_root }}/output"
+    file_type: file
+    recurse: true
+  register: ocr_canary_artifacts
+
+- name: Assert at least one output artifact exists per submitted document
+  ansible.builtin.assert:
+    that:
+      - (ocr_canary_artifacts.files | default([])) | length >= (ocr_canary_document_count | int)
+    fail_msg: >-
+      Expected at least {{ ocr_canary_document_count }} canary output
+      artifact(s) under {{ ocr_canary_root }}/output, found
+      {{ (ocr_canary_artifacts.files | default([])) | length }}.
+    quiet: true
+
+- name: Build the allow-listed canary report
+  ansible.builtin.set_fact:
+    ocr_canary_report:
+      enabled: true
+      status: "succeeded"
+      artifacts_present: >-
+        {{ (ocr_canary_artifacts.files | default([])) | length >= (ocr_canary_document_count | int) }}
+
+- name: Ensure the report directory exists on the controller
+  ansible.builtin.file:
+    path: "{{ ocr_report_dir }}"
+    state: directory
+    mode: "0750"
+  delegate_to: localhost
+  become: false
+
+- name: Write the structured, allow-listed canary report
+  ansible.builtin.copy:
+    dest: "{{ ocr_report_dir }}/canary-{{ ocr_release_commit }}.json"
+    content: "{{ ocr_canary_report | to_nice_json }}\n"
+    mode: "0640"
+  delegate_to: localhost
+  become: false
+
+- name: Check the verify report required to render the combined result
+  ansible.builtin.stat:
+    path: "{{ ocr_canary_verify_report }}"
+  register: ocr_canary_verify_report_stat
+  delegate_to: localhost
+  become: false
+
+- name: Assert verify ran for this exact release before canary
+  ansible.builtin.assert:
+    that:
+      - ocr_canary_verify_report_stat.stat.exists
+    fail_msg: >-
+      {{ ocr_canary_verify_report }} is missing on the controller. Run
+      playbooks/verify.yml for this exact release, then rerun canary so the
+      combined deployment report cannot mix release identities.
+    quiet: true
+  delegate_to: localhost
+  become: false
+
+- name: Render the combined verify and canary deployment report
+  ansible.builtin.command:
+    argv:
+      - "python3"
+      - "{{ ocr_canary_report_renderer }}"
+      - "--verify"
+      - "{{ ocr_canary_verify_report }}"
+      - "--canary"
+      - "{{ ocr_report_dir }}/canary-{{ ocr_release_commit }}.json"
+      - "--output-dir"
+      - "{{ ocr_report_dir }}"
+  changed_when: false
+  delegate_to: localhost
+  become: false
+
+- name: Clean up canary job files
+  ansible.builtin.file:
+    path: "{{ ocr_canary_root }}/{{ item }}"
+    state: absent
+  loop:
+    - "input"
+    - "output"
+    - "manifests"
+    - "source-manifest.jsonl"
+
+- name: Recreate the empty canary subtree for the next run
+  ansible.builtin.file:
+    path: "{{ ocr_canary_root }}"
+    state: directory
+    owner: "{{ ocr_service_user }}"
+    group: "{{ ocr_service_group }}"
+    mode: "0750"

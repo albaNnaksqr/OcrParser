@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/albaNnaksqr/OcrParser/deploy/production/ansible/schema/inventory.schema.json",
+  "title": "OcrParser production inventory contract",
+  "description": "Machine-readable form of the inventory contract enforced by scripts/validate_inventory.py. The validator is the authority; this schema exists so external tooling can consume the same contract. Literal secrets are forbidden everywhere: only *_secret_var / *_env_var / *_secret_ref references naming an environment variable are accepted.",
+  "type": "object",
+  "required": ["all"],
+  "additionalProperties": false,
+  "properties": {
+    "all": {
+      "type": "object",
+      "required": ["vars", "children"],
+      "properties": {
+        "vars": { "$ref": "#/$defs/allVars" },
+        "children": {
+          "type": "object",
+          "required": ["ocr_control", "ocr_workers"],
+          "properties": {
+            "ocr_control": { "$ref": "#/$defs/controlGroup" },
+            "ocr_workers": { "$ref": "#/$defs/workerGroup" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "absolutePath": {
+      "type": "string",
+      "pattern": "^/(?!.*(^|/)\\.\\.(/|$)).*$",
+      "description": "Absolute POSIX path with no '..' segments."
+    },
+    "envVarReference": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "description": "Name of an environment variable holding the secret. The value itself never appears in the inventory."
+    },
+    "allVars": {
+      "type": "object",
+      "required": [
+        "ocr_release_tag",
+        "ocr_shared_root",
+        "ocr_postgres_host",
+        "ocr_database_url_secret_var",
+        "ocr_api_token_secret_var"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              { "required": ["ocr_release_commit"] },
+              { "required": ["ocr_wheel_url"] },
+              { "required": ["ocr_wheel_sha256"] },
+              { "required": ["ocr_source_repo_url"] }
+            ]
+          },
+          "then": {
+            "required": ["ocr_release_commit", "ocr_source_repo_url", "ocr_wheel_url", "ocr_wheel_sha256"],
+            "not": { "required": ["ocr_release_manifest_url"] }
+          }
+        },
+        {
+          "if": {
+            "required": ["ocr_canary_enabled"],
+            "properties": { "ocr_canary_enabled": { "const": true } }
+          },
+          "then": {
+            "required": [
+              "ocr_canary_engine",
+              "ocr_canary_model_endpoint",
+              "ocr_canary_model_name",
+              "ocr_canary_model_api_key_env_var"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "ocr_release_tag": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+([.-][0-9A-Za-z.]+)?$"
+        },
+        "ocr_release_commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$",
+          "description": "Full 40-character lowercase hex commit id. Short refs and branch names are rejected."
+        },
+        "ocr_release_manifest_url": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+\\.json$",
+          "description": "Optional internal mirror for the tag's deployment-manifest.json."
+        },
+        "ocr_source_repo_url": {
+          "type": "string",
+          "pattern": "^(https://[^\\s/]+/[^\\s]+|ssh://[^\\s/]+/[^\\s]+|git@[^\\s:]+:[^\\s]+)$"
+        },
+        "ocr_wheel_url": {
+          "type": "string",
+          "pattern": "^https://[^\\s]+\\.whl$"
+        },
+        "ocr_wheel_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "ocr_service_user": { "type": "string", "minLength": 1, "default": "ocr-platform" },
+        "ocr_service_group": { "type": "string", "minLength": 1, "default": "ocr-runtime" },
+        "ocr_python_interpreter": { "allOf": [{ "$ref": "#/$defs/absolutePath" }], "default": "/usr/bin/python3" },
+        "ocr_install_root": { "allOf": [{ "$ref": "#/$defs/absolutePath" }], "default": "/opt/ocr-platform" },
+        "ocr_source_dir": { "allOf": [{ "$ref": "#/$defs/absolutePath" }], "default": "/opt/ocr-platform/source" },
+        "ocr_venv_dir": { "allOf": [{ "$ref": "#/$defs/absolutePath" }], "default": "/opt/ocr-platform/venv" },
+        "ocr_shared_root": { "$ref": "#/$defs/absolutePath" },
+        "ocr_input_root": {
+          "allOf": [{ "$ref": "#/$defs/absolutePath" }],
+          "description": "Must resolve inside ocr_shared_root."
+        },
+        "ocr_output_root": {
+          "allOf": [{ "$ref": "#/$defs/absolutePath" }],
+          "description": "Must resolve inside ocr_shared_root."
+        },
+        "ocr_platform_root": {
+          "allOf": [{ "$ref": "#/$defs/absolutePath" }],
+          "description": "Platform-owned manifest/shard subtree. Must resolve inside ocr_shared_root."
+        },
+        "ocr_postgres_host": { "type": "string", "minLength": 1 },
+        "ocr_postgres_port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 5432 },
+        "ocr_database_url_secret_var": { "$ref": "#/$defs/envVarReference" },
+        "ocr_api_token_secret_var": { "$ref": "#/$defs/envVarReference" },
+        "ocr_rollout_serial": { "type": "integer", "minimum": 1, "default": 1 },
+        "ocr_rollout_max_fail_percentage": { "type": "integer", "minimum": 0, "maximum": 100, "default": 0 },
+        "ocr_canary_enabled": { "type": "boolean", "default": false },
+        "ocr_canary_engine": { "type": "string", "minLength": 1 },
+        "ocr_canary_model_endpoint": { "type": "string", "minLength": 1 },
+        "ocr_canary_model_name": { "type": "string", "minLength": 1 },
+        "ocr_canary_model_api_key_env_var": { "$ref": "#/$defs/envVarReference" }
+      }
+    },
+    "controlGroup": {
+      "type": "object",
+      "required": ["hosts"],
+      "properties": {
+        "hosts": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 1,
+          "description": "Exactly one Control host.",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["ocr_control_url"],
+            "properties": {
+              "ocr_control_listen_host": { "type": "string", "minLength": 1, "default": "0.0.0.0" },
+              "ocr_control_listen_port": { "type": "integer", "minimum": 1, "maximum": 65535, "default": 8080 },
+              "ocr_control_url": {
+                "type": "string",
+                "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$",
+                "description": "URL every worker and operator can reach."
+              }
+            }
+          }
+        }
+      }
+    },
+    "workerGroup": {
+      "type": "object",
+      "required": ["hosts"],
+      "properties": {
+        "hosts": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "ocr_worker_server_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+                "description": "Defaults to the stable inventory host alias; explicit duplicates are rejected."
+              },
+              "ocr_worker_work_dir": { "$ref": "#/$defs/absolutePath" },
+              "ocr_worker_log_dir": { "$ref": "#/$defs/absolutePath" },
+              "ocr_worker_spool_dir": { "$ref": "#/$defs/absolutePath" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

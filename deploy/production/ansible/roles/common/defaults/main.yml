@@ -1,0 +1,26 @@
+---
+# Baseline host preparation and the exact release install.
+# Inventory values always win: role defaults are the lowest precedence source.
+
+ocr_min_free_mb: 4096
+ocr_min_python_version: "3.10"
+
+ocr_service_user: "ocr-platform"
+ocr_service_group: "ocr-runtime"
+ocr_python_interpreter: "/usr/bin/python3"
+
+ocr_install_root: "/opt/ocr-platform"
+ocr_source_dir: "{{ ocr_install_root }}/source"
+ocr_venv_dir: "{{ ocr_install_root }}/venv"
+ocr_wheel_dir: "{{ ocr_install_root }}/wheels"
+ocr_wheel_path: "{{ ocr_wheel_dir }}/{{ ocr_wheel_url | basename }}"
+ocr_platform_constraints_path: >-
+  {{ ocr_source_dir }}/deploy/production/ansible/constraints/platform.txt
+
+# Release identity has no default on purpose. An unset value must fail the
+# assertion below rather than silently deploy something else.
+ocr_release_tag: ""
+ocr_release_commit: ""
+ocr_source_repo_url: ""
+ocr_wheel_url: ""
+ocr_wheel_sha256: ""

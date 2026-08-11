@@ -1,0 +1,6 @@
+---
+# Current-host defaults complement the fleet-wide effective ID list built by
+# this role. They keep verify's spool audit active for compact inventories.
+
+ocr_worker_server_id: "{{ inventory_hostname }}"
+ocr_worker_spool_dir: "/var/lib/ocr-agent/{{ ocr_worker_server_id }}/spool"

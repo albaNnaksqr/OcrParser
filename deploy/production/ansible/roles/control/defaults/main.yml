@@ -1,0 +1,69 @@
+---
+# Control service defaults. Inventory (host and group vars) always wins.
+#
+# The core keys below are rendered verbatim into control.env using the exact
+# environment-variable names ocr_platform.control.settings.ControlSettings
+# reads. Do not rename them without checking settings.py first.
+
+ocr_control_env_path: "/etc/ocr-platform/control.env"
+ocr_control_service_name: "ocr-platform-control"
+ocr_control_config_dir: "/etc/ocr-platform"
+
+# Production security posture. See group_vars/all.example.yml for the
+# operator-facing warning about overriding these.
+ocr_control_require_postgres: 1
+ocr_control_auto_migrate: 0
+ocr_control_require_current_migrations: 1
+ocr_control_api_auth_required: 1
+ocr_control_enable_remote_admin: 0
+ocr_control_allow_saved_model_profile_keys: 0
+
+# Seconds to wait for the service to come up before the deploy play gives up.
+ocr_control_health_timeout: 120
+
+# Listen configuration. ocr_control_url has no default: it identifies this
+# specific deployment and must come from inventory.
+ocr_control_listen_host: "0.0.0.0"
+ocr_control_listen_port: 8080
+ocr_control_url: ""
+
+# External PostgreSQL. Never provisioned by this bundle — only referenced.
+ocr_postgres_host: ""
+ocr_postgres_port: 5432
+# Name of the environment variable on the Ansible controller holding the full
+# SQLAlchemy database URL. The value itself never appears in inventory.
+ocr_database_url_secret_var: ""
+
+# Name of the environment variable on the Ansible controller holding the
+# Control API bearer token.
+ocr_api_token_secret_var: ""
+
+# External shared filesystem. Only the root is user-facing in the compact
+# inventory; the three stable subtrees are derived unless explicitly replaced.
+ocr_shared_root: ""
+ocr_input_root: "{{ ocr_shared_root }}/input"
+ocr_output_root: "{{ ocr_shared_root }}/output"
+ocr_platform_root: "{{ ocr_shared_root }}/ocr-platform"
+
+# Operational tuning knobs. These are not part of the ControlSettings
+# contract verified against settings.py; they are forwarded to the service
+# environment using the OCR_PLATFORM_<NAME> convention used elsewhere in this
+# codebase so operators can tune them without editing the unit file. If the
+# running Control version does not read one of these, it is simply unused.
+ocr_job_stale_after_seconds: 120
+ocr_server_stale_after_seconds: 120
+ocr_shard_lease_seconds: 300
+ocr_scan_unit_claim_batch_size: 100
+ocr_job_file_detail_limit: 10000
+ocr_job_event_detail_limit: 50000
+ocr_job_log_detail_limit: 10000
+ocr_job_failed_file_sample_limit: 100
+ocr_job_recent_error_sample_limit: 100
+
+# Canary support: only used when ocr_canary_enabled is true. The literal
+# model API key value is resolved from the controller environment and
+# written into control.env under its own name so the already-running,
+# external model service can be reached by Control's own process at job
+# time. It is never placed in a report, a fact, or command-line argv.
+ocr_canary_enabled: false
+ocr_canary_model_api_key_env_var: ""
