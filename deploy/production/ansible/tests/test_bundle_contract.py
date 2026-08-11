@@ -278,6 +278,7 @@ def test_common_role_refuses_unconstrained_release_installation():
         if line.strip() and not line.startswith("#")
     }
     assert "fastapi==0.141.1" in pins
+    assert "greenlet==3.5.5" in pins
     assert "sqlalchemy==2.0.51" in pins
     assert "psycopg==3.3.4" in pins
     assert all("==" in pin for pin in pins)
