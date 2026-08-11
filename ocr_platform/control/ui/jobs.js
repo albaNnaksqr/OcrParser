@@ -161,7 +161,7 @@ export function createJobsModule(app) {
     if (active && productionIssues.length) {
       const labels = productionIssues
         .slice(0, 3)
-        .map((issue) => DEPLOYMENT_DOCTOR_ISSUES[issue.code] || issue.code || "deployment issue");
+        .map((issue) => app.deploymentDoctorIssueLabel(issue));
       return {
         level: "warning",
         label: "Setup needs attention",

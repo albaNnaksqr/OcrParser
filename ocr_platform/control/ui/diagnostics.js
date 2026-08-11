@@ -187,6 +187,13 @@ const DEPLOYMENT_DOCTOR_ISSUES = {
 };
 export function createDiagnosticsModule(app) {
   const { state, ui, requestJson } = app;
+  function deploymentDoctorIssueLabel(issue) {
+    return DEPLOYMENT_DOCTOR_ISSUES[issue?.code]
+      || issue?.code
+      || issue?.message
+      || "deployment issue";
+  }
+
   function jobNeedsAttention(job) {
     if (!job) return false;
     const attentionShards = Array.isArray(job.attention_shards) ? job.attention_shards.length : 0;
@@ -358,5 +365,5 @@ export function createDiagnosticsModule(app) {
     return true;
   }
 
-  return { jobNeedsAttention, renderOperationsSummary, renderDatabaseStatus, loadDatabaseStatus, renderDeploymentDoctor, loadDeploymentDoctor, deploymentDoctorJobIssues, refreshOperationsData };
+  return { deploymentDoctorIssueLabel, jobNeedsAttention, renderOperationsSummary, renderDatabaseStatus, loadDatabaseStatus, renderDeploymentDoctor, loadDeploymentDoctor, deploymentDoctorJobIssues, refreshOperationsData };
 }

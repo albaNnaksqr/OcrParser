@@ -121,6 +121,8 @@ def test_ui_guided_doctor_is_read_only_and_actionable():
     assert 'route: "workers"' in diagnostics
     assert "fetch(" not in diagnostics
     assert "sudo" not in diagnostics
+    assert "function deploymentDoctorIssueLabel" in diagnostics
+    assert "app.deploymentDoctorIssueLabel(issue)" in ui_source()
 
 
 def test_ui_module_graph_is_acyclic_and_main_is_only_composition():
