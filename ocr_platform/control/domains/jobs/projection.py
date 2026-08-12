@@ -3,17 +3,16 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
 from ocr_parser.infra.failure_category import infer_failure_category
-from sqlalchemy import Integer, case, delete, distinct, func, select
+from sqlalchemy import Integer, case, func, select
 from sqlalchemy.orm import Session
 
 from ...limits import ControlLimits as __ControlLimits
 from ...limits import legacy_control_limits as __legacy_control_limits
-from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ScanUnit, Server, WorkShard
-from ...schemas import JobEventRequest, JobRecentErrorListResponse, JobRecentErrorResponse, JobShardProgressSummary, JobSummaryListResponse, JobSummaryResponse, JobWorkerShardSummary
+from ...models import Job, JobCounter, JobEvent, JobFile, Manifest, ScanUnit, WorkShard
+from ...schemas import JobRecentErrorListResponse, JobRecentErrorResponse, JobShardProgressSummary, JobSummaryListResponse, JobSummaryResponse, JobWorkerShardSummary
 from ..common import (
     ATTENTION_SHARD_STATUSES,
     COMPLETED_FILE_STATUSES,
@@ -28,6 +27,14 @@ from ..common import (
     json_loads_object,
     utcnow,
 )
+from .counters import (
+    _job_counter_total_files,
+    _load_failure_category_counts,
+    _load_recent_error_samples,
+    _load_recent_failed_file_samples,
+    _optional_int,
+)
+from .lifecycle import get_or_raise as get_job_or_raise
 
 def _job_worker_version_summary(*args, **kwargs):
     from ..workers.projection import job_worker_version_summary as target
@@ -49,14 +56,6 @@ def public_assigned_server_id(*args, **kwargs):
     from ..workers.identity import public_assigned_server_id as target
     return target(*args, **kwargs)
 
-from .counters import (
-    _job_counter_total_files,
-    _load_failure_category_counts,
-    _load_recent_error_samples,
-    _load_recent_failed_file_samples,
-    _optional_int,
-)
-from .lifecycle import get_or_raise as get_job_or_raise
 def _normalized_status_filter(status: str | None) -> str | None:
     from .lifecycle import normalize_status_filter
 

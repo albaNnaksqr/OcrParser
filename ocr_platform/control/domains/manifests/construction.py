@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from ... import scheduling
 from ...limits import ControlLimits
 from ...limits import legacy_control_limits
-from ...models import Job, Manifest, ScanUnit, WorkShard, utcnow
+from ...models import Job, Manifest, ScanUnit, WorkShard
 from ...schemas import JobCreateRequest, RemoteManifestRegisterRequest
 from ..common import (
     ALLOWED_INPUT_MODES,

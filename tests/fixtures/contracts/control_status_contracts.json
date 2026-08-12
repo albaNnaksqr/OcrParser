@@ -11,49 +11,49 @@
           "succeeded"
         ],
         "sources": [
-          "ocr_platform/control/domains/common.py:24"
+          "ocr_platform/control/domains/common.py:17"
         ],
         "type": "domain_constant",
         "value_evidence": {
           "failed": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "queued": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "running": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "stopped": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "stopping": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "succeeded": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ]

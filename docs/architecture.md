@@ -64,6 +64,14 @@ in v0.4. New integrations must import the explicit owning command, query, or
 schema surface; the 5,000-line monolithic service and its wildcard façade no
 longer exist.
 
+As of v0.4.3, the jobs, workers, manifests, and model-profile domains no longer
+carry `core.py` forwarding layers either. Their routers and application code
+depend on the concrete `commands`, `queries`, `policy`, and `schemas` owners.
+Manifest integrity, job summary, and worker preflight retain their stable public
+entrypoints while delegating file/database reads, deterministic calculations,
+issue classification, and response assembly to named local helpers. Static
+checks reject wildcard imports inside Control domains.
+
 ## Agent runtime
 
 The single-process agent is composed by `AgentRuntime`. `AgentSupervisor` owns

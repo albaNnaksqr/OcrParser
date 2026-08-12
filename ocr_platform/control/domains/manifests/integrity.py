@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ...limits import ControlLimits, legacy_control_limits
-from ...models import Job, Manifest, ScanUnit, Server, WorkShard
+from ...models import Manifest, ScanUnit, Server, WorkShard
 from ...schemas import (
     ManifestIntegrityResponse,
     ManifestIntegrityScanUnitIssue,

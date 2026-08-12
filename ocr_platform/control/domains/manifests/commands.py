@@ -15,7 +15,10 @@ from ...schemas import (
     ScanUnitFailRequest as _ScanUnitFailRequest,
     WorkShardUpdateRequest as _WorkShardUpdateRequest,
 )
-from ..common import ScanUnitAttemptConflictError, ShardAttemptConflictError
+from ..common import (
+    ScanUnitAttemptConflictError as ScanUnitAttemptConflictError,
+)
+from ..common import ShardAttemptConflictError as ShardAttemptConflictError
 from . import construction as _construction
 from . import integrity as _integrity
 from . import use_cases as _use_cases

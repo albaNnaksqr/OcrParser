@@ -5,7 +5,7 @@ from datetime import datetime
 from typing import Any
 
 from ocr_parser.infra.failure_category import infer_failure_category
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import case, delete, select
 from sqlalchemy.orm import Session
 
 from ...limits import ControlLimits as __ControlLimits

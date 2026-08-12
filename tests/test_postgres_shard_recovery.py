@@ -1364,7 +1364,7 @@ def test_postgres_stop_serializes_before_lease_exhaustion():
         ) as (session, backend_pid):
             second_pid.append(backend_pid)
             second_started.set()
-            result = scheduling.reconcile_expired_shard_leases(
+            result = scheduling_core.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )
@@ -1439,7 +1439,7 @@ def test_postgres_reregister_and_reconcile_complete_without_deadlock(
             case.session_factory,
             case.engine,
         ) as (session, _):
-            scheduling.reconcile_expired_shard_leases(
+            scheduling_core.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )
@@ -1730,7 +1730,7 @@ def test_postgres_exhaustion_then_success_uses_lease_failure():
             case.session_factory,
             case.engine,
         ) as (session, _):
-            scheduling.reconcile_expired_shard_leases(
+            scheduling_core.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )

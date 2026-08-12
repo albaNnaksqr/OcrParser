@@ -53,6 +53,10 @@ jobs:
       - name: Compile packages
         run: python -m compileall ocr_parser dots_ocr ocr_platform
 
+      - name: Check Control static quality
+        if: matrix.python-version == '3.12'
+        run: ruff check --select E4,E7,E9,F ocr_platform/control tools/control_*.py
+
       - name: Run tests
         run: pytest tests
 
