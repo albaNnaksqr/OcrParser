@@ -8,10 +8,12 @@ from sqlalchemy.exc import ArgumentError
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from .migration import MIGRATIONS_DIR, MigrationCatalog, MigrationRunner, split_sql_script
+from .migration import MIGRATIONS_DIR as MIGRATIONS_DIR
+from .migration import MigrationCatalog, MigrationRunner, split_sql_script
 from .models import Base
 from .redaction import redact_database_url
-from .settings import ControlSettings, DEFAULT_DATABASE_URL
+from .settings import DEFAULT_DATABASE_URL as DEFAULT_DATABASE_URL
+from .settings import ControlSettings
 
 
 SQLITE_BUSY_TIMEOUT_MS = 30000

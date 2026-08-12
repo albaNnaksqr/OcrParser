@@ -9,7 +9,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Sequence
+from typing import Any, Sequence
+
+from ocr_parser.config import ParserConfig
 
 
 MODEL_PROFILE_CERTIFICATION_MISSING = (
@@ -50,6 +52,51 @@ _AGENT_OPTIONAL_PROFILE_FIELDS = (
     "layout_revision",
     "layout_digest",
 )
+
+
+def is_secret_like_extra_arg_name(name: str) -> bool:
+    normalized = name.lower().replace("-", "_")
+    if normalized in {
+        "api_key",
+        "api_key_env_var",
+        "authorization",
+        "password",
+    }:
+        return True
+    return normalized.endswith(("_token", "_secret", "_password"))
+
+
+def reject_secret_like_extra_args(
+    extra_args: dict[str, Any],
+    *,
+    context: str,
+    allowed_names: set[str] | None = None,
+) -> None:
+    allowed = allowed_names or set()
+    rejected = sorted(
+        name
+        for name in extra_args
+        if name not in allowed
+        and is_secret_like_extra_arg_name(str(name))
+    )
+    if not rejected:
+        return
+    joined = ", ".join(rejected)
+    raise ValueError(
+        f"{context} extra_args may not contain secret-like keys: {joined}; "
+        "use api_key/api_key_env_var dedicated fields instead"
+    )
+
+
+def normalize_parser_extra_args(
+    extra_args: dict[str, Any],
+    *,
+    context: str,
+) -> dict[str, Any]:
+    return ParserConfig.validate_option_dict(
+        extra_args or {},
+        context=f"{context} extra_args",
+    )
 
 
 @dataclass(frozen=True)

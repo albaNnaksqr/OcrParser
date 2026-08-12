@@ -6,17 +6,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from ocr_parser.infra.failure_category import infer_failure_category
-from sqlalchemy.orm import Session
-
 from .. import settings as __control_settings
 from ..limits import (
     JOB_EVENT_DETAIL_LIMIT,
-    JOB_FAILED_FILE_SAMPLE_LIMIT,
     JOB_FILE_DETAIL_LIMIT,
-    JOB_LOG_DETAIL_LIMIT,
-    JOB_RECENT_ERROR_SAMPLE_LIMIT,
-    JOB_SUMMARY_ATTENTION_SHARD_LIMIT,
-    RETAINED_CONTROL_EVENT_LIMIT_WHEN_DETAILS_DISABLED,
 )
 from ..schemas import ScanUnitFailRequest
 

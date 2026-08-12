@@ -9,7 +9,6 @@ from sqlalchemy.orm import sessionmaker
 from ocr_platform.control import scheduling
 from ocr_platform.control.database import init_db
 from ocr_platform.control.domains.jobs import commands as jobs_commands
-from ocr_platform.control.domains.jobs import core as jobs_core
 from ocr_platform.control.domains.jobs import lifecycle as jobs_lifecycle
 from ocr_platform.control.models import (
     Job,
@@ -286,27 +285,8 @@ def test_stop_reclaimable_policy_is_atomic_under_outer_transaction() -> None:
 
 def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
     scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
-    manifests_path = (
-        ROOT
-        / "ocr_platform"
-        / "control"
-        / "domains"
-        / "manifests"
-        / "core.py"
-    )
-    jobs_compat_path = (
-        ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
-    )
     jobs_lifecycle_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "lifecycle.py"
-    )
-    workers_path = (
-        ROOT
-        / "ocr_platform"
-        / "control"
-        / "domains"
-        / "workers"
-        / "core.py"
     )
 
     def function_source(path: Path, name: str) -> str:
@@ -338,18 +318,6 @@ def test_stop_reclaimable_policy_ownership_and_call_order_are_static() -> None:
     ) == 2
     assert policy_source.count("lease_expires_at=None") == 2
     assert policy_source.count("finished_at=current_time") == 2
-
-    for path in (manifests_path, jobs_compat_path, workers_path):
-        wrapper_source = function_source(
-            path,
-            "stop_reclaimable_work_for_job",
-        )
-        assert (
-            "from ...scheduling import "
-            "stop_reclaimable_work_for_job as target"
-        ) in wrapper_source
-        assert "session.execute(" not in wrapper_source
-        assert 'status="stopped"' not in wrapper_source
 
     request_stop_source = function_source(jobs_lifecycle_path, "request_stop")
     assert request_stop_source.index(

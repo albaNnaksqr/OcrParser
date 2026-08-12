@@ -19,8 +19,7 @@ from ocr_platform.control.bootstrap import (
 )
 from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.domains.common import DEFAULT_MODEL_PROFILES
-from ocr_platform.control.domains.model_profiles.core import (
-    ensure_default_model_profiles,
+from ocr_platform.control.domains.model_profiles.queries import (
     list_model_profiles,
 )
 from ocr_platform.control.models import (
@@ -106,7 +105,7 @@ def test_sqlite_bootstrap_is_concurrent_idempotent_and_non_overwriting(
     assert sum(inserted) == len(DEFAULT_MODEL_PROFILES) - 1
     with session_factory() as session:
         _assert_default_rows(session)
-        ensure_default_model_profiles(session)
+        seed_default_model_profiles(session)
         _assert_default_rows(session)
     engine.dispose()
 
@@ -443,19 +442,10 @@ def test_current_schema_seed_failure_is_not_silenced(monkeypatch) -> None:
 
 
 def test_production_profile_paths_do_not_call_legacy_lazy_seed() -> None:
+    domains_root = ROOT / "ocr_platform" / "control" / "domains"
     files = [
-        ROOT
-        / "ocr_platform"
-        / "control"
-        / "domains"
-        / "model_profiles"
-        / "core.py",
-        ROOT
-        / "ocr_platform"
-        / "control"
-        / "domains"
-        / "workers"
-        / "core.py",
+        *sorted((domains_root / "model_profiles").glob("*.py")),
+        *sorted((domains_root / "workers").glob("*.py")),
     ]
     calls = []
     definitions = []
@@ -475,5 +465,5 @@ def test_production_profile_paths_do_not_call_legacy_lazy_seed() -> None:
             and node.func.id == "ensure_default_model_profiles"
         )
 
-    assert len(definitions) == 2
+    assert definitions == []
     assert calls == []

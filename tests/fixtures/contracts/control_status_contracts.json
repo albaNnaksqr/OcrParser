@@ -11,49 +11,49 @@
           "succeeded"
         ],
         "sources": [
-          "ocr_platform/control/domains/common.py:24"
+          "ocr_platform/control/domains/common.py:17"
         ],
         "type": "domain_constant",
         "value_evidence": {
           "failed": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "queued": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "running": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "stopped": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "stopping": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ],
           "succeeded": [
             {
               "kind": "domain_constant",
-              "source": "ocr_platform/control/domains/common.py:24",
+              "source": "ocr_platform/control/domains/common.py:17",
               "symbol": "JOB_STATUS_FILTERS"
             }
           ]
@@ -75,7 +75,7 @@
       "authority": {
         "sources": [
           "ocr_platform/control/schemas.py:166",
-          "ocr_platform/control/domains/jobs/events.py:19",
+          "ocr_platform/control/domains/jobs/events.py:25",
           "ocr_parser/domain/metadata.py:7"
         ],
         "type": "event_payload_string"
@@ -338,7 +338,7 @@
       "authority": {
         "sources": [
           "ocr_platform/control/schemas.py:610",
-          "ocr_platform/control/domains/manifests/integrity.py:432"
+          "ocr_platform/control/domains/manifests/integrity.py:1019"
         ],
         "type": "worker_report_string"
       },
@@ -346,28 +346,28 @@
         "failed": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/integrity.py:1092",
+            "source": "ocr_platform/control/domains/manifests/integrity.py:978",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "missing_manifest": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/integrity.py:461",
+            "source": "ocr_platform/control/domains/manifests/integrity.py:492",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "not_accessible_from_control": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/integrity.py:582",
+            "source": "ocr_platform/control/domains/manifests/integrity.py:590",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ],
         "ok": [
           {
             "kind": "domain_transition",
-            "source": "ocr_platform/control/domains/manifests/integrity.py:1092",
+            "source": "ocr_platform/control/domains/manifests/integrity.py:978",
             "symbol": "ManifestIntegrityResponse(status=...)"
           }
         ]

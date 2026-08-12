@@ -4006,8 +4006,8 @@ def build_status_contract() -> dict[str, Any]:
     common_path = ROOT / "ocr_platform" / "control" / "domains" / "common.py"
     schemas_path = ROOT / "ocr_platform" / "control" / "schemas.py"
     models_path = ROOT / "ocr_platform" / "control" / "models.py"
-    manifests_path = (
-        ROOT / "ocr_platform" / "control" / "domains" / "manifests" / "core.py"
+    manifests_domain = (
+        ROOT / "ocr_platform" / "control" / "domains" / "manifests"
     )
     manifests_policy_path = (
         ROOT
@@ -4017,17 +4017,14 @@ def build_status_contract() -> dict[str, Any]:
         / "manifests"
         / "policy.py"
     )
-    manifests_construction_path = manifests_path.with_name("construction.py")
-    manifests_freeze_path = manifests_path.with_name("freeze.py")
-    manifests_integrity_path = manifests_path.with_name("integrity.py")
-    workers_path = (
-        ROOT / "ocr_platform" / "control" / "domains" / "workers" / "core.py"
+    manifests_construction_path = manifests_domain / "construction.py"
+    manifests_freeze_path = manifests_domain / "freeze.py"
+    manifests_integrity_path = manifests_domain / "integrity.py"
+    workers_domain = (
+        ROOT / "ocr_platform" / "control" / "domains" / "workers"
     )
-    workers_policy_path = workers_path.with_name("policy.py")
-    workers_registration_path = workers_path.with_name("registration.py")
-    jobs_path = (
-        ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "core.py"
-    )
+    workers_policy_path = workers_domain / "policy.py"
+    workers_registration_path = workers_domain / "registration.py"
     jobs_policy_path = (
         ROOT / "ocr_platform" / "control" / "domains" / "jobs" / "policy.py"
     )
@@ -4227,7 +4224,7 @@ def build_status_contract() -> dict[str, Any]:
         str(value) for value in PROCESSED_FILE_STATUSES
     } | {str(JobFile.__table__.c.status.default.arg)}
     job_file_transition_evidence = _status_transition_evidence(
-        [jobs_path, jobs_policy_path],
+        [jobs_policy_path],
         instance_field=("job_file", "status"),
     )
     job_file_known.update(job_file_transition_evidence)

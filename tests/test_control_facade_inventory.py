@@ -163,3 +163,71 @@ def test_facade_package_reappearance_is_rejected(tmp_path: Path) -> None:
         match="ocr_platform.control.service must be removed",
     ):
         control_facade_inventory.validate_removed(payload)
+
+
+def test_domain_facade_reappearance_is_rejected(tmp_path: Path) -> None:
+    root = _write_source(
+        tmp_path,
+        "ocr_platform/control/domains/jobs/core.py",
+        "",
+    )
+    payload = control_facade_inventory.build_facade_inventory(root)
+
+    assert payload["domain_facades_exist"] == [
+        "ocr_platform.control.domains.jobs.core"
+    ]
+    with pytest.raises(
+        ValueError,
+        match="legacy Control domain façades must be removed",
+    ):
+        control_facade_inventory.validate_removed(payload)
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        "import ocr_platform.control.domains.jobs.core\n",
+        "from ocr_platform.control.domains.jobs import core\n",
+        "from . import core\n",
+        (
+            "import importlib\n"
+            "importlib.import_module("
+            "'ocr_platform.control.domains.jobs.core')\n"
+        ),
+    ],
+)
+def test_domain_facade_import_is_rejected(
+    tmp_path: Path,
+    source: str,
+) -> None:
+    relative = (
+        "ocr_platform/control/domains/jobs/runtime.py"
+        if source == "from . import core\n"
+        else "tools/runtime.py"
+    )
+    root = _write_source(tmp_path, relative, source)
+    payload = control_facade_inventory.build_facade_inventory(root)
+
+    assert payload["domain_reference_count"] == 1
+    with pytest.raises(
+        ValueError,
+        match="legacy Control domain façade references are forbidden",
+    ):
+        control_facade_inventory.validate_removed(payload)
+
+
+def test_control_domain_wildcard_import_is_rejected(tmp_path: Path) -> None:
+    root = _write_source(
+        tmp_path,
+        "ocr_platform/control/domains/jobs/runtime.py",
+        "from ..common import *\n",
+    )
+    payload = control_facade_inventory.build_facade_inventory(root)
+
+    assert payload["domain_wildcard_import_count"] == 1
+    assert payload["domain_wildcard_imports"][0]["module"] == "common"
+    with pytest.raises(
+        ValueError,
+        match="Control domain wildcard imports are forbidden",
+    ):
+        control_facade_inventory.validate_removed(payload)

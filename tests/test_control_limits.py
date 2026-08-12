@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 
 import ocr_platform.control.domains.jobs.commands as jobs_commands
 import ocr_platform.control.domains.jobs.events as jobs_events
-import ocr_platform.control.domains.jobs.core as jobs_core
 import ocr_platform.control.domains.jobs.lifecycle as jobs_lifecycle
 import ocr_platform.control.domains.jobs.logs as jobs_logs
 import ocr_platform.control.domains.jobs.projection as jobs_projection
@@ -24,7 +23,6 @@ import ocr_platform.control.domains.manifests.queries as manifest_queries
 import ocr_platform.control.domains.manifests.use_cases as manifest_use_cases
 import ocr_platform.control.domains.diagnostics.metrics as diagnostics_metrics
 import ocr_platform.control.domains.diagnostics.operations as diagnostics_operations
-import ocr_platform.control.domains.workers.core as workers_core
 import ocr_platform.control.domains.workers.preflight as workers_preflight
 import ocr_platform.control.limits as limits_module
 from ocr_platform.control.app import create_app
@@ -1530,6 +1528,7 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
         manifests_integrity,
         {
             "complete_worker_manifest_integrity_check",
+            "_assemble_manifest_integrity_report",
             "get_manifest_integrity_report",
         },
     ) == {
@@ -1537,7 +1536,8 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
             "get": 1,
             "flush": 1,
         },
-        "get_manifest_integrity_report": {"execute": 6},
+        "_assemble_manifest_integrity_report": {"execute": 6},
+        "get_manifest_integrity_report": {},
     }
 
 

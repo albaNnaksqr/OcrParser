@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+## 0.4.3 - 2026-08-12
+
+- Improved Deployment Doctor worker probes with authenticated Control access,
+  distinct unauthorized, unavailable, HTTP, and invalid-response diagnostics,
+  strict-production worker readiness, and secret-safe output.
+- Added side-effect-free local production dry-run/status assembly and clearer
+  one-shot mock E2E versus persistent production-like onboarding paths.
+- Removed the remaining jobs, workers, manifests, and model-profile `core.py`
+  compatibility façades; production and tests now use the explicit owner
+  modules directly, and static gates reject their return or wildcard imports.
+- Split manifest integrity, job summary, and worker preflight entrypoints into
+  named read, calculation, classification, and response-assembly steps without
+  changing HTTP, database, scheduling, manifest, or output behavior.
+- Split the four largest scenario test modules and added a Python 3.12 Control
+  Ruff gate for import, syntax, and undefined-name errors.
+
 ## 0.4.2 - 2026-08-11
 
 - Reorganized the dependency-free Control UI into hash-routed Jobs, Workers,

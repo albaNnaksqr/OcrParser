@@ -3,18 +3,38 @@ from __future__ import annotations
 import json
 import math
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Any
 
 from ocr_parser.infra.failure_category import infer_failure_category
-from sqlalchemy import Integer, case, delete, distinct, func, select
+from sqlalchemy import Integer, case, func, select
 from sqlalchemy.orm import Session
 
 from ...limits import ControlLimits as __ControlLimits
 from ...limits import legacy_control_limits as __legacy_control_limits
-from ...models import Job, JobCounter, JobEvent, JobFile, JobLog, Manifest, ScanUnit, Server, WorkShard
-from ...schemas import JobEventRequest, JobRecentErrorListResponse, JobRecentErrorResponse, JobShardProgressSummary, JobSummaryListResponse, JobSummaryResponse, JobWorkerShardSummary
-from ..common import *
+from ...models import Job, JobCounter, JobEvent, JobFile, Manifest, ScanUnit, WorkShard
+from ...schemas import JobRecentErrorListResponse, JobRecentErrorResponse, JobShardProgressSummary, JobSummaryListResponse, JobSummaryResponse, JobWorkerShardSummary
+from ..common import (
+    ATTENTION_SHARD_STATUSES,
+    COMPLETED_FILE_STATUSES,
+    CURRENT_WORKER_SHARD_STATUSES,
+    DEGRADED_PAGE_STATUSES,
+    FAILED_FILE_STATUSES,
+    PRIORITY_FAILURE_EVENT_TYPES,
+    PROCESSED_FILE_STATUSES,
+    SKIPPED_FILE_STATUSES,
+    STALE_AFTER_SECONDS,
+    TERMINAL_JOB_STATUSES,
+    json_loads_object,
+    utcnow,
+)
+from .counters import (
+    _job_counter_total_files,
+    _load_failure_category_counts,
+    _load_recent_error_samples,
+    _load_recent_failed_file_samples,
+    _optional_int,
+)
+from .lifecycle import get_or_raise as get_job_or_raise
 
 def _job_worker_version_summary(*args, **kwargs):
     from ..workers.projection import job_worker_version_summary as target
@@ -36,14 +56,6 @@ def public_assigned_server_id(*args, **kwargs):
     from ..workers.identity import public_assigned_server_id as target
     return target(*args, **kwargs)
 
-from .counters import (
-    _job_counter_total_files,
-    _load_failure_category_counts,
-    _load_recent_error_samples,
-    _load_recent_failed_file_samples,
-    _optional_int,
-)
-from .lifecycle import get_or_raise as get_job_or_raise
 def _normalized_status_filter(status: str | None) -> str | None:
     from .lifecycle import normalize_status_filter
 
@@ -382,36 +394,31 @@ def _manifest_freeze_integrity_summary(
         "manifest_integrity_issue_count": int(report.get("integrity_issue_count") or 0),
     }
 
-def get_job_summary(
+
+def _load_job_file_progress(
     session: Session,
-    job_or_id: Job | str,
-    *,
-    limits: __ControlLimits | None = None,
-) -> JobSummaryResponse:
-    control_limits = (
-        limits if limits is not None else __legacy_control_limits()
-    )
-    job = get_job_or_raise(session, job_or_id) if isinstance(job_or_id, str) else job_or_id
-    summary_now = utcnow()
-    manifest = session.execute(
-        select(Manifest)
-        .where(Manifest.job_id == job.id)
-        .order_by(Manifest.id.asc())
-        .limit(1)
-    ).scalar_one_or_none()
+    job: Job,
+    counter: JobCounter | None,
+) -> dict[str, Any]:
     file_rows = session.execute(
         select(
             func.count(JobFile.id),
             func.coalesce(
-                func.sum(JobFile.status.in_(COMPLETED_FILE_STATUSES).cast(Integer)),
+                func.sum(
+                    JobFile.status.in_(COMPLETED_FILE_STATUSES).cast(Integer)
+                ),
                 0,
             ),
             func.coalesce(
-                func.sum(JobFile.status.in_(FAILED_FILE_STATUSES).cast(Integer)),
+                func.sum(
+                    JobFile.status.in_(FAILED_FILE_STATUSES).cast(Integer)
+                ),
                 0,
             ),
             func.coalesce(
-                func.sum(JobFile.status.in_(SKIPPED_FILE_STATUSES).cast(Integer)),
+                func.sum(
+                    JobFile.status.in_(SKIPPED_FILE_STATUSES).cast(Integer)
+                ),
                 0,
             ),
             func.coalesce(func.sum(JobFile.done_pages), 0),
@@ -419,28 +426,46 @@ def get_job_summary(
         ).where(JobFile.job_id == job.id)
     ).one()
     observed_total_files = int(file_rows[0] or 0)
-    counter = session.get(JobCounter, job.id)
     static_input_files = _static_input_file_count(session, job.id)
-    authoritative_total_files = max(observed_total_files, static_input_files)
+    authoritative_total_files = max(
+        observed_total_files,
+        static_input_files,
+    )
     counter_total_files = _job_counter_total_files(counter)
     total_files = authoritative_total_files or counter_total_files
-    scanned_files = total_files
-    completed_files = max(int(file_rows[1] or 0), counter.completed_files if counter else 0)
-    failed_files = max(int(file_rows[2] or 0), counter.failed_files if counter else 0)
-    skipped_files = max(int(file_rows[3] or 0), counter.skipped_files if counter else 0)
+    completed_files = max(
+        int(file_rows[1] or 0),
+        counter.completed_files if counter else 0,
+    )
+    failed_files = max(
+        int(file_rows[2] or 0),
+        counter.failed_files if counter else 0,
+    )
+    skipped_files = max(
+        int(file_rows[3] or 0),
+        counter.skipped_files if counter else 0,
+    )
     observed_completed_pages = int(file_rows[4] or 0)
     completed_pages = (
         observed_completed_pages
         if observed_total_files
-        else max(observed_completed_pages, counter.completed_pages if counter else 0)
+        else max(
+            observed_completed_pages,
+            counter.completed_pages if counter else 0,
+        )
     )
-    event_total_pages = counter.total_pages if counter and counter.total_pages > 0 else None
+    event_total_pages = (
+        counter.total_pages
+        if counter and counter.total_pages > 0
+        else None
+    )
     if file_rows[5] is not None and event_total_pages is not None:
         total_pages = max(int(file_rows[5]), event_total_pages)
     elif file_rows[5] is not None:
         total_pages = int(file_rows[5])
     else:
         total_pages = event_total_pages
+
     shard_progress_rows = session.execute(
         select(
             func.coalesce(func.sum(WorkShard.processed_files), 0),
@@ -460,45 +485,38 @@ def get_job_summary(
     failed_files = max(failed_files, shard_failed_files)
     skipped_files = max(skipped_files, shard_skipped_files)
     if not observed_total_files:
-        completed_pages = max(completed_pages, int(shard_progress_rows[3] or 0))
+        completed_pages = max(
+            completed_pages,
+            int(shard_progress_rows[3] or 0),
+        )
     if total_files:
         failed_files = min(failed_files, total_files)
-        skipped_files = min(skipped_files, max(total_files - failed_files, 0))
+        skipped_files = min(
+            skipped_files,
+            max(total_files - failed_files, 0),
+        )
         completed_files = min(
             completed_files,
             max(total_files - failed_files - skipped_files, 0),
         )
     if total_pages:
         completed_pages = min(completed_pages, total_pages)
-    failure_category_counts = _load_failure_category_counts(counter)
-    scan_progress = _latest_manifest_scan_progress(session, job.id)
-    scan_progress_files = int(scan_progress.get("scanned_files") or 0)
-    scan_progress_dirs = int(scan_progress.get("scanned_dirs") or 0)
-    scan_progress_bytes = int(scan_progress.get("total_bytes") or 0)
-    scan_error_samples = _recent_manifest_scan_error_samples(session, job.id)
-    scan_error_count = int(scan_progress.get("skipped_error_count") or len(scan_error_samples))
-    manifest_scan_meta = _manifest_scan_metadata(manifest)
-    if manifest is not None and manifest_scan_meta:
-        scan_progress_files = max(scan_progress_files, int(manifest.file_count or 0))
-        try:
-            manifest_scan_dirs = int(
-                manifest_scan_meta.get("scanned_dir_count")
-                or manifest_scan_meta.get("scanned_dirs")
-                or 0
-            )
-        except (TypeError, ValueError):
-            manifest_scan_dirs = 0
-        scan_progress_dirs = max(scan_progress_dirs, manifest_scan_dirs)
-        scan_progress_bytes = max(scan_progress_bytes, int(manifest.total_bytes or 0))
-        try:
-            manifest_scan_error_count = int(manifest_scan_meta.get("skipped_error_count") or 0)
-        except (TypeError, ValueError):
-            manifest_scan_error_count = 0
-        scan_error_count = max(scan_error_count, manifest_scan_error_count)
-        if not scan_error_samples:
-            scan_error_samples = _manifest_scan_error_samples(manifest_scan_meta)
-    scanned_files = max(scanned_files, scan_progress_files)
+    return {
+        "total_files": total_files,
+        "completed_files": completed_files,
+        "failed_files": failed_files,
+        "skipped_files": skipped_files,
+        "total_pages": total_pages,
+        "completed_pages": completed_pages,
+        "failure_category_counts": _load_failure_category_counts(counter),
+    }
 
+
+def _load_job_event_progress(
+    session: Session,
+    job: Job,
+    counter: JobCounter | None,
+) -> dict[str, Any]:
     last_event_at = session.execute(
         select(func.max(JobEvent.created_at)).where(JobEvent.job_id == job.id)
     ).scalar_one()
@@ -525,155 +543,163 @@ def get_job_summary(
     )
     if counter is not None:
         degraded_pages = max(degraded_pages, counter.degraded_pages)
-    quality_flags = ["image_fallback"] if degraded_pages > 0 else []
+    return {
+        "last_event_at": last_event_at,
+        "first_event_at": first_event_at,
+        "last_heartbeat_at": last_heartbeat_at,
+        "degraded_pages": degraded_pages,
+        "quality_flags": ["image_fallback"] if degraded_pages > 0 else [],
+    }
+
+
+def _load_worker_shard_summaries(
+    session: Session,
+    job: Job,
+    summary_now: datetime,
+    limits: __ControlLimits,
+) -> dict[str, Any]:
     shard_rows = session.execute(
         select(WorkShard.status, func.count(WorkShard.id))
         .where(WorkShard.job_id == job.id)
         .group_by(WorkShard.status)
     ).all()
     shard_counts = {status: int(count) for status, count in shard_rows}
-    total_shards = sum(shard_counts.values())
-    shard_failure_category_rows = session.execute(
+    failure_rows = session.execute(
         select(WorkShard.failure_category, func.count(WorkShard.id))
         .where(WorkShard.job_id == job.id)
         .where(WorkShard.failure_category.is_not(None))
         .group_by(WorkShard.failure_category)
     ).all()
-    shard_failure_category_counts = {
+    failure_counts = {
         str(category): int(count)
-        for category, count in shard_failure_category_rows
+        for category, count in failure_rows
         if category
     }
-    scan_unit_rows = session.execute(
-        select(ScanUnit.status, func.count(ScanUnit.id))
-        .where(ScanUnit.job_id == job.id)
-        .group_by(ScanUnit.status)
-    ).all()
-    scan_unit_counts = {status: int(count) for status, count in scan_unit_rows}
-    total_scan_units = sum(scan_unit_counts.values())
-    scan_unit_failure_category_rows = session.execute(
-        select(ScanUnit.failure_category, func.count(ScanUnit.id))
-        .where(ScanUnit.job_id == job.id)
-        .where(ScanUnit.failure_category.is_not(None))
-        .group_by(ScanUnit.failure_category)
-    ).all()
-    scan_unit_failure_category_counts = {
-        str(category): int(count)
-        for category, count in scan_unit_failure_category_rows
-        if category
-    }
-    if scan_unit_counts:
-        scan_progress_files = max(scan_progress_files, total_files)
-        scan_progress_dirs = max(
-            scan_progress_dirs,
-            scan_unit_counts.get("succeeded", 0) + scan_unit_counts.get("failed", 0),
+    worker_rows = session.execute(
+        select(
+            WorkShard.assigned_server_id,
+            WorkShard.status,
+            func.count(WorkShard.id),
         )
-        manifest_total_bytes = int(
-            session.execute(
-                select(func.coalesce(func.sum(Manifest.total_bytes), 0)).where(
-                    Manifest.job_id == job.id
-                )
-            ).scalar_one()
-            or 0
-        )
-        scan_progress_bytes = max(scan_progress_bytes, manifest_total_bytes)
-        scan_unit_problem_samples = _scan_unit_problem_samples(session, job.id, limit=5)
-        if not scan_error_samples:
-            scan_error_samples = scan_unit_problem_samples
-        scan_error_count = max(
-            scan_error_count,
-            scan_unit_counts.get("failed", 0),
-            scan_unit_counts.get("stale", 0),
-        )
-    worker_shard_rows = session.execute(
-        select(WorkShard.assigned_server_id, WorkShard.status, func.count(WorkShard.id))
         .where(WorkShard.job_id == job.id)
         .group_by(WorkShard.assigned_server_id, WorkShard.status)
     ).all()
     worker_counts: dict[str | None, dict[str, int]] = {}
-    for server_id, status, count in worker_shard_rows:
-        counts = worker_counts.setdefault(server_id, {})
-        counts[status] = int(count)
-    attention_shard_priority = case(
+    for server_id, status, count in worker_rows:
+        worker_counts.setdefault(server_id, {})[status] = int(count)
+
+    priority = case(
         (WorkShard.status == "running", 0),
         (WorkShard.status == "retrying", 1),
         (WorkShard.status == "stale", 2),
         (WorkShard.status == "failed", 3),
         else_=9,
     )
-    attention_shard_stmt = (
+    statement = (
         select(WorkShard)
         .where(WorkShard.job_id == job.id)
         .where(WorkShard.status.in_(ATTENTION_SHARD_STATUSES))
-        .order_by(attention_shard_priority, WorkShard.shard_index.asc())
+        .order_by(priority, WorkShard.shard_index.asc())
     )
-    if control_limits.job_summary_attention_shard_limit:
-        attention_shard_stmt = attention_shard_stmt.limit(
-            control_limits.job_summary_attention_shard_limit
+    if limits.job_summary_attention_shard_limit:
+        statement = statement.limit(
+            limits.job_summary_attention_shard_limit
         )
-    attention_shard_rows = list(session.execute(attention_shard_stmt).scalars().all())
-    attention_shard_rows.sort(
+    attention_rows = list(session.execute(statement).scalars().all())
+    attention_rows.sort(
         key=lambda shard: (
-            {"running": 0, "retrying": 1, "stale": 2, "failed": 3}.get(shard.status, 9),
+            {
+                "running": 0,
+                "retrying": 1,
+                "stale": 2,
+                "failed": 3,
+            }.get(shard.status, 9),
             shard.shard_index,
         )
     )
     attention_shards = [
-        _shard_progress_summary(shard, job, summary_now) for shard in attention_shard_rows
+        _shard_progress_summary(shard, job, summary_now)
+        for shard in attention_rows
     ]
-    current_shards_by_worker: dict[str | None, list[JobShardProgressSummary]] = {}
-    for shard_summary in attention_shards:
-        if shard_summary.status in CURRENT_WORKER_SHARD_STATUSES:
-            current_shards_by_worker.setdefault(shard_summary.assigned_server_id, []).append(shard_summary)
-    worker_shards = [
-        JobWorkerShardSummary(
-            server_id=server_id,
-            total_shards=sum(counts.values()),
-            pending_shards=counts.get("pending", 0),
-            running_shards=counts.get("running", 0),
-            retrying_shards=counts.get("retrying", 0),
-            stale_shards=counts.get("stale", 0),
-            succeeded_shards=counts.get("succeeded", 0),
-            failed_shards=counts.get("failed", 0),
-            stopped_shards=counts.get("stopped", 0),
-            current_shards=current_shards_by_worker.get(server_id, []),
-            api_inflight=sum(
-                shard.api_inflight for shard in current_shards_by_worker.get(server_id, [])
-            ),
-            api_inflight_peak=max(
-                (shard.api_inflight_peak for shard in current_shards_by_worker.get(server_id, [])),
-                default=0,
-            ),
-            api_waiting=sum(
-                shard.api_waiting for shard in current_shards_by_worker.get(server_id, [])
-            ),
-            oldest_api_inflight=max(
-                (
-                    shard.oldest_api_inflight
-                    for shard in current_shards_by_worker.get(server_id, [])
+    current_by_worker: dict[
+        str | None,
+        list[JobShardProgressSummary],
+    ] = {}
+    for shard in attention_shards:
+        if shard.status in CURRENT_WORKER_SHARD_STATUSES:
+            current_by_worker.setdefault(
+                shard.assigned_server_id,
+                [],
+            ).append(shard)
+
+    worker_shards = []
+    for server_id, counts in sorted(
+        worker_counts.items(),
+        key=lambda item: (item[0] is None, item[0] or ""),
+    ):
+        current = current_by_worker.get(server_id, [])
+        worker_shards.append(
+            JobWorkerShardSummary(
+                server_id=server_id,
+                total_shards=sum(counts.values()),
+                pending_shards=counts.get("pending", 0),
+                running_shards=counts.get("running", 0),
+                retrying_shards=counts.get("retrying", 0),
+                stale_shards=counts.get("stale", 0),
+                succeeded_shards=counts.get("succeeded", 0),
+                failed_shards=counts.get("failed", 0),
+                stopped_shards=counts.get("stopped", 0),
+                current_shards=current,
+                api_inflight=sum(shard.api_inflight for shard in current),
+                api_inflight_peak=max(
+                    (shard.api_inflight_peak for shard in current),
+                    default=0,
                 ),
-                default=0.0,
-            ),
-            execution_paused=any(
-                shard.execution_paused for shard in current_shards_by_worker.get(server_id, [])
-            ),
+                api_waiting=sum(shard.api_waiting for shard in current),
+                oldest_api_inflight=max(
+                    (shard.oldest_api_inflight for shard in current),
+                    default=0.0,
+                ),
+                execution_paused=any(
+                    shard.execution_paused for shard in current
+                ),
+            )
         )
-        for server_id, counts in sorted(
-            worker_counts.items(),
-            key=lambda item: (
-                item[0] is None,
-                item[0] or "",
-            ),
-        )
-    ]
+    return {
+        "shard_counts": shard_counts,
+        "total_shards": sum(shard_counts.values()),
+        "failure_counts": failure_counts,
+        "attention_shards": attention_shards,
+        "worker_shards": worker_shards,
+    }
 
+
+def _calculate_job_rates(
+    job: Job,
+    *,
+    summary_now: datetime,
+    first_event_at: datetime | None,
+    last_event_at: datetime | None,
+    last_heartbeat_at: datetime | None,
+    total_files: int,
+    completed_files: int,
+    failed_files: int,
+    skipped_files: int,
+    total_pages: int | None,
+    completed_pages: int,
+) -> dict[str, Any]:
     progress_percent = None
+    processed_files = completed_files + failed_files + skipped_files
     if total_pages and total_pages > 0:
-        progress_percent = round(min(completed_pages / total_pages * 100, 100), 2)
+        progress_percent = round(
+            min(completed_pages / total_pages * 100, 100),
+            2,
+        )
     elif total_files:
-        processed_files = completed_files + failed_files + skipped_files
-        progress_percent = round(min(processed_files / total_files * 100, 100), 2)
-
+        progress_percent = round(
+            min(processed_files / total_files * 100, 100),
+            2,
+        )
     started_at = job.started_at or first_event_at or job.created_at
     ended_at = summary_now
     if job.status in TERMINAL_JOB_STATUSES:
@@ -683,85 +709,182 @@ def get_job_summary(
     files_per_minute = None
     eta_seconds = None
     if elapsed_seconds > 0:
-        processed_files = completed_files + failed_files + skipped_files
         if completed_pages > 0:
             pages_per_second = round(completed_pages / elapsed_seconds, 4)
         if processed_files > 0:
-            files_per_minute = round(processed_files / elapsed_seconds * 60, 4)
+            files_per_minute = round(
+                processed_files / elapsed_seconds * 60,
+                4,
+            )
         if pages_per_second and total_pages and completed_pages < total_pages:
-            eta_seconds = int((total_pages - completed_pages) / pages_per_second)
-
+            eta_seconds = int(
+                (total_pages - completed_pages) / pages_per_second
+            )
     freshness_at = last_heartbeat_at or last_event_at or job.started_at
-    is_stale = False
-    if job.status in {"running", "stopping"} and freshness_at is not None:
-        is_stale = summary_now - freshness_at > timedelta(seconds=STALE_AFTER_SECONDS)
+    is_stale = bool(
+        job.status in {"running", "stopping"}
+        and freshness_at is not None
+        and summary_now - freshness_at
+        > timedelta(seconds=STALE_AFTER_SECONDS)
+    )
+    return {
+        "progress_percent": progress_percent,
+        "pages_per_second": pages_per_second,
+        "files_per_minute": files_per_minute,
+        "eta_seconds": eta_seconds,
+        "is_stale": is_stale,
+    }
+
+
+def _load_scan_summary(
+    session: Session,
+    job: Job,
+    manifest: Manifest | None,
+    *,
+    total_files: int,
+    shard_counts: dict[str, int],
+    total_shards: int,
+    summary_now: datetime,
+) -> dict[str, Any]:
+    scan_progress = _latest_manifest_scan_progress(session, job.id)
+    progress_files = int(scan_progress.get("scanned_files") or 0)
+    progress_dirs = int(scan_progress.get("scanned_dirs") or 0)
+    progress_bytes = int(scan_progress.get("total_bytes") or 0)
+    error_samples = _recent_manifest_scan_error_samples(session, job.id)
+    error_count = int(
+        scan_progress.get("skipped_error_count") or len(error_samples)
+    )
+    manifest_meta = _manifest_scan_metadata(manifest)
+    if manifest is not None and manifest_meta:
+        progress_files = max(progress_files, int(manifest.file_count or 0))
+        try:
+            manifest_dirs = int(
+                manifest_meta.get("scanned_dir_count")
+                or manifest_meta.get("scanned_dirs")
+                or 0
+            )
+        except (TypeError, ValueError):
+            manifest_dirs = 0
+        progress_dirs = max(progress_dirs, manifest_dirs)
+        progress_bytes = max(
+            progress_bytes,
+            int(manifest.total_bytes or 0),
+        )
+        try:
+            manifest_error_count = int(
+                manifest_meta.get("skipped_error_count") or 0
+            )
+        except (TypeError, ValueError):
+            manifest_error_count = 0
+        error_count = max(error_count, manifest_error_count)
+        if not error_samples:
+            error_samples = _manifest_scan_error_samples(manifest_meta)
+
+    count_rows = session.execute(
+        select(ScanUnit.status, func.count(ScanUnit.id))
+        .where(ScanUnit.job_id == job.id)
+        .group_by(ScanUnit.status)
+    ).all()
+    counts = {status: int(count) for status, count in count_rows}
+    total_units = sum(counts.values())
+    failure_rows = session.execute(
+        select(ScanUnit.failure_category, func.count(ScanUnit.id))
+        .where(ScanUnit.job_id == job.id)
+        .where(ScanUnit.failure_category.is_not(None))
+        .group_by(ScanUnit.failure_category)
+    ).all()
+    failure_counts = {
+        str(category): int(count)
+        for category, count in failure_rows
+        if category
+    }
+    if counts:
+        progress_files = max(progress_files, total_files)
+        progress_dirs = max(
+            progress_dirs,
+            counts.get("succeeded", 0) + counts.get("failed", 0),
+        )
+        manifest_total_bytes = int(
+            session.execute(
+                select(func.coalesce(func.sum(Manifest.total_bytes), 0))
+                .where(Manifest.job_id == job.id)
+            ).scalar_one()
+            or 0
+        )
+        progress_bytes = max(progress_bytes, manifest_total_bytes)
+        if not error_samples:
+            error_samples = _scan_unit_problem_samples(
+                session,
+                job.id,
+                limit=5,
+            )
+        error_count = max(
+            error_count,
+            counts.get("failed", 0),
+            counts.get("stale", 0),
+        )
+
+    failed_units = counts.get("failed", 0)
+    stale_units = counts.get("stale", 0)
+    status = str(scan_progress.get("status") or "running") if scan_progress else "not_started"
+    if counts:
+        open_units = (
+            counts.get("pending", 0)
+            + counts.get("running", 0)
+            + stale_units
+        )
+        status = "running" if open_units else ("failed" if failed_units else "done")
+    elif manifest is not None:
+        if manifest.status == "scanning":
+            status = "running"
+        elif manifest.frozen_at is not None or manifest.status == "ready":
+            status = "done"
+
+    estimated_raw = scan_progress.get("estimated_total_files")
+    try:
+        estimated_total = int(estimated_raw) if estimated_raw is not None else None
+    except (TypeError, ValueError):
+        estimated_total = None
+    remaining = _optional_int(scan_progress.get("remaining_files"))
+    if remaining is None and estimated_total is not None:
+        remaining = max(estimated_total - progress_files, 0)
+    percent = None
+    if estimated_total is not None and estimated_total > 0:
+        percent = round(
+            min(progress_files / estimated_total * 100, 100),
+            2,
+        )
+    started_at = _parse_datetime(scan_progress.get("scan_started_at"))
+    if started_at is None:
+        started_at = _parse_datetime(manifest_meta.get("scan_started_at"))
+    if started_at is None:
+        started_at = _manifest_scan_started_at(session, job.id)
+    if started_at is None and counts:
+        started_at = session.execute(
+            select(func.min(ScanUnit.started_at))
+            .where(ScanUnit.job_id == job.id)
+            .where(ScanUnit.started_at.is_not(None))
+        ).scalar_one()
+    if started_at is None and counts:
+        started_at = job.started_at or job.created_at
+    finished_at = _parse_datetime(scan_progress.get("scan_finished_at"))
+    if finished_at is None:
+        finished_at = _parse_datetime(manifest_meta.get("scan_finished_at"))
+    if finished_at is None and manifest is not None and manifest.frozen_at is not None:
+        finished_at = manifest.frozen_at
 
     retrying_shards = shard_counts.get("retrying", 0)
     stale_shards = shard_counts.get("stale", 0)
     failed_shards = shard_counts.get("failed", 0)
     stopped_shards = shard_counts.get("stopped", 0)
-    stale_scan_units = scan_unit_counts.get("stale", 0)
-    failed_scan_units = scan_unit_counts.get("failed", 0)
-    scan_status = "not_started"
-    if scan_progress:
-        scan_status = str(scan_progress.get("status") or "running")
-    if scan_unit_counts:
-        open_scan_units = (
-            scan_unit_counts.get("pending", 0)
-            + scan_unit_counts.get("running", 0)
-            + scan_unit_counts.get("stale", 0)
-        )
-        if open_scan_units:
-            scan_status = "running"
-        elif failed_scan_units:
-            scan_status = "failed"
-        else:
-            scan_status = "done"
-    elif manifest is not None:
-        if manifest.status == "scanning":
-            scan_status = "running"
-        elif manifest.frozen_at is not None or manifest.status == "ready":
-            scan_status = "done"
-    estimated_total_files_raw = scan_progress.get("estimated_total_files")
-    try:
-        estimated_total_files = int(estimated_total_files_raw) if estimated_total_files_raw is not None else None
-    except (TypeError, ValueError):
-        estimated_total_files = None
-    scan_remaining_files = _optional_int(scan_progress.get("remaining_files"))
-    if scan_remaining_files is None and estimated_total_files is not None:
-        scan_remaining_files = max(estimated_total_files - scan_progress_files, 0)
-    scan_progress_percent = None
-    if estimated_total_files is not None and estimated_total_files > 0:
-        scan_progress_percent = round(
-            min(scan_progress_files / estimated_total_files * 100, 100),
-            2,
-        )
-    scan_started_at = _parse_datetime(scan_progress.get("scan_started_at"))
-    if scan_started_at is None:
-        scan_started_at = _parse_datetime(manifest_scan_meta.get("scan_started_at"))
-    if scan_started_at is None:
-        scan_started_at = _manifest_scan_started_at(session, job.id)
-    if scan_started_at is None and scan_unit_counts:
-        scan_started_at = session.execute(
-            select(func.min(ScanUnit.started_at))
-            .where(ScanUnit.job_id == job.id)
-            .where(ScanUnit.started_at.is_not(None))
-        ).scalar_one()
-    if scan_started_at is None and scan_unit_counts:
-        scan_started_at = job.started_at or job.created_at
-    scan_finished_at = _parse_datetime(scan_progress.get("scan_finished_at"))
-    if scan_finished_at is None:
-        scan_finished_at = _parse_datetime(manifest_scan_meta.get("scan_finished_at"))
-    if scan_finished_at is None and manifest is not None and manifest.frozen_at is not None:
-        scan_finished_at = manifest.frozen_at
-    recovery_status = "healthy"
-    if failed_shards or stopped_shards or failed_scan_units:
-        recovery_status = "exhausted"
-    elif retrying_shards or stale_shards or stale_scan_units:
-        recovery_status = "recovering"
-    pending_scan_units = scan_unit_counts.get("pending", 0)
-    running_scan_units = scan_unit_counts.get("running", 0)
-    succeeded_scan_units = scan_unit_counts.get("succeeded", 0)
+    recovery = "healthy"
+    if failed_shards or stopped_shards or failed_units:
+        recovery = "exhausted"
+    elif retrying_shards or stale_shards or stale_units:
+        recovery = "recovering"
+    pending_units = counts.get("pending", 0)
+    running_units = counts.get("running", 0)
+    succeeded_units = counts.get("succeeded", 0)
     executable_shards = (
         shard_counts.get("pending", 0)
         + shard_counts.get("running", 0)
@@ -770,42 +893,137 @@ def get_job_summary(
     )
     lifecycle_stage = _job_lifecycle_stage(
         job=job,
-        scan_status=scan_status,
+        scan_status=status,
         total_shards=total_shards,
         running_shards=shard_counts.get("running", 0),
         retrying_shards=retrying_shards,
         stale_shards=stale_shards,
         failed_shards=failed_shards,
         stopped_shards=stopped_shards,
-        pending_scan_units=pending_scan_units,
-        running_scan_units=running_scan_units,
-        stale_scan_units=stale_scan_units,
-        failed_scan_units=failed_scan_units,
+        pending_scan_units=pending_units,
+        running_scan_units=running_units,
+        stale_scan_units=stale_units,
+        failed_scan_units=failed_units,
     )
-    completed_scan_units = succeeded_scan_units + failed_scan_units
-    scan_eta_seconds = None
-    if scan_status == "running":
-        scan_eta_seconds = _optional_int(scan_progress.get("estimated_remaining_seconds"))
-        if scan_eta_seconds is None:
-            scan_eta_seconds = _scan_eta_seconds_from_rate(
-                scanned_files=scan_progress_files,
-                estimated_total_files=estimated_total_files,
+    eta_seconds = None
+    if status == "running":
+        eta_seconds = _optional_int(
+            scan_progress.get("estimated_remaining_seconds")
+        )
+        if eta_seconds is None:
+            eta_seconds = _scan_eta_seconds_from_rate(
+                scanned_files=progress_files,
+                estimated_total_files=estimated_total,
                 files_per_second=scan_progress.get("files_per_second"),
             )
-        if scan_eta_seconds is None:
-            scan_eta_seconds = _scan_eta_seconds(
-                started_at=scan_started_at,
+        if eta_seconds is None:
+            eta_seconds = _scan_eta_seconds(
+                started_at=started_at,
                 now=summary_now,
-                scanned_files=scan_progress_files,
-                estimated_total_files=estimated_total_files,
+                scanned_files=progress_files,
+                estimated_total_files=estimated_total,
             )
-        if scan_eta_seconds is None:
-            scan_eta_seconds = _scan_unit_eta_seconds(
-                started_at=scan_started_at,
+        if eta_seconds is None:
+            eta_seconds = _scan_unit_eta_seconds(
+                started_at=started_at,
                 now=summary_now,
-                completed_units=completed_scan_units,
-                total_units=total_scan_units,
+                completed_units=succeeded_units + failed_units,
+                total_units=total_units,
             )
+    return {
+        "raw": scan_progress,
+        "files": progress_files,
+        "dirs": progress_dirs,
+        "bytes": progress_bytes,
+        "error_samples": error_samples,
+        "error_count": error_count,
+        "status": status,
+        "estimated_total": estimated_total,
+        "remaining": remaining,
+        "percent": percent,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "eta_seconds": eta_seconds,
+        "counts": counts,
+        "total_units": total_units,
+        "failure_counts": failure_counts,
+        "pending_units": pending_units,
+        "running_units": running_units,
+        "stale_units": stale_units,
+        "succeeded_units": succeeded_units,
+        "failed_units": failed_units,
+        "recovery": recovery,
+        "executable_shards": executable_shards,
+        "lifecycle_stage": lifecycle_stage,
+    }
+
+def get_job_summary(
+    session: Session,
+    job_or_id: Job | str,
+    *,
+    limits: __ControlLimits | None = None,
+) -> JobSummaryResponse:
+    control_limits = (
+        limits if limits is not None else __legacy_control_limits()
+    )
+    job = get_job_or_raise(session, job_or_id) if isinstance(job_or_id, str) else job_or_id
+    summary_now = utcnow()
+    manifest = session.execute(
+        select(Manifest)
+        .where(Manifest.job_id == job.id)
+        .order_by(Manifest.id.asc())
+        .limit(1)
+    ).scalar_one_or_none()
+    counter = session.get(JobCounter, job.id)
+    file_progress = _load_job_file_progress(session, job, counter)
+    total_files = file_progress["total_files"]
+    scanned_files = total_files
+    completed_files = file_progress["completed_files"]
+    failed_files = file_progress["failed_files"]
+    skipped_files = file_progress["skipped_files"]
+    total_pages = file_progress["total_pages"]
+    completed_pages = file_progress["completed_pages"]
+    failure_category_counts = file_progress["failure_category_counts"]
+    event_progress = _load_job_event_progress(session, job, counter)
+    last_event_at = event_progress["last_event_at"]
+    first_event_at = event_progress["first_event_at"]
+    last_heartbeat_at = event_progress["last_heartbeat_at"]
+    degraded_pages = event_progress["degraded_pages"]
+    quality_flags = event_progress["quality_flags"]
+    shard_summary = _load_worker_shard_summaries(
+        session,
+        job,
+        summary_now,
+        control_limits,
+    )
+    shard_counts = shard_summary["shard_counts"]
+    total_shards = shard_summary["total_shards"]
+    shard_failure_category_counts = shard_summary["failure_counts"]
+    attention_shards = shard_summary["attention_shards"]
+    worker_shards = shard_summary["worker_shards"]
+    scan_summary = _load_scan_summary(
+        session,
+        job,
+        manifest,
+        total_files=total_files,
+        shard_counts=shard_counts,
+        total_shards=total_shards,
+        summary_now=summary_now,
+    )
+    scanned_files = max(scanned_files, scan_summary["files"])
+    rate_summary = _calculate_job_rates(
+        job,
+        summary_now=summary_now,
+        first_event_at=first_event_at,
+        last_event_at=last_event_at,
+        last_heartbeat_at=last_heartbeat_at,
+        total_files=total_files,
+        completed_files=completed_files,
+        failed_files=failed_files,
+        skipped_files=skipped_files,
+        total_pages=total_pages,
+        completed_pages=completed_pages,
+    )
     manifest_integrity_summary = _manifest_freeze_integrity_summary(
         manifest,
         limits=control_limits,
@@ -820,7 +1038,7 @@ def get_job_summary(
         assigned_server_id=public_assigned_server_id(job),
         allowed_server_ids=allowed_server_ids_for_job(job),
         status=job.status,
-        lifecycle_stage=lifecycle_stage,
+        lifecycle_stage=scan_summary["lifecycle_stage"],
         failure_category=job.failure_category,
         error_message=job.error_message,
         stop_requested=job.stop_requested,
@@ -834,53 +1052,53 @@ def get_job_summary(
         skipped_files=skipped_files,
         total_pages=total_pages,
         completed_pages=completed_pages,
-        progress_percent=progress_percent,
-        pages_per_second=pages_per_second,
-        files_per_minute=files_per_minute,
-        eta_seconds=eta_seconds,
+        progress_percent=rate_summary["progress_percent"],
+        pages_per_second=rate_summary["pages_per_second"],
+        files_per_minute=rate_summary["files_per_minute"],
+        eta_seconds=rate_summary["eta_seconds"],
         last_event_at=last_event_at,
         last_heartbeat_at=last_heartbeat_at,
-        is_stale=is_stale,
+        is_stale=rate_summary["is_stale"],
         degraded_pages=degraded_pages,
         manifest_status=manifest.status if manifest is not None else None,
         manifest_snapshot_status=_manifest_snapshot_status(manifest),
         manifest_frozen_at=manifest.frozen_at if manifest is not None else None,
         **manifest_integrity_summary,
-        scan_status=scan_status,
-        scan_progress_files=scan_progress_files,
-        scan_discovered_pdf_count=scan_progress_files,
-        scan_estimated_total_files=estimated_total_files,
-        scan_estimated_total_pdf_count=estimated_total_files,
-        scan_remaining_files=scan_remaining_files,
-        scan_remaining_pdf_count=scan_remaining_files,
-        scan_progress_percent=scan_progress_percent,
-        scan_progress_dirs=scan_progress_dirs,
-        scan_progress_bytes=scan_progress_bytes,
-        scan_current_path=scan_progress.get("current_path"),
-        scan_error_count=scan_error_count,
-        scan_error_samples=scan_error_samples,
-        scan_eta_seconds=scan_eta_seconds,
-        scan_started_at=scan_started_at,
-        scan_finished_at=scan_finished_at,
+        scan_status=scan_summary["status"],
+        scan_progress_files=scan_summary["files"],
+        scan_discovered_pdf_count=scan_summary["files"],
+        scan_estimated_total_files=scan_summary["estimated_total"],
+        scan_estimated_total_pdf_count=scan_summary["estimated_total"],
+        scan_remaining_files=scan_summary["remaining"],
+        scan_remaining_pdf_count=scan_summary["remaining"],
+        scan_progress_percent=scan_summary["percent"],
+        scan_progress_dirs=scan_summary["dirs"],
+        scan_progress_bytes=scan_summary["bytes"],
+        scan_current_path=scan_summary["raw"].get("current_path"),
+        scan_error_count=scan_summary["error_count"],
+        scan_error_samples=scan_summary["error_samples"],
+        scan_eta_seconds=scan_summary["eta_seconds"],
+        scan_started_at=scan_summary["started_at"],
+        scan_finished_at=scan_summary["finished_at"],
         total_shards=total_shards,
         shards_created=total_shards,
-        executable_shards=executable_shards,
+        executable_shards=scan_summary["executable_shards"],
         pending_shards=shard_counts.get("pending", 0),
         running_shards=shard_counts.get("running", 0),
-        retrying_shards=retrying_shards,
-        stale_shards=stale_shards,
+        retrying_shards=shard_counts.get("retrying", 0),
+        stale_shards=shard_counts.get("stale", 0),
         succeeded_shards=shard_counts.get("succeeded", 0),
-        failed_shards=failed_shards,
-        stopped_shards=stopped_shards,
+        failed_shards=shard_counts.get("failed", 0),
+        stopped_shards=shard_counts.get("stopped", 0),
         shard_failure_category_counts=shard_failure_category_counts,
-        total_scan_units=total_scan_units,
-        pending_scan_units=pending_scan_units,
-        running_scan_units=running_scan_units,
-        stale_scan_units=stale_scan_units,
-        succeeded_scan_units=succeeded_scan_units,
-        failed_scan_units=failed_scan_units,
-        scan_unit_failure_category_counts=scan_unit_failure_category_counts,
-        recovery_status=recovery_status,
+        total_scan_units=scan_summary["total_units"],
+        pending_scan_units=scan_summary["pending_units"],
+        running_scan_units=scan_summary["running_units"],
+        stale_scan_units=scan_summary["stale_units"],
+        succeeded_scan_units=scan_summary["succeeded_units"],
+        failed_scan_units=scan_summary["failed_units"],
+        scan_unit_failure_category_counts=scan_summary["failure_counts"],
+        recovery_status=scan_summary["recovery"],
         **worker_version_summary,
         worker_shards=worker_shards,
         attention_shards=attention_shards,

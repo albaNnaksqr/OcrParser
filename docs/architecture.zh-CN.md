@@ -54,6 +54,12 @@ v0.3 暂时继续集中维护 ORM models。
 导入明确的 command、query 或 schema owner；原有 5,000 行单体 service 和
 wildcard façade 均不再存在。
 
+从 v0.4.3 开始，jobs、workers、manifests 和 model-profile domain 也不再保留
+`core.py` 转发层。router 与 application code 直接依赖明确的 `commands`、
+`queries`、`policy` 和 `schemas` owner。manifest integrity、job summary 与
+worker preflight 的稳定入口保持不变，内部则原地分解为数据读取、确定性计算、
+问题归类和响应装配 helper；静态门禁禁止 Control domain 使用 wildcard import。
+
 ## Agent runtime
 
 单进程 agent 由 `AgentRuntime` 组合，`AgentSupervisor` 统一管理 heartbeat、job
