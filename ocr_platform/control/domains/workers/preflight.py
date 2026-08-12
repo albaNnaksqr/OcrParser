@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -143,6 +144,301 @@ def control_api_auth_preflight_issue(
     )
 
 
+@dataclass(frozen=True)
+class _WorkerPreflightSnapshot:
+    eligibilities: list[dict[str, Any]]
+    eligible: list[dict[str, Any]]
+    ready: list[dict[str, Any]]
+    eligible_ids: set[str]
+
+
+def _deployment_preflight(
+    session: Session,
+    settings: ControlSettings,
+) -> tuple[str, list[JobPreflightIssue]]:
+    issues: list[JobPreflightIssue] = []
+    database_status = database.describe_database_status(session.get_bind())
+    database_dialect = str(
+        database_status.get("dialect") or session.get_bind().dialect.name
+    )
+    if database_dialect != "postgresql":
+        issues.append(
+            preflight_issue(
+                "warning",
+                "database_not_postgres",
+                "Production jobs should use PostgreSQL; SQLite is for "
+                "local development.",
+                dialect=database_dialect,
+                require_postgres=settings.require_postgres,
+            )
+        )
+    migration_issue = database_migration_preflight_issue(database_status)
+    if migration_issue is not None:
+        issues.append(migration_issue)
+    auth_issue = control_api_auth_preflight_issue(settings)
+    if auth_issue is not None:
+        issues.append(auth_issue)
+    return database_dialect, issues
+
+
+def _worker_snapshot(
+    session: Session,
+    request: JobCreateRequest,
+) -> _WorkerPreflightSnapshot:
+    allowed_ids = set(request.allowed_server_ids or [])
+    if request.assigned_server_id:
+        allowed_ids.add(request.assigned_server_id)
+    eligibilities = [
+        item
+        for item in list_server_eligibility(session, request.input_dir)
+        if item["server_id"] != POOL_SERVER_ID
+        and (not allowed_ids or item["server_id"] in allowed_ids)
+    ]
+    eligible = [
+        item for item in eligibilities if item.get("can_access")
+    ]
+    ready = [
+        item
+        for item in eligible
+        if item.get("status") in {"online", "idle"}
+        and not item.get("is_stale")
+    ]
+    return _WorkerPreflightSnapshot(
+        eligibilities=eligibilities,
+        eligible=eligible,
+        ready=ready,
+        eligible_ids={str(item["server_id"]) for item in eligible},
+    )
+
+
+def _writable_worker_ids(
+    session: Session,
+    eligible_ids: set[str],
+    path: str,
+) -> set[str]:
+    return {
+        str(item["server_id"])
+        for item in (
+            evaluate_server_path_access(
+                server,
+                path,
+                require_writable=True,
+            )
+            for server in list_servers(session)
+            if server.id in eligible_ids
+        )
+        if item.get("can_access")
+    }
+
+
+def _worker_path_issues(
+    session: Session,
+    request: JobCreateRequest,
+    snapshot: _WorkerPreflightSnapshot,
+) -> list[JobPreflightIssue]:
+    issues: list[JobPreflightIssue] = []
+    if not snapshot.eligible:
+        issues.append(
+            preflight_issue(
+                "error",
+                "no_eligible_workers",
+                "No selected worker can read the input shared path.",
+                input_dir=request.input_dir,
+            )
+        )
+    output_writers = _writable_worker_ids(
+        session,
+        snapshot.eligible_ids,
+        request.output_dir,
+    )
+    missing_output_writers = sorted(
+        snapshot.eligible_ids - output_writers
+    )
+    if missing_output_writers:
+        issues.append(
+            preflight_issue(
+                "error",
+                "output_path_not_writable",
+                "One or more eligible workers cannot confirm write "
+                "access to output_dir.",
+                path=request.output_dir,
+                eligible_workers=sorted(snapshot.eligible_ids),
+                writable_workers=sorted(output_writers),
+                unwritable_workers=missing_output_writers,
+            )
+        )
+    effective_manifest_root = request.manifest_root or infer_default_manifest_root(
+        session,
+        input_dir=request.input_dir,
+        input_mode=request.input_mode,
+        assigned_server_id=request.assigned_server_id,
+        allowed_server_ids=request.allowed_server_ids,
+    )
+    if not effective_manifest_root:
+        return issues
+    manifest_writers = _writable_worker_ids(
+        session,
+        snapshot.eligible_ids,
+        effective_manifest_root,
+    )
+    missing_manifest_writers = sorted(
+        snapshot.eligible_ids - manifest_writers
+    )
+    if missing_manifest_writers:
+        issues.append(
+            preflight_issue(
+                "error",
+                "manifest_root_not_writable",
+                "One or more eligible workers cannot confirm write "
+                "access to manifest_root.",
+                path=effective_manifest_root,
+                inferred=not bool(request.manifest_root),
+                eligible_workers=sorted(snapshot.eligible_ids),
+                writable_workers=sorted(manifest_writers),
+                unwritable_workers=missing_manifest_writers,
+            )
+        )
+    return issues
+
+
+def _worker_health_issues(
+    session: Session,
+    snapshot: _WorkerPreflightSnapshot,
+) -> list[JobPreflightIssue]:
+    issues: list[JobPreflightIssue] = []
+    versions = server_versions(session, snapshot.eligible_ids)
+    if len(versions) > 1:
+        issues.append(
+            preflight_issue(
+                "warning",
+                "mixed_worker_versions",
+                "Selected eligible workers report different git_ref "
+                "or script_version values.",
+                versions=versions,
+            )
+        )
+    constrained_workers = resource_constrained_workers(
+        session,
+        snapshot.eligible_ids,
+    )
+    if constrained_workers:
+        issues.append(
+            preflight_issue(
+                "warning",
+                "resource_constrained_workers",
+                "One or more eligible workers currently report "
+                "resource pressure and may delay claiming work.",
+                workers=constrained_workers,
+            )
+        )
+    backlog_workers = workers_with_event_spool_backlog(
+        session,
+        snapshot.eligible_ids,
+    )
+    if backlog_workers:
+        issues.append(
+            preflight_issue(
+                "warning",
+                "worker_event_spool_backlog",
+                "One or more eligible workers report unreplayed, "
+                "quarantined, or dropped local event/log spool records.",
+                workers=backlog_workers,
+            )
+        )
+    pending_update_workers = workers_with_pending_shard_update_backlog(
+        session,
+        snapshot.eligible_ids,
+    )
+    if pending_update_workers:
+        issues.append(
+            preflight_issue(
+                "warning",
+                "worker_pending_shard_update_backlog",
+                "One or more eligible workers report unreplayed or "
+                "quarantined local shard progress updates.",
+                workers=pending_update_workers,
+            )
+        )
+    return issues
+
+
+def _model_profile_issues(
+    session: Session,
+    request: JobCreateRequest,
+) -> list[JobPreflightIssue]:
+    if not request.model_profile_id:
+        return []
+    issues: list[JobPreflightIssue] = []
+    profile = session.get(ModelProfile, request.model_profile_id)
+    if profile is None:
+        issues.append(
+            preflight_issue(
+                "error",
+                "unknown_model_profile",
+                "Selected model profile does not exist.",
+                model_profile_id=request.model_profile_id,
+            )
+        )
+    elif profile.requires_api_key and not (
+        resolve_model_profile_api_key(profile)
+        or request.extra_args.get("api_key")
+    ):
+        issues.append(
+            preflight_issue(
+                "error",
+                "model_profile_missing_api_key",
+                "Selected model profile requires an API key, but no "
+                "saved or per-job key is available.",
+                model_profile_id=request.model_profile_id,
+            )
+        )
+    elif profile.api_key:
+        issues.append(
+            preflight_issue(
+                "warning",
+                "model_profile_saved_api_key",
+                "Selected model profile stores a legacy API key in "
+                "the control database; save the profile with "
+                "clear_api_key=true and migrate to api_key_env_var.",
+                model_profile_id=request.model_profile_id,
+                api_key_env_var=profile.api_key_env_var,
+            )
+        )
+    certification_result = (
+        certification_gate.evaluate_job_model_profile_certification(
+            session,
+            request,
+            candidates=candidate_workers_for_job(session, request),
+        )
+    )
+    if not certification_result.allowed:
+        issues.append(
+            preflight_issue(
+                "error",
+                str(certification_result.code),
+                str(certification_result.message),
+                **certification_result.details,
+            )
+        )
+    return issues
+
+
+def _retention_issues(limits: ControlLimits) -> list[JobPreflightIssue]:
+    if (
+        limits.job_file_detail_limit <= 100000
+        and limits.job_event_detail_limit <= 100000
+    ):
+        return []
+    return [
+        preflight_issue(
+            "warning",
+            "high_detail_row_limits",
+            "Large per-file or raw-event retention limits can grow "
+            "quickly on million-scale jobs.",
+            job_file_detail_limit=limits.job_file_detail_limit,
+            job_event_detail_limit=limits.job_event_detail_limit,
+        )
+    ]
 def preflight_job(
     session: Session,
     request: JobCreateRequest,
@@ -158,290 +454,24 @@ def preflight_job(
     control_limits = (
         limits if limits is not None else legacy_control_limits()
     )
-    issues: list[JobPreflightIssue] = []
-    database_status = database.describe_database_status(
-        session.get_bind()
-    )
-    database_dialect = str(
-        database_status.get("dialect")
-        or session.get_bind().dialect.name
-    )
-    if database_dialect != "postgresql":
-        issues.append(
-            preflight_issue(
-                "warning",
-                "database_not_postgres",
-                "Production jobs should use PostgreSQL; SQLite is for "
-                "local development.",
-                dialect=database_dialect,
-                require_postgres=control_settings.require_postgres,
-            )
-        )
-    migration_issue = database_migration_preflight_issue(
-        database_status
-    )
-    if migration_issue is not None:
-        issues.append(migration_issue)
-    auth_issue = control_api_auth_preflight_issue(control_settings)
-    if auth_issue is not None:
-        issues.append(auth_issue)
-
-    allowed_ids = set(request.allowed_server_ids or [])
-    if request.assigned_server_id:
-        allowed_ids.add(request.assigned_server_id)
-    eligibilities = [
-        item
-        for item in list_server_eligibility(
-            session,
-            request.input_dir,
-        )
-        if item["server_id"] != POOL_SERVER_ID
-        and (
-            not allowed_ids
-            or item["server_id"] in allowed_ids
-        )
-    ]
-    eligible = [
-        item for item in eligibilities if item.get("can_access")
-    ]
-    ready = [
-        item
-        for item in eligible
-        if item.get("status") in {"online", "idle"}
-        and not item.get("is_stale")
-    ]
-    if not eligible:
-        issues.append(
-            preflight_issue(
-                "error",
-                "no_eligible_workers",
-                "No selected worker can read the input shared path.",
-                input_dir=request.input_dir,
-            )
-        )
-    eligible_ids = {
-        str(item["server_id"]) for item in eligible
-    }
-
-    def writable_workers_for(
-        path: str,
-    ) -> list[dict[str, Any]]:
-        checks = [
-            evaluate_server_path_access(
-                server,
-                path,
-                require_writable=True,
-            )
-            for server in list_servers(session)
-            if server.id in eligible_ids
-        ]
-        return [
-            item for item in checks if item.get("can_access")
-        ]
-
-    output_writers = {
-        str(item["server_id"])
-        for item in writable_workers_for(request.output_dir)
-    }
-    missing_output_writers = sorted(
-        eligible_ids - output_writers
-    )
-    if missing_output_writers:
-        issues.append(
-            preflight_issue(
-                "error",
-                "output_path_not_writable",
-                "One or more eligible workers cannot confirm write "
-                "access to output_dir.",
-                path=request.output_dir,
-                eligible_workers=sorted(eligible_ids),
-                writable_workers=sorted(output_writers),
-                unwritable_workers=missing_output_writers,
-            )
-        )
-    effective_manifest_root = (
-        request.manifest_root
-        or infer_default_manifest_root(
-            session,
-            input_dir=request.input_dir,
-            input_mode=request.input_mode,
-            assigned_server_id=request.assigned_server_id,
-            allowed_server_ids=request.allowed_server_ids,
-        )
-    )
-    if effective_manifest_root:
-        manifest_writers = {
-            str(item["server_id"])
-            for item in writable_workers_for(
-                effective_manifest_root
-            )
-        }
-        missing_manifest_writers = sorted(
-            eligible_ids - manifest_writers
-        )
-        if missing_manifest_writers:
-            issues.append(
-                preflight_issue(
-                    "error",
-                    "manifest_root_not_writable",
-                    "One or more eligible workers cannot confirm write "
-                    "access to manifest_root.",
-                    path=effective_manifest_root,
-                    inferred=not bool(request.manifest_root),
-                    eligible_workers=sorted(eligible_ids),
-                    writable_workers=sorted(manifest_writers),
-                    unwritable_workers=missing_manifest_writers,
-                )
-            )
-    versions = server_versions(
+    database_dialect, issues = _deployment_preflight(
         session,
-        {
-            str(item["server_id"])
-            for item in eligible
-        },
+        control_settings,
     )
-    if len(versions) > 1:
-        issues.append(
-            preflight_issue(
-                "warning",
-                "mixed_worker_versions",
-                "Selected eligible workers report different git_ref "
-                "or script_version values.",
-                versions=versions,
-            )
-        )
-    constrained_workers = resource_constrained_workers(
-        session,
-        eligible_ids,
-    )
-    if constrained_workers:
-        issues.append(
-            preflight_issue(
-                "warning",
-                "resource_constrained_workers",
-                "One or more eligible workers currently report "
-                "resource pressure and may delay claiming work.",
-                workers=constrained_workers,
-            )
-        )
-    backlog_workers = workers_with_event_spool_backlog(
-        session,
-        eligible_ids,
-    )
-    if backlog_workers:
-        issues.append(
-            preflight_issue(
-                "warning",
-                "worker_event_spool_backlog",
-                "One or more eligible workers report unreplayed, "
-                "quarantined, or dropped local event/log spool records.",
-                workers=backlog_workers,
-            )
-        )
-    pending_update_workers = (
-        workers_with_pending_shard_update_backlog(
-            session,
-            eligible_ids,
-        )
-    )
-    if pending_update_workers:
-        issues.append(
-            preflight_issue(
-                "warning",
-                "worker_pending_shard_update_backlog",
-                "One or more eligible workers report unreplayed or "
-                "quarantined local shard progress updates.",
-                workers=pending_update_workers,
-            )
-        )
-
-    if request.model_profile_id:
-        profile = session.get(
-            ModelProfile,
-            request.model_profile_id,
-        )
-        if profile is None:
-            issues.append(
-                preflight_issue(
-                    "error",
-                    "unknown_model_profile",
-                    "Selected model profile does not exist.",
-                    model_profile_id=request.model_profile_id,
-                )
-            )
-        elif profile.requires_api_key and not (
-            resolve_model_profile_api_key(profile)
-            or request.extra_args.get("api_key")
-        ):
-            issues.append(
-                preflight_issue(
-                    "error",
-                    "model_profile_missing_api_key",
-                    "Selected model profile requires an API key, but no "
-                    "saved or per-job key is available.",
-                    model_profile_id=request.model_profile_id,
-                )
-            )
-        elif profile.api_key:
-            issues.append(
-                preflight_issue(
-                    "warning",
-                    "model_profile_saved_api_key",
-                    "Selected model profile stores a legacy API key in "
-                    "the control database; save the profile with "
-                    "clear_api_key=true and migrate to api_key_env_var.",
-                    model_profile_id=request.model_profile_id,
-                    api_key_env_var=profile.api_key_env_var,
-                )
-            )
-        certification_result = (
-            certification_gate
-            .evaluate_job_model_profile_certification(
-                session,
-                request,
-                candidates=candidate_workers_for_job(
-                    session,
-                    request,
-                ),
-            )
-        )
-        if not certification_result.allowed:
-            issues.append(
-                preflight_issue(
-                    "error",
-                    str(certification_result.code),
-                    str(certification_result.message),
-                    **certification_result.details,
-                )
-            )
-
-    if (
-        control_limits.job_file_detail_limit > 100000
-        or control_limits.job_event_detail_limit > 100000
-    ):
-        issues.append(
-            preflight_issue(
-                "warning",
-                "high_detail_row_limits",
-                "Large per-file or raw-event retention limits can grow "
-                "quickly on million-scale jobs.",
-                job_file_detail_limit=(
-                    control_limits.job_file_detail_limit
-                ),
-                job_event_detail_limit=(
-                    control_limits.job_event_detail_limit
-                ),
-            )
-        )
+    worker_snapshot = _worker_snapshot(session, request)
+    issues.extend(_worker_path_issues(session, request, worker_snapshot))
+    issues.extend(_worker_health_issues(session, worker_snapshot))
+    issues.extend(_model_profile_issues(session, request))
+    issues.extend(_retention_issues(control_limits))
 
     return JobPreflightResponse(
         ok=not any(
             issue.severity == "error" for issue in issues
         ),
         database_dialect=database_dialect,
-        total_workers=len(eligibilities),
-        eligible_workers=len(eligible),
-        ready_workers=len(ready),
+        total_workers=len(worker_snapshot.eligibilities),
+        eligible_workers=len(worker_snapshot.eligible),
+        ready_workers=len(worker_snapshot.ready),
         issues=issues,
     )
 

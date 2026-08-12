@@ -83,6 +83,37 @@ def _count_jsonl_rows(path: Path) -> int:
     count, _, _ = _count_jsonl_rows_with_relative_paths(path)
     return count
 
+
+def _read_manifest_jsonl(
+    path: Path,
+) -> tuple[tuple[int, set[str], int] | None, str | None]:
+    try:
+        return _count_jsonl_rows_with_relative_paths(path), None
+    except OSError:
+        return None, "file_unreadable"
+    except json.JSONDecodeError:
+        return None, "malformed_jsonl"
+    except InvalidManifestRowError:
+        return None, "invalid_manifest_row"
+    except InvalidManifestRelativePathError:
+        return None, "invalid_relative_path"
+    except DuplicateManifestRelativePathError:
+        return None, "duplicate_relative_path"
+
+
+def _read_json_object(
+    path: Path,
+) -> tuple[dict[str, Any] | None, str | None]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except OSError:
+        return None, "file_unreadable"
+    except json.JSONDecodeError:
+        return None, "malformed_json"
+    if not isinstance(payload, dict):
+        return None, "malformed_json"
+    return payload, None
+
 def _validate_json_file(path: Path) -> str | None:
     try:
         json.loads(path.read_text(encoding="utf-8"))
@@ -429,7 +460,7 @@ def complete_worker_manifest_integrity_check(
         requested_at=manifest.worker_integrity_requested_at,
     )
 
-def get_manifest_integrity_report(
+def _assemble_manifest_integrity_report(
     session: Session,
     job_id: str,
     *,
@@ -479,35 +510,19 @@ def get_manifest_integrity_report(
     manifest_error: str | None = None
     manifest_relative_paths: set[str] | None = None
     if manifest_file_exists:
-        try:
+        manifest_rows, manifest_error = _read_manifest_jsonl(manifest_path)
+        if manifest_rows is not None:
             (
                 manifest_actual_file_count,
                 manifest_relative_paths,
                 manifest_actual_total_bytes,
-            ) = _count_jsonl_rows_with_relative_paths(
-                manifest_path
-            )
+            ) = manifest_rows
             manifest_file_count_matches = manifest_actual_file_count == manifest.file_count
             manifest_total_bytes_matches = (
                 manifest_actual_total_bytes == manifest_expected_total_bytes
             )
             if manifest_file_count_matches and not manifest_total_bytes_matches:
                 manifest_error = "total_bytes_mismatch"
-        except OSError:
-            manifest_actual_file_count = None
-            manifest_error = "file_unreadable"
-        except json.JSONDecodeError:
-            manifest_actual_file_count = None
-            manifest_error = "malformed_jsonl"
-        except InvalidManifestRowError:
-            manifest_actual_file_count = None
-            manifest_error = "invalid_manifest_row"
-        except InvalidManifestRelativePathError:
-            manifest_actual_file_count = None
-            manifest_error = "invalid_relative_path"
-        except DuplicateManifestRelativePathError:
-            manifest_actual_file_count = None
-            manifest_error = "duplicate_relative_path"
 
     meta_file_exists: bool | None = None
     meta_error: str | None = None
@@ -521,14 +536,9 @@ def get_manifest_integrity_report(
         meta_path = Path(manifest.meta_path)
         meta_file_exists = meta_path.exists()
         if meta_file_exists:
-            try:
-                meta_payload = json.loads(meta_path.read_text(encoding="utf-8"))
-            except OSError:
-                meta_error = "file_unreadable"
-            except json.JSONDecodeError:
-                meta_error = "malformed_json"
-            else:
-                if isinstance(meta_payload, dict) and meta_payload.get("file_count") is not None:
+            meta_payload, meta_error = _read_json_object(meta_path)
+            if meta_payload is not None:
+                if meta_payload.get("file_count") is not None:
                     try:
                         meta_actual_file_count = int(meta_payload["file_count"])
                     except (TypeError, ValueError):
@@ -546,10 +556,8 @@ def get_manifest_integrity_report(
                             )
                             if not meta_total_bytes_matches:
                                 meta_error = "total_bytes_mismatch"
-                elif isinstance(meta_payload, dict):
-                    meta_error = "file_count_missing"
                 else:
-                    meta_error = "malformed_json"
+                    meta_error = "file_count_missing"
 
     if control_cannot_access_manifest and int(
         session.execute(
@@ -649,89 +657,28 @@ def get_manifest_integrity_report(
             )
             scan_unit_actual_count_known = False
             continue
-        try:
+        unit_rows, unit_error = _read_manifest_jsonl(unit_manifest_path)
+        if unit_rows is None:
+            bad_scan_unit_count += 1
+            append_issue_sample(
+                bad_scan_units,
+                ManifestIntegrityScanUnitIssue(
+                    scan_unit_id=unit.id,
+                    path=unit.path,
+                    manifest_path=unit.manifest_path,
+                    expected_file_count=unit.file_count,
+                    actual_file_count=None,
+                    reason=unit_error or "file_unreadable",
+                ),
+            )
+            scan_unit_actual_count_known = False
+            continue
+        else:
             (
                 unit_actual_file_count,
                 unit_relative_paths,
                 unit_actual_total_bytes,
-            ) = _count_jsonl_rows_with_relative_paths(
-                unit_manifest_path
-            )
-        except OSError:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="file_unreadable",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        except json.JSONDecodeError:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="malformed_jsonl",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        except InvalidManifestRowError:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="invalid_manifest_row",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        except InvalidManifestRelativePathError:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="invalid_relative_path",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        except DuplicateManifestRelativePathError:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="duplicate_relative_path",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
+            ) = unit_rows
         if scan_unit_relative_paths.intersection(unit_relative_paths):
             bad_scan_unit_count += 1
             append_issue_sample(
@@ -794,16 +741,9 @@ def get_manifest_integrity_report(
                     )
                 )
             else:
-                try:
-                    unit_meta_payload = json.loads(unit_meta_path.read_text(encoding="utf-8"))
-                except OSError:
-                    unit_meta_error = "file_unreadable"
-                    unit_meta_payload = None
-                except json.JSONDecodeError:
-                    unit_meta_error = "malformed_json"
-                    unit_meta_payload = None
-                else:
-                    unit_meta_error = None if isinstance(unit_meta_payload, dict) else "malformed_json"
+                unit_meta_payload, unit_meta_error = _read_json_object(
+                    unit_meta_path
+                )
                 if unit_meta_error:
                     unit_meta_reason = (
                         "meta_file_malformed"
@@ -822,7 +762,7 @@ def get_manifest_integrity_report(
                             reason=unit_meta_reason,
                         )
                     )
-                elif isinstance(unit_meta_payload, dict) and unit_meta_payload.get("file_count") is not None:
+                elif unit_meta_payload.get("file_count") is not None:
                     try:
                         unit_meta_file_count = int(unit_meta_payload["file_count"])
                     except (TypeError, ValueError):
@@ -852,7 +792,10 @@ def get_manifest_integrity_report(
                                     reason="meta_file_count_mismatch",
                                 )
                             )
-                if isinstance(unit_meta_payload, dict) and unit_meta_payload.get("total_bytes") is not None:
+                if (
+                    unit_meta_payload is not None
+                    and unit_meta_payload.get("total_bytes") is not None
+                ):
                     try:
                         unit_meta_total_bytes = int(unit_meta_payload["total_bytes"])
                     except (TypeError, ValueError):
@@ -930,84 +873,27 @@ def get_manifest_integrity_report(
                 )
             )
             continue
-        try:
+        shard_rows, shard_error = _read_manifest_jsonl(shard_path)
+        if shard_rows is None:
+            bad_shard_count += 1
+            append_issue_sample(
+                bad_shards,
+                ManifestIntegrityShardIssue(
+                    shard_id=shard.id,
+                    shard_index=shard.shard_index,
+                    shard_path=shard.shard_path,
+                    expected_file_count=shard.file_count,
+                    actual_file_count=None,
+                    reason=shard_error or "file_unreadable",
+                ),
+            )
+            continue
+        else:
             (
                 actual_file_count,
                 shard_file_relative_paths,
                 _shard_total_bytes,
-            ) = _count_jsonl_rows_with_relative_paths(
-                shard_path
-            )
-        except OSError:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="file_unreadable",
-                )
-            )
-            continue
-        except json.JSONDecodeError:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="malformed_jsonl",
-                )
-            )
-            continue
-        except InvalidManifestRowError:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="invalid_manifest_row",
-                )
-            )
-            continue
-        except InvalidManifestRelativePathError:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="invalid_relative_path",
-                )
-            )
-            continue
-        except DuplicateManifestRelativePathError:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="duplicate_relative_path",
-                )
-            )
-            continue
+            ) = shard_rows
         if shard_relative_paths.intersection(shard_file_relative_paths):
             bad_shard_count += 1
             append_issue_sample(
@@ -1127,6 +1013,20 @@ def get_manifest_integrity_report(
         shard_file_count_matches_manifest=shard_file_count_matches_manifest,
         bad_shard_count=bad_shard_count,
         bad_shards=bad_shards,
+    )
+
+
+def get_manifest_integrity_report(
+    session: Session,
+    job_id: str,
+    *,
+    limits: ControlLimits | None = None,
+) -> ManifestIntegrityResponse:
+    """Read manifest evidence and assemble its public integrity projection."""
+    return _assemble_manifest_integrity_report(
+        session,
+        job_id,
+        limits=limits,
     )
 
 load_worker_integrity_report = _load_worker_integrity_report

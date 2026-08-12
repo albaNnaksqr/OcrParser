@@ -337,12 +337,40 @@ def scan_domain_facade_references(
     )
 
 
+def scan_domain_wildcard_imports(
+    root: Path = ROOT,
+) -> list[dict[str, Any]]:
+    domain_root = root / "ocr_platform" / "control" / "domains"
+    if not domain_root.exists():
+        return []
+    sites: list[dict[str, Any]] = []
+    for path in sorted(domain_root.rglob("*.py")):
+        tree = ast.parse(
+            path.read_text(encoding="utf-8"),
+            filename=str(path),
+        )
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if not any(alias.name == "*" for alias in node.names):
+                continue
+            sites.append(
+                {
+                    "path": path.relative_to(root).as_posix(),
+                    "line": int(node.lineno),
+                    "module": node.module or "",
+                }
+            )
+    return sites
+
+
 def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     package_path = root / "ocr_platform" / "control" / "service"
     module_path = root / "ocr_platform" / "control" / "service.py"
     sites = scan_references(root)
     domain_sites = scan_domain_facade_references(root)
+    wildcard_sites = scan_domain_wildcard_imports(root)
     domain_facades_exist = [
         module
         for module in DOMAIN_FACADE_MODULES
@@ -351,7 +379,7 @@ def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
         ).exists()
     ]
     return {
-        "schema_version": 3,
+        "schema_version": 4,
         "builder": (
             "tools.control_facade_inventory.build_facade_inventory"
         ),
@@ -363,6 +391,8 @@ def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
         "domain_facades_exist": domain_facades_exist,
         "domain_reference_count": len(domain_sites),
         "domain_references": domain_sites,
+        "domain_wildcard_import_count": len(wildcard_sites),
+        "domain_wildcard_imports": wildcard_sites,
         "consumed_symbol_migrations": fixture[
             "consumed_symbol_migrations"
         ],
@@ -370,8 +400,8 @@ def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
 
 
 def validate_fixture_shape(payload: dict[str, Any]) -> None:
-    if payload.get("schema_version") != 3:
-        raise ValueError("façade tombstone schema_version must be 3")
+    if payload.get("schema_version") != 4:
+        raise ValueError("façade tombstone schema_version must be 4")
     migrations = payload.get("consumed_symbol_migrations")
     if not isinstance(migrations, list):
         raise ValueError("consumed symbol migration map is missing")
@@ -402,6 +432,11 @@ def validate_fixture_shape(payload: dict[str, Any]) -> None:
         raise ValueError("domain façade reference count is inconsistent")
     if not isinstance(payload.get("domain_facades_exist"), list):
         raise ValueError("domain façade existence list is missing")
+    wildcard_imports = payload.get("domain_wildcard_imports")
+    if not isinstance(wildcard_imports, list):
+        raise ValueError("domain wildcard import list is missing")
+    if payload.get("domain_wildcard_import_count") != len(wildcard_imports):
+        raise ValueError("domain wildcard import count is inconsistent")
 
 
 def validate_removed(payload: dict[str, Any]) -> None:
@@ -432,6 +467,14 @@ def validate_removed(payload: dict[str, Any]) -> None:
         raise ValueError(
             "legacy Control domain façade references are forbidden: "
             + evidence
+        )
+    if payload["domain_wildcard_imports"]:
+        evidence = ", ".join(
+            f"{site['path']}:{site['line']}"
+            for site in payload["domain_wildcard_imports"]
+        )
+        raise ValueError(
+            "Control domain wildcard imports are forbidden: " + evidence
         )
 
 

@@ -131,9 +131,11 @@
   "domain_facades_exist": [],
   "domain_reference_count": 0,
   "domain_references": [],
+  "domain_wildcard_import_count": 0,
+  "domain_wildcard_imports": [],
   "facade_exists": false,
   "reference_count": 0,
   "references": [],
-  "schema_version": 3,
+  "schema_version": 4,
   "target_module": "ocr_platform.control.service"
 }
