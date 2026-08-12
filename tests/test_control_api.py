@@ -315,6 +315,117 @@ def test_system_diagnostics_summarizes_deployment_readiness_for_ui(tmp_path, mon
     assert any(issue["code"] == "database_not_postgres" for issue in payload["issues"])
 
 
+def test_fresh_control_with_zero_workers_is_never_reported_as_ready(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
+    client = make_client(tmp_path)
+
+    payload = client.get(
+        "/api/system/diagnostics",
+        headers={"Authorization": "Bearer control-secret"},
+    ).json()
+
+    assert payload["workers"] == {
+        "total": 0,
+        "ready": 0,
+        "stale": 0,
+        "with_shared_roots": 0,
+        "resource_constrained": 0,
+    }
+    no_workers = next(
+        issue for issue in payload["issues"] if issue["code"] == "no_workers"
+    )
+    assert no_workers["severity"] == "error"
+    assert payload["ok"] is False
+
+
+def test_zero_worker_doctor_blocks_ready_on_the_same_evidence_as_job_preflight(
+    tmp_path,
+    monkeypatch,
+):
+    monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
+    client = make_client(tmp_path)
+    auth = {"Authorization": "Bearer control-secret"}
+    shared_root = tmp_path / "shared"
+    (shared_root / "input").mkdir(parents=True)
+    (shared_root / "output").mkdir(parents=True)
+
+    diagnostics = client.get("/api/system/diagnostics", headers=auth).json()
+    preflight = client.post(
+        "/api/jobs/preflight",
+        headers=auth,
+        json={
+            "input_dir": str(shared_root / "input"),
+            "output_dir": str(shared_root / "output"),
+            "engine": "dotsocr",
+            "input_mode": "distributed_remote_folder_snapshot",
+        },
+    ).json()
+
+    assert diagnostics["ok"] is False
+    assert preflight["ok"] is False
+    assert preflight["eligible_workers"] == 0
+    doctor_errors = {
+        issue["code"] for issue in diagnostics["issues"] if issue["severity"] == "error"
+    }
+    preflight_errors = {
+        issue["code"] for issue in preflight["issues"] if issue["severity"] == "error"
+    }
+    assert "no_workers" in doctor_errors
+    assert "no_eligible_workers" in preflight_errors
+
+
+def test_diagnostics_ok_recovers_once_a_ready_worker_registers(tmp_path, monkeypatch):
+    monkeypatch.setenv("OCR_PLATFORM_API_TOKEN", "control-secret")
+    monkeypatch.setattr(
+        control_database,
+        "describe_database_status",
+        lambda bind: {
+            "dialect": "postgresql",
+            "schema_migrations_table_exists": True,
+            "migration_checksum_column_exists": True,
+            "is_current": True,
+            "checksum_mismatches": [],
+            "missing_checksums": [],
+            "missing_migrations": [],
+            "unexpected_migrations": [],
+        },
+    )
+    client = make_client(tmp_path)
+    auth = {"Authorization": "Bearer control-secret"}
+    shared = str(tmp_path / "shared")
+
+    before = client.get("/api/system/diagnostics", headers=auth).json()
+    register = client.post(
+        "/api/servers/register",
+        headers=auth,
+        json={
+            "id": "worker-a",
+            "name": "Worker A",
+            "host": "10.0.0.10",
+            "capacity_slots": 1,
+            "capabilities": {
+                "shared_roots": [shared],
+                "shared_paths": [
+                    {
+                        "path": shared,
+                        "exists": True,
+                        "readable": True,
+                        "writable": True,
+                    }
+                ],
+            },
+        },
+    )
+    assert register.status_code == 200
+    after = client.get("/api/system/diagnostics", headers=auth).json()
+
+    assert before["ok"] is False
+    assert {issue["code"] for issue in before["issues"]} >= {"no_workers"}
+    assert after["workers"]["ready"] == 1
+    assert not any(issue["severity"] == "error" for issue in after["issues"])
+    assert after["ok"] is True
+
+
 def test_register_server_create_job_and_claim(tmp_path):
     client = make_client(tmp_path)
 

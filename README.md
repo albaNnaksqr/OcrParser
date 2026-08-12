@@ -153,25 +153,73 @@ instead of exposing an import traceback.
 
 ## Quickstart: Control Flow Without A Real Model
 
-Use the built-in mock OCR service when you want to validate the control UI,
-worker loop, events, and job flow without standing up a real OCR model:
+### Shortest verification: one-shot mock end-to-end
+
+`tools/run_mock_e2e.py` starts a mock OCR endpoint, control, and a worker on
+temporary state, submits a synthetic PDF job, waits for it to succeed, verifies
+the Markdown artifact, and shuts everything down. Nothing is left running.
+
+It requires Python 3.10+ and the `[platform]` dependencies (`[dev]` includes
+them). If either is missing, the command exits immediately with the exact
+install command instead of timing out on a port.
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+python tools/run_mock_e2e.py
+```
+
+A successful run ends with `Verified N output artifact(s).` and exit code 0. On
+failure it prints the job logs and the tail of every service log.
+
+### Production-like stack you can keep running and explore in the UI
+
+`tools/local_prod_env.py` is the longer path: it runs PostgreSQL in Docker,
+applies migrations explicitly, and leaves control, the mock OCR service, and a
+worker running so you can click through the UI.
 
 ```bash
 python3 tools/local_prod_env.py up --with-worker --with-mock-ocr --shared-root /tmp/ocr-shared
 ```
 
-Open the UI at the URL printed by the command, then submit a small job using:
+`up` creates `/tmp/ocr-shared` plus its `input/`, `output/`, and `manifests/`
+subdirectories if they do not exist, and never removes or overwrites existing
+content. Add `--dry-run` to print the plan without creating anything or starting
+services.
 
-- engine: `dotsocr`
-- model name: `mock-ocr`
-- model endpoint: `127.0.0.1:18000`
+With `--with-mock-ocr`, `up` also registers a `mock_ocr_local` model profile
+(engine `dotsocr`, model `mock-ocr`, `page_concurrency` 1, no API key required).
+It is not the default profile and is only created for mock runs, so the
+production `dotsocr_15` default is unchanged.
+
+Put a PDF into the shared input directory, or generate a synthetic one:
+
+```bash
+python -c "
+import fitz
+doc = fitz.open()
+page = doc.new_page(width=595, height=842)
+page.insert_text((72, 120), 'Local mock walkthrough', fontsize=16)
+doc.save('/tmp/ocr-shared/input/sample.pdf')
+doc.close()
+"
+```
+
+Open the UI at the URL printed by the command and submit a job with:
+
+- model profile: `mock_ocr_local`
+- input dir: `/tmp/ocr-shared/input`
+- output dir: `/tmp/ocr-shared/output`
+- manifest root: `/tmp/ocr-shared/manifests`
 
 The mock service is only for local control-flow validation. It does not measure
 real OCR quality or performance.
 
-Stop the local stack:
+Check status, then stop the local stack:
 
 ```bash
+python3 tools/local_prod_env.py status
 python3 tools/local_prod_env.py down
 ```
 

@@ -1406,7 +1406,7 @@
           {
             "code": "no_workers",
             "message": "No workers have registered with the control API.",
-            "severity": "warning"
+            "severity": "error"
           }
         ],
         "ok": false,

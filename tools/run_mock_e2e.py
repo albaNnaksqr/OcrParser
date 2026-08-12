@@ -15,6 +15,52 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import Sequence
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ocr_platform.optional import (  # noqa: E402
+    PLATFORM_MODULES,
+    extra_install_message,
+    missing_modules,
+)
+
+
+MINIMUM_PYTHON = (3, 10)
+PYTHON_VERSION_HINT = (
+    "Re-run with a supported interpreter, for example: "
+    "python3.10 -m venv .venv && . .venv/bin/activate && "
+    "python -m pip install -e '.[dev]'"
+)
+
+
+def _format_version(version: Sequence[int]) -> str:
+    return ".".join(str(part) for part in tuple(version)[:3])
+
+
+def environment_problems(
+    *,
+    version_info: Sequence[int] = sys.version_info,
+    missing_platform: Sequence[str] | None = None,
+) -> list[str]:
+    """Fail fast on the two setup mistakes that otherwise surface as port timeouts."""
+    problems: list[str] = []
+    if tuple(version_info)[:2] < MINIMUM_PYTHON:
+        problems.append(
+            f"Python {_format_version(MINIMUM_PYTHON)}+ is required; "
+            f"this interpreter is {_format_version(version_info)}. "
+            + PYTHON_VERSION_HINT
+        )
+    missing = (
+        tuple(missing_platform)
+        if missing_platform is not None
+        else missing_modules(PLATFORM_MODULES)
+    )
+    if missing:
+        problems.append(extra_install_message("platform", missing))
+    return problems
 
 
 def _wait_for_port(host: str, port: int, timeout: float = 20.0) -> None:
@@ -214,7 +260,12 @@ def main() -> int:
         help="Python executable used by the agent for the parser subprocess.",
     )
     args = parser.parse_args()
-    return run(Path(__file__).resolve().parents[1], parser_python=args.parser_python)
+    problems = environment_problems()
+    if problems:
+        for problem in problems:
+            print(problem, file=sys.stderr)
+        return 2
+    return run(REPO_ROOT, parser_python=args.parser_python)
 
 
 if __name__ == "__main__":
