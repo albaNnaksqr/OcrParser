@@ -98,7 +98,7 @@ def test_control_runtime_composition_has_no_database_registry_or_leaf_transactio
     assert "database.engine" not in readiness_path.read_text(encoding="utf-8")
 
 
-def test_model_profile_command_owns_transaction_and_core_is_a_leaf() -> None:
+def test_model_profile_command_owns_transaction_without_a_core_facade() -> None:
     command_path = (
         ROOT
         / "ocr_platform"
@@ -130,10 +130,7 @@ def test_model_profile_command_owns_transaction_and_core_is_a_leaf() -> None:
         command_path,
         "upsert_model_profile",
     ) == ["begin"]
-    assert function_session_methods(
-        core_path,
-        "upsert_model_profile",
-    ) == []
+    assert not core_path.exists()
 
 
 def test_architecture_debt_fixture_matches_generated_sites() -> None:
@@ -213,8 +210,7 @@ def test_new_cross_domain_import_and_edge_fail_decreasing_gate(
         / "core.py"
     )
     jobs_core.write_text(
-        jobs_core.read_text(encoding="utf-8")
-        + "\n\ndef architecture_debt_mutation():\n"
+        "def architecture_debt_mutation():\n"
         + "    from ..workers import core\n"
         + "    return core\n",
         encoding="utf-8",
@@ -324,7 +320,7 @@ def test_new_direct_and_semantic_query_mutations_fail(
     )
     semantic_queries.write_text(
         semantic_queries.read_text(encoding="utf-8")
-        + "\nfrom .core import request_stop\n",
+        + "\nfrom .commands import request_stop\n",
         encoding="utf-8",
     )
     semantic_actual = control_architecture_debt.build_architecture_debt(
@@ -492,7 +488,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
     )
     module_queries.write_text(
         module_queries.read_text(encoding="utf-8")
-        + "\nfrom . import core as core_module\n"
+        + "\nfrom . import commands as core_module\n"
         + "\ndef semantic_mutation(session):\n"
         + "    return core_module.request_stop(session, 'job')\n",
         encoding="utf-8",
@@ -519,7 +515,7 @@ def test_query_equivalent_dml_and_module_import_forms_are_blocked(
         / "control"
         / "domains"
         / "jobs"
-        / "core.py"
+        / "commands.py"
     )
     core_path.write_text(
         core_path.read_text(encoding="utf-8")
@@ -566,7 +562,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
         / "control"
         / "domains"
         / "jobs"
-        / "core.py"
+        / "commands.py"
     )
     alias_core.write_text(
         alias_core.read_text(encoding="utf-8")
@@ -592,7 +588,7 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
         / "control"
         / "domains"
         / "jobs"
-        / "core.py"
+        / "commands.py"
     )
     status_core.write_text(
         status_core.read_text(encoding="utf-8")
@@ -649,11 +645,11 @@ def test_additional_escape_hatches_are_blocked(tmp_path: Path) -> None:
     )
     query_dir.mkdir()
     (query_dir / "hidden.py").write_text(
-        "from .. import core\n"
+            "from .. import commands\n"
         "\n"
         "def mutate(session):\n"
         "    session.query(Job).delete()\n"
-        "    return core.request_stop(session, 'job')\n",
+            "    return commands.request_stop(session, 'job')\n",
         encoding="utf-8",
     )
     query_dir_actual = control_architecture_debt.build_architecture_debt(
@@ -681,7 +677,7 @@ def test_semantic_query_analysis_uses_the_shared_mutation_sinks(
         / "control"
         / "domains"
         / "jobs"
-        / "core.py"
+        / "commands.py"
     )
     jobs_core.write_text(
         jobs_core.read_text(encoding="utf-8")
@@ -696,7 +692,7 @@ def test_semantic_query_analysis_uses_the_shared_mutation_sinks(
     jobs_queries = jobs_core.with_name("queries.py")
     jobs_queries.write_text(
         jobs_queries.read_text(encoding="utf-8")
-        + "\nfrom .core import equivalent_mutator\n",
+        + "\nfrom .commands import equivalent_mutator\n",
         encoding="utf-8",
     )
 
@@ -747,8 +743,8 @@ def test_alias_dynamic_import_and_closure_escape_hatches_are_blocked(
         / "core.py"
     )
     import_core.write_text(
-        import_core.read_text(encoding="utf-8")
-        + "\n\ndef dynamic_core_import():\n"
+        "import importlib\n\n"
+        + "def dynamic_core_import():\n"
         + "    return importlib.import_module("
         + "'ocr_platform.control.domains.workers.core')\n",
         encoding="utf-8",
@@ -765,7 +761,7 @@ def test_alias_dynamic_import_and_closure_escape_hatches_are_blocked(
         / "control"
         / "domains"
         / "jobs"
-        / "core.py"
+        / "commands.py"
     )
     closure_core.write_text(
         closure_core.read_text(encoding="utf-8")
@@ -924,7 +920,7 @@ def hidden_attribute_mutation(job, now):
             "lazy-direct",
             """
 def lazy_direct(session):
-    from .core import request_stop
+    from .commands import request_stop
     return request_stop(session, "job")
 """,
         ),
@@ -932,8 +928,8 @@ def lazy_direct(session):
             "lazy-module",
             """
 def lazy_module(session):
-    from . import core
-    return core.request_stop(session, "job")
+    from . import commands
+    return commands.request_stop(session, "job")
 """,
         ),
     ],
@@ -1034,7 +1030,7 @@ def test_shared_semantic_sink_tracks_local_dml_statement_taint(
         / "domains"
         / "jobs"
     )
-    core = jobs / "core.py"
+    core = jobs / "commands.py"
     core.write_text(
         core.read_text(encoding="utf-8")
         + """
@@ -1049,7 +1045,7 @@ def local_statement_mutator(session):
     queries = jobs / "queries.py"
     queries.write_text(
         queries.read_text(encoding="utf-8")
-        + "\nfrom .core import local_statement_mutator\n",
+        + "\nfrom .commands import local_statement_mutator\n",
         encoding="utf-8",
     )
 

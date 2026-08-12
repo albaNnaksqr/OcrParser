@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforce the v0.4 removal of ``ocr_platform.control.service``.
+"""Enforce removal of legacy Control compatibility façades.
 
 The pre-removal symbol inventory has been resolved into the checked-in
 ``consumed_symbol_migrations`` table.  This gate now treats the old module as a
@@ -26,6 +26,12 @@ FIXTURE = (
 )
 TARGET_MODULE = "ocr_platform.control.service"
 TARGET_PARENT = "ocr_platform.control"
+DOMAIN_FACADE_MODULES = (
+    "ocr_platform.control.domains.jobs.core",
+    "ocr_platform.control.domains.workers.core",
+    "ocr_platform.control.domains.manifests.core",
+    "ocr_platform.control.domains.model_profiles.core",
+)
 EXCLUDED_SCANNER_PATHS = {
     "tests/test_control_facade_inventory.py",
     "tools/control_facade_inventory.py",
@@ -245,13 +251,107 @@ def scan_references(root: Path = ROOT) -> list[dict[str, Any]]:
     )
 
 
+def _resolved_import_modules(
+    path: Path,
+    node: ast.ImportFrom,
+    root: Path,
+) -> set[str]:
+    if node.level == 0:
+        base = node.module or ""
+    else:
+        relative = path.relative_to(root).as_posix()
+        package = relative.removesuffix(".py").split("/")[:-1]
+        ascend = node.level - 1
+        prefix = package[: len(package) - ascend]
+        suffix = node.module.split(".") if node.module else []
+        base = ".".join([*prefix, *suffix])
+    resolved = {base} if base else set()
+    resolved.update(
+        f"{base}.{alias.name}" if base else alias.name
+        for alias in node.names
+    )
+    return resolved
+
+
+def scan_domain_facade_references(
+    root: Path = ROOT,
+) -> list[dict[str, Any]]:
+    targets = set(DOMAIN_FACADE_MODULES)
+    sites: list[dict[str, Any]] = []
+    for root_name in SCANNED_ROOTS:
+        scan_root = root / root_name
+        if not scan_root.exists():
+            continue
+        for path in sorted(scan_root.rglob("*.py")):
+            relative = path.relative_to(root).as_posix()
+            if relative in EXCLUDED_SCANNER_PATHS:
+                continue
+            tree = ast.parse(
+                path.read_text(encoding="utf-8"),
+                filename=str(path),
+            )
+            bindings = _module_bindings(tree)
+            for node in ast.walk(tree):
+                matches: set[str] = set()
+                kind = "ast_import"
+                if isinstance(node, ast.Import):
+                    matches.update(
+                        alias.name
+                        for alias in node.names
+                        if alias.name in targets
+                    )
+                elif isinstance(node, ast.ImportFrom):
+                    matches.update(
+                        _resolved_import_modules(path, node, root) & targets
+                    )
+                elif isinstance(node, ast.Call):
+                    call_name = _call_name(node.func)
+                    if call_name in {
+                        "__import__",
+                        "import_module",
+                        "importlib.import_module",
+                        "load_module",
+                    }:
+                        argument = node.args[0] if node.args else None
+                        target = _constant_string(argument, bindings)
+                        if target in targets:
+                            matches.add(target)
+                            kind = "dynamic_import"
+                for target in sorted(matches):
+                    sites.append(
+                        {
+                            "path": relative,
+                            "line": int(getattr(node, "lineno", 0)),
+                            "kind": kind,
+                            "detail": target,
+                        }
+                    )
+    return sorted(
+        sites,
+        key=lambda item: (
+            item["path"],
+            item["line"],
+            item["kind"],
+            item["detail"],
+        ),
+    )
+
+
 def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
     fixture = json.loads(FIXTURE.read_text(encoding="utf-8"))
     package_path = root / "ocr_platform" / "control" / "service"
     module_path = root / "ocr_platform" / "control" / "service.py"
     sites = scan_references(root)
+    domain_sites = scan_domain_facade_references(root)
+    domain_facades_exist = [
+        module
+        for module in DOMAIN_FACADE_MODULES
+        if (
+            root / Path(*module.split(".")).with_suffix(".py")
+        ).exists()
+    ]
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "builder": (
             "tools.control_facade_inventory.build_facade_inventory"
         ),
@@ -259,6 +359,10 @@ def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
         "facade_exists": package_path.exists() or module_path.exists(),
         "reference_count": len(sites),
         "references": sites,
+        "domain_facade_modules": list(DOMAIN_FACADE_MODULES),
+        "domain_facades_exist": domain_facades_exist,
+        "domain_reference_count": len(domain_sites),
+        "domain_references": domain_sites,
         "consumed_symbol_migrations": fixture[
             "consumed_symbol_migrations"
         ],
@@ -266,8 +370,8 @@ def build_facade_inventory(root: Path = ROOT) -> dict[str, Any]:
 
 
 def validate_fixture_shape(payload: dict[str, Any]) -> None:
-    if payload.get("schema_version") != 2:
-        raise ValueError("façade tombstone schema_version must be 2")
+    if payload.get("schema_version") != 3:
+        raise ValueError("façade tombstone schema_version must be 3")
     migrations = payload.get("consumed_symbol_migrations")
     if not isinstance(migrations, list):
         raise ValueError("consumed symbol migration map is missing")
@@ -289,6 +393,15 @@ def validate_fixture_shape(payload: dict[str, Any]) -> None:
         raise ValueError("façade reference list is missing")
     if payload.get("reference_count") != len(references):
         raise ValueError("façade reference count is inconsistent")
+    if payload.get("domain_facade_modules") != list(DOMAIN_FACADE_MODULES):
+        raise ValueError("domain façade module inventory is inconsistent")
+    domain_references = payload.get("domain_references")
+    if not isinstance(domain_references, list):
+        raise ValueError("domain façade reference list is missing")
+    if payload.get("domain_reference_count") != len(domain_references):
+        raise ValueError("domain façade reference count is inconsistent")
+    if not isinstance(payload.get("domain_facades_exist"), list):
+        raise ValueError("domain façade existence list is missing")
 
 
 def validate_removed(payload: dict[str, Any]) -> None:
@@ -304,6 +417,20 @@ def validate_removed(payload: dict[str, Any]) -> None:
         )
         raise ValueError(
             "legacy Control service façade references are forbidden: "
+            + evidence
+        )
+    if payload["domain_facades_exist"]:
+        raise ValueError(
+            "legacy Control domain façades must be removed: "
+            + ", ".join(payload["domain_facades_exist"])
+        )
+    if payload["domain_references"]:
+        evidence = ", ".join(
+            f"{site['path']}:{site['line']} ({site['kind']})"
+            for site in payload["domain_references"]
+        )
+        raise ValueError(
+            "legacy Control domain façade references are forbidden: "
             + evidence
         )
 
@@ -325,7 +452,7 @@ def check() -> None:
             "Control service façade tombstone fixture is stale; run "
             "python tools/control_facade_inventory.py refresh"
         )
-    print("Control service façade is removed and has no repository references.")
+    print("Control façades are removed and have no repository references.")
 
 
 def main() -> int:

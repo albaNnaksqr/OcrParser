@@ -428,16 +428,15 @@ def test_duplicate_attempt_rolls_back_claim_update() -> None:
 def test_work_shard_claim_ownership_and_application_boundary_are_static(
 ) -> None:
     scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
-    core_path = (
+    manifests_path = (
         ROOT
         / "ocr_platform"
         / "control"
         / "domains"
         / "manifests"
-        / "core.py"
     )
-    commands_path = core_path.with_name("commands.py")
-    use_cases_path = core_path.with_name("use_cases.py")
+    commands_path = manifests_path / "commands.py"
+    use_cases_path = manifests_path / "use_cases.py"
 
     def function_source(path: Path, name: str) -> str:
         source = path.read_text(encoding="utf-8")
@@ -496,13 +495,6 @@ def test_work_shard_claim_ownership_and_application_boundary_are_static(
     assert "attempt_number=shard.attempt_count" in attempt
     assert 'status="running"' in attempt
 
-    wrapper = function_source(core_path, "_claimable_shard_id_select")
-    assert (
-        "from ...scheduling import "
-        "_claimable_shard_id_select as target"
-    ) in wrapper
-    assert "select(WorkShard.id)" not in wrapper
-
     application = function_source(
         use_cases_path,
         "_claim_next_pending_shard",
@@ -544,7 +536,3 @@ def test_work_shard_claim_ownership_and_application_boundary_are_static(
             ):
                 production_attempt_constructors.append(path)
     assert production_attempt_constructors == [scheduling_path]
-
-    core_source = core_path.read_text(encoding="utf-8")
-    assert "def _create_shard_attempt(" not in core_source
-    assert "class _WorkShardClaimCollision" not in core_source

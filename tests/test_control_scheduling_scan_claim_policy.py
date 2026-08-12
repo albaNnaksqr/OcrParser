@@ -414,16 +414,15 @@ def test_scan_claim_job_and_unit_roll_back_together_on_commit_failure(
 
 def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
     scheduling_path = ROOT / "ocr_platform" / "control" / "scheduling.py"
-    core_path = (
+    manifests_path = (
         ROOT
         / "ocr_platform"
         / "control"
         / "domains"
         / "manifests"
-        / "core.py"
     )
-    commands_path = core_path.with_name("commands.py")
-    use_cases_path = core_path.with_name("use_cases.py")
+    commands_path = manifests_path / "commands.py"
+    use_cases_path = manifests_path / "use_cases.py"
 
     def function_source(path: Path, name: str) -> str:
         source = path.read_text(encoding="utf-8")
@@ -468,16 +467,6 @@ def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
         assert "session.flush(" not in source
     assert "job.status" not in cas
 
-    wrapper = function_source(
-        core_path,
-        "_claimable_scan_unit_id_select",
-    )
-    assert (
-        "from ...scheduling import "
-        "_claimable_scan_unit_id_select as target"
-    ) in wrapper
-    assert "select(ScanUnit)" not in wrapper
-
     phase = function_source(use_cases_path, "_claim_next_scan_unit_phase")
     assert "session.get(Server, server_id)" in phase
     assert "server.archived_at is not None" in phase
@@ -507,6 +496,3 @@ def test_scan_claim_policy_ownership_and_control_flow_are_static() -> None:
         "except _scheduling._ScanUnitClaimCollision:"
     ) < command.index("restart = True")
     assert command.index("restart = True") < command.index("break")
-
-    core_source = core_path.read_text(encoding="utf-8")
-    assert "class _ScanUnitClaimCollision" not in core_source

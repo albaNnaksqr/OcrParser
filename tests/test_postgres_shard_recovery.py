@@ -31,7 +31,6 @@ from ocr_platform.control.domains.workers.registration import (
     ensure_pool_server,
 )
 from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
-from ocr_platform.control.domains.workers import core as workers_core
 from ocr_platform.control.models import (
     Job,
     Manifest,
@@ -1365,7 +1364,7 @@ def test_postgres_stop_serializes_before_lease_exhaustion():
         ) as (session, backend_pid):
             second_pid.append(backend_pid)
             second_started.set()
-            result = workers_core.reconcile_expired_shard_leases(
+            result = scheduling.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )
@@ -1440,7 +1439,7 @@ def test_postgres_reregister_and_reconcile_complete_without_deadlock(
             case.session_factory,
             case.engine,
         ) as (session, _):
-            workers_core.reconcile_expired_shard_leases(
+            scheduling.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )
@@ -1731,7 +1730,7 @@ def test_postgres_exhaustion_then_success_uses_lease_failure():
             case.session_factory,
             case.engine,
         ) as (session, _):
-            workers_core.reconcile_expired_shard_leases(
+            scheduling.reconcile_expired_shard_leases(
                 session,
                 job_id=case.job_id,
             )

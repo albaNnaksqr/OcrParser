@@ -24,25 +24,6 @@ def _module(path: Path) -> ast.Module:
     return ast.parse(path.read_text(encoding="utf-8"))
 
 
-def _function(tree: ast.Module, name: str) -> ast.FunctionDef:
-    return next(
-        node
-        for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name == name
-    )
-
-
-def _imports_in(
-    function: ast.FunctionDef,
-) -> set[tuple[int, str | None, str]]:
-    return {
-        (node.level, node.module, alias.name)
-        for node in ast.walk(function)
-        if isinstance(node, ast.ImportFrom)
-        for alias in node.names
-    }
-
-
 def test_lease_primitives_are_owned_by_scheduling_without_domain_imports() -> None:
     scheduling = _module(CONTROL_ROOT / "scheduling.py")
     functions = {
@@ -66,29 +47,8 @@ def test_lease_primitives_are_owned_by_scheduling_without_domain_imports() -> No
             )
 
 
-def test_lease_compatibility_wrappers_delegate_directly_to_scheduling() -> None:
-    workers = _module(CONTROL_ROOT / "domains" / "workers" / "core.py")
-    for name in LEASE_PRIMITIVES:
-        imports = _imports_in(_function(workers, name))
-        assert imports == {(3, "scheduling", name)}
-
-    jobs = _module(CONTROL_ROOT / "domains" / "jobs" / "core.py")
-    assert _imports_in(
-        _function(jobs, "reconcile_expired_scan_unit_leases")
-    ) == {(3, "scheduling", "reconcile_expired_scan_unit_leases")}
-    assert _imports_in(
-        _function(jobs, "reconcile_expired_shard_leases")
-    ) == {(3, "scheduling", "reconcile_expired_shard_leases")}
-
-    manifests = _module(
-        CONTROL_ROOT / "domains" / "manifests" / "core.py"
-    )
-    for name in {
-        "reconcile_expired_scan_unit_leases",
-        "reconcile_expired_shard_leases",
-        "scan_unit_lease_deadline",
-        "shard_lease_deadline",
-    }:
-        assert _imports_in(_function(manifests, name)) == {
-            (3, "scheduling", name)
-        }
+def test_domain_compatibility_facades_are_removed() -> None:
+    for domain in ("jobs", "workers", "manifests", "model_profiles"):
+        assert not (
+            CONTROL_ROOT / "domains" / domain / "core.py"
+        ).exists()

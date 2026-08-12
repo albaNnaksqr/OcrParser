@@ -9,9 +9,6 @@ from ocr_platform.control.database import create_session_factory, init_db
 from ocr_platform.control.domains.manifests.commands import (
     claim_next_pending_shard,
 )
-from ocr_platform.control.domains.workers import core as workers_core
-from ocr_platform.control.domains.jobs import core as jobs_core
-from ocr_platform.control.domains.manifests import core as manifests_core
 from ocr_platform.control.domains.manifests import use_cases as manifest_use_cases
 from ocr_platform.control.models import Job, ScanUnit, ShardAttempt, WorkShard, utcnow
 from ocr_platform.control import scheduling
@@ -135,7 +132,7 @@ def test_public_reconcile_expired_shard_leases_keeps_none_return(tmp_path):
         shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
     with session_factory() as session:
-        assert workers_core.reconcile_expired_shard_leases(
+        assert scheduling.reconcile_expired_shard_leases(
             session,
             job_id=job["id"],
         ) is None
@@ -144,19 +141,7 @@ def test_public_reconcile_expired_shard_leases_keeps_none_return(tmp_path):
         assert session.get(WorkShard, claim["id"]).status == "stale"
 
 
-@pytest.mark.parametrize(
-    "reconcile",
-    [
-        scheduling.reconcile_expired_shard_leases,
-        jobs_core.reconcile_expired_shard_leases,
-        manifests_core.reconcile_expired_shard_leases,
-        workers_core.reconcile_expired_shard_leases,
-    ],
-)
-def test_all_public_shard_reconcile_paths_keep_none_return(
-    tmp_path,
-    reconcile,
-):
+def test_scheduling_shard_reconcile_keeps_none_return(tmp_path):
     client, session_factory = make_client_with_session(tmp_path)
     heartbeat_worker(client, "worker-a")
     job = create_remote_shard_job(client, max_shard_attempts=2)
@@ -169,7 +154,10 @@ def test_all_public_shard_reconcile_paths_keep_none_return(
         shard.lease_expires_at = utcnow() - timedelta(seconds=1)
         session.commit()
     with session_factory() as session:
-        assert reconcile(session, job_id=job["id"]) is None
+        assert scheduling.reconcile_expired_shard_leases(
+            session,
+            job_id=job["id"],
+        ) is None
         session.commit()
     with session_factory() as session:
         assert session.get(WorkShard, claim["id"]).status == "stale"

@@ -2153,19 +2153,18 @@ def test_worker_integrity_request_rolls_back_policy_failure(
 
 
 def test_manifest_registration_session_call_scope_is_exact() -> None:
-    core_path = (
+    manifests_path = (
         ROOT
         / "ocr_platform"
         / "control"
         / "domains"
         / "manifests"
-        / "core.py"
     )
-    commands_path = core_path.with_name("commands.py")
-    construction_path = core_path.with_name("construction.py")
-    freeze_path = core_path.with_name("freeze.py")
-    integrity_path = core_path.with_name("integrity.py")
-    use_cases_path = core_path.with_name("use_cases.py")
+    commands_path = manifests_path / "commands.py"
+    construction_path = manifests_path / "construction.py"
+    freeze_path = manifests_path / "freeze.py"
+    integrity_path = manifests_path / "integrity.py"
+    use_cases_path = manifests_path / "use_cases.py"
     scheduling_path = (
         ROOT / "ocr_platform" / "control" / "scheduling.py"
     )
@@ -2218,7 +2217,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
         "begin": 1,
         "execute": 1,
     }
-    assert session_calls(core_path, "claim_next_pending_shard") == {}
     assert session_calls(use_cases_path, "_claim_next_pending_shard") == {
         "execute": 1,
     }
@@ -2236,7 +2234,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     ) == {
         "begin": 1,
     }
-    assert session_calls(core_path, "claim_next_scan_unit") == {}
     assert session_calls(use_cases_path, "_claim_next_scan_unit_phase") == {
         "execute": 1,
         "refresh": 1,
@@ -2248,7 +2245,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     assert session_calls(commands_path, "complete_scan_unit") == {
         "begin": 1,
     }
-    assert session_calls(core_path, "complete_scan_unit") == {}
     assert session_calls(use_cases_path, "_complete_scan_unit") == {
         "flush": 1,
     }
@@ -2279,7 +2275,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     assert session_calls(commands_path, "fail_scan_unit") == {
         "begin": 1,
     }
-    assert session_calls(core_path, "fail_scan_unit") == {}
     assert session_calls(use_cases_path, "_fail_scan_unit") == {
         "flush": 1,
     }
@@ -2320,7 +2315,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     assert session_calls(commands_path, "update_work_shard") == {
         "begin": 1,
     }
-    assert session_calls(core_path, "update_work_shard") == {}
     assert session_calls(
         scheduling_path,
         "get_work_shard_update_snapshot",
@@ -2345,15 +2339,6 @@ def test_manifest_registration_session_call_scope_is_exact() -> None:
     ) == {
         "execute": 1,
     }
-    core_source = core_path.read_text(encoding="utf-8")
-    core_tree = ast.parse(core_source)
-    assert not any(
-        node
-        for node in core_tree.body
-        if isinstance(node, ast.FunctionDef)
-        and node.name == "_update_work_shard"
-    )
-
     commands_source = commands_path.read_text(encoding="utf-8")
     commands_tree = ast.parse(commands_source)
     update_command = next(

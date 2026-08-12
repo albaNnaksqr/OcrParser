@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, event, inspect
 from sqlalchemy.orm import sessionmaker
 
 from ocr_platform.control.database import create_session_factory, init_db
-from ocr_platform.control.domains.model_profiles import commands, core, queries
+from ocr_platform.control.domains.model_profiles import commands, queries
 from ocr_platform.control.domains.model_profiles.commands import (
     ACTIVE_TRANSACTION_ERROR,
     ModelProfileTransactionError,
@@ -223,7 +223,7 @@ def test_upsert_leaf_failure_rolls_back_once(tmp_path, monkeypatch) -> None:
     def fail_leaf(*args, **kwargs):
         raise RuntimeError("leaf failed")
 
-    monkeypatch.setattr(core, "upsert_model_profile", fail_leaf)
+    monkeypatch.setattr(commands, "_apply_model_profile", fail_leaf)
     try:
         with session_factory() as session:
             event.listen(

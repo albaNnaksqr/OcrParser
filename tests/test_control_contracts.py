@@ -1031,7 +1031,7 @@ def test_projection_ast_guards_reject_source_relationship_mutations(
         / "control"
         / "domains"
         / "manifests"
-        / "core.py"
+        / "freeze.py"
     ).read_text(encoding="utf-8")
     scheduling_source = (
         ROOT / "ocr_platform" / "control" / "scheduling.py"

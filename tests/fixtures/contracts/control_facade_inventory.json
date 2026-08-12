@@ -122,9 +122,18 @@
       "target": "removed internal integration; tests use ocr_platform.control.models.utcnow"
     }
   ],
+  "domain_facade_modules": [
+    "ocr_platform.control.domains.jobs.core",
+    "ocr_platform.control.domains.workers.core",
+    "ocr_platform.control.domains.manifests.core",
+    "ocr_platform.control.domains.model_profiles.core"
+  ],
+  "domain_facades_exist": [],
+  "domain_reference_count": 0,
+  "domain_references": [],
   "facade_exists": false,
   "reference_count": 0,
   "references": [],
-  "schema_version": 2,
+  "schema_version": 3,
   "target_module": "ocr_platform.control.service"
 }
