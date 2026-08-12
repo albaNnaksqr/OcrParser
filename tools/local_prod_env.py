@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shlex
 import shutil
@@ -19,6 +20,8 @@ from urllib.parse import quote
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_STATE_DIR = ROOT / ".local" / "production"
+SHARED_ROOT_SUBDIRECTORIES = ("input", "output", "manifests")
+MOCK_MODEL_PROFILE_ID = "mock_ocr_local"
 
 
 @dataclass(frozen=True)
@@ -197,6 +200,60 @@ def repo_python_env(config: LocalProdConfig) -> dict[str, str]:
     return {"PYTHONPATH": str(config.root)}
 
 
+def shared_root_directories(config: LocalProdConfig) -> list[Path]:
+    """Directories `up` guarantees for every configured shared root."""
+    directories: list[Path] = []
+    for shared_root in config.shared_roots:
+        root = Path(shared_root).expanduser()
+        directories.append(root)
+        directories.extend(root / name for name in SHARED_ROOT_SUBDIRECTORIES)
+    return directories
+
+
+def ensure_shared_roots(config: LocalProdConfig) -> list[Path]:
+    """Create missing shared-root directories, never touching existing content."""
+    created: list[Path] = []
+    for directory in shared_root_directories(config):
+        if directory.exists():
+            if not directory.is_dir():
+                raise RuntimeError(f"shared root path is not a directory: {directory}")
+            continue
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise RuntimeError(
+                f"could not create shared root directory {directory}: {exc.strerror or exc}"
+            ) from None
+        created.append(directory)
+    return created
+
+
+def build_mock_model_profile_request(config: LocalProdConfig) -> dict[str, object]:
+    """Low-concurrency, keyless profile that matches the local mock OCR service."""
+    return {
+        "label": f"Mock OCR @ 127.0.0.1:{config.mock_ocr_port}",
+        "engine": "dotsocr",
+        "ip": "127.0.0.1",
+        "port": config.mock_ocr_port,
+        "model_name": config.mock_ocr_model,
+        "page_concurrency": 1,
+        "extra_args": {
+            "file_concurrency": 1,
+            "api_concurrency_start": 1,
+            "api_concurrency_max": 1,
+            "num_cpu_workers": 1,
+            "max_retries": 1,
+            "retry_delay": 0.1,
+            "timeout": 30,
+            "max_completion_tokens": 512,
+            "no_warmup": True,
+            "disable_badcase_collection": True,
+        },
+        "requires_api_key": False,
+        "is_default": False,
+    }
+
+
 def merge_env(*envs: dict[str, str]) -> dict[str, str]:
     merged: dict[str, str] = {}
     for env in envs:
@@ -249,9 +306,13 @@ def build_runtime_summary(config: LocalProdConfig) -> list[str]:
             [
                 f"Mock OCR API: http://127.0.0.1:{config.mock_ocr_port}/v1 "
                 f"(model={config.mock_ocr_model})",
+                f"Mock model profile: {MOCK_MODEL_PROFILE_ID} "
+                f"(engine=dotsocr, requires_api_key=false, page_concurrency=1)",
                 f"Mock OCR logs: {config.mock_ocr_stdout_log}, {config.mock_ocr_stderr_log}",
             ]
         )
+    for directory in shared_root_directories(config):
+        lines.append(f"Shared directory: {directory}")
     lines.append("Stop: python3 tools/local_prod_env.py down")
     return lines
 
@@ -284,7 +345,16 @@ def build_up_plan(
     compose_command: Sequence[str] = ("docker", "compose"),
 ) -> list[PlanStep]:
     compose = [*compose_command, "-f", str(config.compose_file)]
-    steps = [
+    steps: list[PlanStep] = []
+    shared_directories = shared_root_directories(config)
+    if shared_directories:
+        steps.append(
+            PlanStep(
+                "create shared root directories",
+                message=", ".join(str(directory) for directory in shared_directories),
+            )
+        )
+    steps += [
         PlanStep("write postgres compose", message=str(config.compose_file)),
         PlanStep("start postgres", [*compose, "up", "-d", "postgres"]),
         *[
@@ -325,6 +395,17 @@ def build_up_plan(
                     "--quiet",
                 ],
                 env=repo_python_env(config),
+            )
+        )
+        steps.append(
+            PlanStep(
+                "upsert mock OCR model profile",
+                message=(
+                    f"PUT {config.control_url}/api/model-profiles/"
+                    f"{MOCK_MODEL_PROFILE_ID} "
+                    f"(model={config.mock_ocr_model}, requires_api_key=false, "
+                    f"is_default=false)"
+                ),
             )
         )
     if config.with_worker:
@@ -574,6 +655,50 @@ def _http_get(url: str, *, token: str | None = None, timeout: float = 2.0) -> tu
         return None, str(exc)
 
 
+def _http_put_json(
+    url: str,
+    payload: dict[str, object],
+    *,
+    token: str,
+    timeout: float = 10.0,
+) -> None:
+    request = urllib.request.Request(
+        url,
+        data=json.dumps(payload).encode("utf-8"),
+        method="PUT",
+    )
+    request.add_header("Authorization", f"Bearer {token}")
+    request.add_header("Content-Type", "application/json")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            response.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read(500).decode("utf-8", errors="replace")
+        raise RuntimeError(f"PUT {url} failed with HTTP {exc.code}: {detail}") from None
+    except OSError as exc:
+        raise RuntimeError(f"PUT {url} failed: {exc}") from None
+
+
+def wait_for_control(config: LocalProdConfig, *, timeout_seconds: float = 30.0) -> None:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        status, _ = _http_get(f"{config.control_url}/healthz")
+        if status == 200:
+            return
+        time.sleep(0.5)
+    raise RuntimeError("control API did not become ready before timeout.")
+
+
+def apply_mock_model_profile(config: LocalProdConfig) -> None:
+    """Register the keyless mock profile so the UI can submit a job immediately."""
+    wait_for_control(config)
+    _http_put_json(
+        f"{config.control_url}/api/model-profiles/{MOCK_MODEL_PROFILE_ID}",
+        build_mock_model_profile_request(config),
+        token=config.api_token,
+    )
+
+
 def _port_open(host: str, port: int, *, timeout: float = 1.0) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.settimeout(timeout)
@@ -594,6 +719,7 @@ def command_up(args: argparse.Namespace) -> int:
         print_plan(plan)
         return 0
 
+    ensure_shared_roots(config)
     write_compose_file(config)
     write_env_file(config.control_env_file, build_control_env(config))
     compose_command = resolve_compose_command()
@@ -670,6 +796,8 @@ def command_up(args: argparse.Namespace) -> int:
                 stdout_path=config.worker_stdout_log_for(index),
                 stderr_path=config.worker_stderr_log_for(index),
             )
+    if config.with_mock_ocr:
+        apply_mock_model_profile(config)
     print(f"Control UI: {config.control_url}/ui/")
     print(f"API token: {config.api_token}")
     for line in build_runtime_summary(config):

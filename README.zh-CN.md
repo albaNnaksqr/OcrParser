@@ -137,24 +137,68 @@ script 名称；如果没有安装 `[platform]` 就运行 Platform 命令，程�
 
 ## 快速开始：不用真实模型验证控制流
 
-如果你想先验证 control UI、worker loop、events 和 job flow，而不是立刻启动真实 OCR 模型，
-可以使用内置 mock OCR service：
+### 最短验证入口：一次性 mock 端到端
+
+`tools/run_mock_e2e.py` 会在临时目录里启动 mock OCR endpoint、control 和 worker，
+提交一个合成 PDF job，等待成功，校验 Markdown artifact，然后关闭全部进程，不留下
+任何后台服务。
+
+它需要 Python 3.10+ 和 `[platform]` 依赖（`[dev]` 已包含）。任一条件不满足时命令会
+立即退出并输出准确的安装命令，而不是等到端口超时才暴露根因。
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e ".[dev]"
+python tools/run_mock_e2e.py
+```
+
+成功时最后一行是 `Verified N output artifact(s).`，退出码为 0。失败时会打印 job logs
+和每个服务日志的尾部。
+
+### 可保持运行的 production-like 路径：用 UI 探索
+
+`tools/local_prod_env.py` 是更长的路径：用 Docker 跑 PostgreSQL、显式 apply migration，
+并让 control、mock OCR service 和 worker 保持运行，方便你在 UI 里点击查看。
 
 ```bash
 python3 tools/local_prod_env.py up --with-worker --with-mock-ocr --shared-root /tmp/ocr-shared
 ```
 
-打开命令输出中的 UI URL，然后用下面配置提交一个小任务：
+`up` 会在 `/tmp/ocr-shared` 不存在时创建它以及 `input/`、`output/`、`manifests/`
+子目录，并且不会删除或覆盖任何已有内容。加上 `--dry-run` 只打印计划，不创建目录也
+不启动服务。
 
-- engine: `dotsocr`
-- model name: `mock-ocr`
-- model endpoint: `127.0.0.1:18000`
+带 `--with-mock-ocr` 时，`up` 还会注册一个 `mock_ocr_local` model profile
+（engine `dotsocr`、model `mock-ocr`、`page_concurrency` 1、不需要 API key）。它不是
+default profile，也只在 mock 场景创建，因此生产默认的 `dotsocr_15` 语义不变。
+
+把 PDF 放进共享 input 目录，或者生成一个合成 PDF：
+
+```bash
+python -c "
+import fitz
+doc = fitz.open()
+page = doc.new_page(width=595, height=842)
+page.insert_text((72, 120), 'Local mock walkthrough', fontsize=16)
+doc.save('/tmp/ocr-shared/input/sample.pdf')
+doc.close()
+"
+```
+
+打开命令输出中的 UI URL，然后用下面配置提交任务：
+
+- model profile: `mock_ocr_local`
+- input dir: `/tmp/ocr-shared/input`
+- output dir: `/tmp/ocr-shared/output`
+- manifest root: `/tmp/ocr-shared/manifests`
 
 mock service 只用于本地控制流验证，不代表真实 OCR 质量或性能。
 
-停止本地 stack：
+查看状态并停止本地 stack：
 
 ```bash
+python3 tools/local_prod_env.py status
 python3 tools/local_prod_env.py down
 ```
 

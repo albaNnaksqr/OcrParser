@@ -118,7 +118,8 @@ def system_diagnostics(
     if not auth["enabled"]:
         issues.append({"severity": "warning", "code": "api_auth_disabled", "message": "Control API auth is disabled."})
     if worker_status_available and workers["total"] == 0:
-        issues.append({"severity": "warning", "code": "no_workers", "message": "No workers have registered with the control API."})
+        no_workers_severity = "error" if strict_production else "warning"
+        issues.append({"severity": no_workers_severity, "code": "no_workers", "message": "No workers have registered with the control API."})
     elif worker_status_available and workers["ready"] == 0:
         issues.append({"severity": "error", "code": "no_ready_workers", "message": "No ready workers are reporting writable shared roots."})
     if workers["resource_constrained"]:

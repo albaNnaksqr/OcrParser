@@ -161,6 +161,122 @@ def test_down_plan_stops_local_services_without_deleting_pg_data_by_default(tmp_
     assert " down -v" in rendered_with_volumes
 
 
+def test_ensure_shared_roots_creates_root_and_job_subdirectories(tmp_path):
+    shared = tmp_path / "shared"
+    config = make_config(tmp_path, shared_roots=[str(shared)])
+
+    created = local_prod_env.ensure_shared_roots(config)
+
+    assert shared.is_dir()
+    for name in ("input", "output", "manifests"):
+        assert (shared / name).is_dir()
+    assert set(created) == {shared, *(shared / name for name in ("input", "output", "manifests"))}
+
+
+def test_ensure_shared_roots_preserves_existing_content_and_is_idempotent(tmp_path):
+    shared = tmp_path / "shared"
+    existing = shared / "input" / "keep.pdf"
+    existing.parent.mkdir(parents=True)
+    existing.write_bytes(b"existing-content")
+    config = make_config(tmp_path, shared_roots=[str(shared)])
+
+    first = local_prod_env.ensure_shared_roots(config)
+    second = local_prod_env.ensure_shared_roots(config)
+
+    assert existing.read_bytes() == b"existing-content"
+    assert shared / "input" not in first
+    assert second == []
+    assert (shared / "output").is_dir()
+    assert (shared / "manifests").is_dir()
+
+
+def test_ensure_shared_roots_rejects_a_shared_root_that_is_a_file(tmp_path):
+    shared = tmp_path / "shared"
+    shared.write_text("not a directory", encoding="utf-8")
+    config = make_config(tmp_path, shared_roots=[str(shared)])
+
+    try:
+        local_prod_env.ensure_shared_roots(config)
+    except RuntimeError as exc:
+        assert "not a directory" in str(exc)
+    else:  # pragma: no cover - guards against a silently weakened check
+        raise AssertionError("expected RuntimeError for a non-directory shared root")
+
+
+def test_up_dry_run_prints_the_plan_without_creating_shared_directories(tmp_path, capsys):
+    shared = tmp_path / "shared"
+    args = local_prod_env.build_parser().parse_args(
+        [
+            "--state-dir",
+            str(tmp_path / "state"),
+            "up",
+            "--with-worker",
+            "--with-mock-ocr",
+            "--shared-root",
+            str(shared),
+            "--dry-run",
+        ]
+    )
+
+    assert local_prod_env.command_up(args) == 0
+
+    output = capsys.readouterr().out
+    assert "create shared root directories" in output
+    assert str(shared / "input") in output
+    assert "upsert mock OCR model profile" in output
+    assert not shared.exists()
+    assert not (tmp_path / "state").exists()
+
+
+def test_mock_model_profile_is_low_concurrency_keyless_and_not_default(tmp_path):
+    config = make_config(tmp_path, with_mock_ocr=True, mock_ocr_port=19000, mock_ocr_model="local-mock")
+
+    request = local_prod_env.build_mock_model_profile_request(config)
+
+    assert local_prod_env.MOCK_MODEL_PROFILE_ID == "mock_ocr_local"
+    assert request["engine"] == "dotsocr"
+    assert request["ip"] == "127.0.0.1"
+    assert request["port"] == 19000
+    assert request["model_name"] == "local-mock"
+    assert request["page_concurrency"] == 1
+    assert request["requires_api_key"] is False
+    assert request["is_default"] is False
+    assert request["extra_args"]["file_concurrency"] == 1
+    assert request["extra_args"]["api_concurrency_max"] == 1
+    assert "api_key" not in request
+    assert "api_key" not in request["extra_args"]
+
+
+def test_mock_model_profile_extra_args_are_accepted_by_the_parser_contract(tmp_path):
+    from ocr_parser.config import ParserConfig
+
+    config = make_config(tmp_path, with_mock_ocr=True)
+    request = local_prod_env.build_mock_model_profile_request(config)
+
+    normalized = ParserConfig.validate_option_dict(
+        request["extra_args"], context="model profile extra_args"
+    )
+
+    assert normalized["file_concurrency"] == 1
+
+
+def test_mock_model_profile_is_not_part_of_the_default_bootstrap_profiles():
+    from ocr_platform.control.domains.common import DEFAULT_MODEL_PROFILES
+
+    assert local_prod_env.MOCK_MODEL_PROFILE_ID not in DEFAULT_MODEL_PROFILES
+    assert DEFAULT_MODEL_PROFILES["dotsocr_15"]["is_default"] is True
+    assert DEFAULT_MODEL_PROFILES["dotsocr_15"]["requires_api_key"] is True
+
+
+def test_up_plan_omits_shared_root_and_mock_profile_steps_when_not_requested(tmp_path):
+    config = make_config(tmp_path, with_worker=True)
+
+    rendered = "\n".join(step.render() for step in local_prod_env.build_up_plan(config))
+
+    assert "create shared root directories" not in rendered
+    assert "upsert mock OCR model profile" not in rendered
+
+
 def test_parser_builds_local_prod_config_with_optional_worker(tmp_path):
     parser = local_prod_env.build_parser()
 

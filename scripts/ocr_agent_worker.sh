@@ -67,6 +67,7 @@ load_env
 
 SERVER_ID="${OCR_AGENT_SERVER_ID:-$(hostname -s)}"
 CONTROL_URL="${OCR_CONTROL_URL:-http://127.0.0.1:8080}"
+CONTROL_API_TOKEN="${OCR_CONTROL_API_TOKEN:-}"
 REPO_DIR="${OCR_REPO_DIR:-$DEFAULT_REPO_DIR}"
 WORK_DIR="${OCR_AGENT_WORK_DIR:-$REPO_DIR/.local/ocr-agent/$SERVER_ID}"
 PYTHON="${OCR_AGENT_PYTHON:-$REPO_DIR/.venv/bin/python}"
@@ -222,26 +223,45 @@ doctor_worker() {
   validate_config
   build_agent_command
   status_worker
-  (
+  echo "control_api_token=$([[ -n "$CONTROL_API_TOKEN" ]] && echo set || echo unset)"
+
+  local failures=0
+  if ! (
     cd "$REPO_DIR"
     "$PYTHON" - <<'PY'
 import importlib
+
+missing = []
 for name in ("ocr_platform.agent", "ocr_parser", "httpx"):
-    importlib.import_module(name)
+    try:
+        importlib.import_module(name)
+    except Exception as exc:
+        missing.append(f"{name} ({type(exc).__name__})")
+if missing:
+    print("python_imports=failed missing=" + ", ".join(missing))
+    print(
+        "python_imports_hint=install the worker dependencies into this interpreter, "
+        "for example: pip install 'ocrparser-platform[platform]'"
+    )
+    raise SystemExit(1)
 print("python_imports=ok")
 PY
-  )
-  "$PYTHON" - "$CONTROL_URL" "$SERVER_ID" <<'PY'
-import json
-import sys
-from urllib.request import urlopen
+  ); then
+    failures=1
+  fi
 
-control_url, server_id = sys.argv[1], sys.argv[2]
-with urlopen(f"{control_url.rstrip('/')}/api/servers", timeout=10) as response:
-    rows = json.load(response)
-print(f"control_api=ok servers={len(rows)} server_id={server_id}")
-PY
+  if ! (
+    cd "$REPO_DIR"
+    OCR_CONTROL_API_TOKEN="$CONTROL_API_TOKEN" \
+      "$PYTHON" -m ocr_platform.agent.control_doctor \
+      --control_url "$CONTROL_URL" \
+      --server_id "$SERVER_ID"
+  ); then
+    failures=1
+  fi
+
   echo "agent_command=$(printf '%q ' "${AGENT_COMMAND[@]}")"
+  return "$failures"
 }
 
 logs_worker() {
