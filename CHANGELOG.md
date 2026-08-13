@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Split manifest integrity evidence collection, distributed ScanUnit and shard
+  audits, worker-only handling, and response assembly into bounded private
+  helpers while preserving its HTTP, query, filesystem, issue-ordering, and
+  sampling contracts.
+
 ## 0.4.3 - 2026-08-12
 
 - Improved Deployment Doctor worker probes with authenticated Control access,
