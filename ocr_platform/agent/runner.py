@@ -10,7 +10,8 @@ import signal
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
+from types import MappingProxyType
 from typing import Any
 
 import httpx
@@ -1273,27 +1274,263 @@ def _summary_has_failed_shards(summary: dict[str, Any]) -> bool:
     return bool((summary.get("failed_shards") or 0) + (summary.get("stopped_shards") or 0))
 
 
+@dataclass(frozen=True)
+class _JobExecutionContext:
+    job_id: str
+    shard_id: Any
+    assigned_server_id: Any
+    attempt_count: Any
+    execution_control_path: Path
+
+    @classmethod
+    def from_job(cls, job: dict[str, Any], config: AgentConfig) -> "_JobExecutionContext":
+        job_id = str(job["id"])
+        shard = job.get("shard") or {}
+        raw_shard_id = shard.get("id")
+        raw_attempt_count = shard.get("attempt_count")
+        return cls(
+            job_id=job_id,
+            shard_id=raw_shard_id,
+            assigned_server_id=shard.get("assigned_server_id"),
+            attempt_count=raw_attempt_count,
+            execution_control_path=_execution_control_path(config, job_id),
+        )
+
+    def shard_update_context(self) -> dict[str, Any] | None:
+        if self.shard_id is None:
+            return None
+        payload: dict[str, Any] = {"id": self.shard_id}
+        if self.assigned_server_id is not None:
+            payload["assigned_server_id"] = self.assigned_server_id
+        if self.attempt_count is not None:
+            payload["attempt_count"] = self.attempt_count
+        return payload
+
+
+@dataclass(frozen=True)
+class _RunningJobProcess:
+    context: _JobExecutionContext
+    process: asyncio.subprocess.Process
+    event_file: Path
+
+
+@dataclass(frozen=True)
+class _JobProcessTasks:
+    all_tasks: list[asyncio.Task[Any]]
+    event_task: asyncio.Task[ForwardedEventStatus]
+    stop_task: asyncio.Task[bool]
+    wait_task: asyncio.Task[int]
+
+
+@dataclass(frozen=True)
+class _JobExecutionOutcome:
+    return_code: int
+    stopped: bool
+    forwarded_status: ForwardedEventStatus
+
+
+def _job_execution_mode(job: dict[str, Any]) -> str:
+    if job.get("has_static_shards"):
+        return "static_shards"
+    if job.get("input_mode") == "remote_folder_snapshot":
+        return "remote_folder_snapshot"
+    return "direct"
+
+
+async def _start_job_process(
+    job: dict[str, Any],
+    config: AgentConfig,
+) -> _RunningJobProcess:
+    command, event_file = build_ocr_command(job, config)
+    process = await asyncio.create_subprocess_exec(
+        *command,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        start_new_session=True,
+        env=_ocr_subprocess_env(job),
+    )
+    return _RunningJobProcess(
+        context=_JobExecutionContext.from_job(job, config),
+        process=process,
+        event_file=event_file,
+    )
+
+
+def _create_job_process_tasks(
+    job: dict[str, Any],
+    config: AgentConfig,
+    client: ControlClient,
+    running: _RunningJobProcess,
+) -> _JobProcessTasks:
+    process = running.process
+    context = running.context
+    tasks: list[asyncio.Task[Any]] = []
+    if config.resource_guard_enabled:
+        tasks.append(
+            asyncio.create_task(
+                resource_execution_control_watcher(
+                    job,
+                    config,
+                    context.execution_control_path,
+                    process,
+                    client=client,
+                )
+            )
+        )
+    if process.stdout is not None:
+        tasks.append(
+            asyncio.create_task(
+                _forward_stream(process.stdout, "stdout", context.job_id, client)
+            )
+        )
+    if process.stderr is not None:
+        tasks.append(
+            asyncio.create_task(
+                _forward_stream(process.stderr, "stderr", context.job_id, client)
+            )
+        )
+    event_task = asyncio.create_task(
+        _forward_events_until_done(
+            running.event_file,
+            context.job_id,
+            client,
+            process,
+            shard_id=context.shard_id,
+            shard_update_context=context.shard_update_context(),
+            config=config,
+        )
+    )
+    tasks.append(event_task)
+    stop_task = asyncio.create_task(
+        _stop_watcher(
+            context.job_id,
+            client,
+            process,
+            poll_interval_seconds=config.stop_poll_interval_seconds,
+            termination_timeout_seconds=config.process_termination_timeout_seconds,
+        )
+    )
+    tasks.append(stop_task)
+    wait_task = asyncio.create_task(process.wait())
+    return _JobProcessTasks(
+        all_tasks=tasks + [wait_task],
+        event_task=event_task,
+        stop_task=stop_task,
+        wait_task=wait_task,
+    )
+
+
+async def _wait_for_job_process(
+    running: _RunningJobProcess,
+    tasks: _JobProcessTasks,
+    config: AgentConfig,
+) -> tuple[int, ForwardedEventStatus, bool]:
+    try:
+        done, pending = await asyncio.wait(
+            tasks.all_tasks,
+            return_when=asyncio.FIRST_EXCEPTION,
+        )
+        for task in done:
+            exception = task.exception()
+            if exception is not None:
+                await _terminate_process(
+                    running.process,
+                    config.process_termination_timeout_seconds,
+                )
+                await _cancel_tasks(list(pending))
+                raise exception
+        return (
+            tasks.wait_task.result(),
+            tasks.event_task.result(),
+            tasks.stop_task.done() and tasks.stop_task.result(),
+        )
+    except asyncio.CancelledError:
+        await _terminate_process(
+            running.process,
+            config.process_termination_timeout_seconds,
+        )
+        await _cancel_tasks(tasks.all_tasks)
+        raise
+    except Exception:
+        await _terminate_process(
+            running.process,
+            config.process_termination_timeout_seconds,
+        )
+        await _cancel_tasks(tasks.all_tasks)
+        raise
+
+
+async def _resolve_job_execution_outcome(
+    context: _JobExecutionContext,
+    return_code: int,
+    forwarded_status: ForwardedEventStatus,
+    stopped: bool,
+    client: ControlClient,
+) -> _JobExecutionOutcome:
+    stopped = stopped or forwarded_status.saw_job_stopped
+    if not stopped:
+        try:
+            stopped = await should_stop_job(context.job_id, client)
+        except Exception:
+            stopped = False
+    effective_return_code = return_code
+    if forwarded_status.saw_job_stopped and effective_return_code == 0:
+        effective_return_code = -signal.SIGTERM
+    elif forwarded_status.saw_failure and effective_return_code == 0:
+        effective_return_code = 1
+    return _JobExecutionOutcome(
+        return_code=effective_return_code,
+        stopped=stopped,
+        forwarded_status=forwarded_status,
+    )
+
+
+async def _publish_job_execution_outcome(
+    job: dict[str, Any],
+    context: _JobExecutionContext,
+    outcome: _JobExecutionOutcome,
+    client: ControlClient,
+) -> int:
+    if context.shard_id is not None:
+        progress_status = "running"
+        if outcome.stopped:
+            progress_status = "stopped"
+        elif outcome.return_code != 0:
+            progress_status = "failed"
+        job["_shard_progress"] = outcome.forwarded_status.shard_progress_payload(
+            progress_status
+        )
+    if outcome.stopped:
+        if not outcome.forwarded_status.saw_job_stopped:
+            await client.post_event(
+                context.job_id,
+                {
+                    "type": "job_stopped",
+                    "payload": {"return_code": outcome.return_code},
+                },
+            )
+    elif outcome.return_code != 0 and not outcome.forwarded_status.saw_job_failed:
+        await _post_job_failed(
+            client,
+            context.job_id,
+            failure_payload_for_return_code(outcome.return_code),
+        )
+    return outcome.return_code
+
+
 async def run_job(
     job: dict[str, Any],
     config: AgentConfig,
     client: ControlClient,
 ) -> int:
-    if job.get("has_static_shards"):
+    mode = _job_execution_mode(job)
+    if mode == "static_shards":
         return await run_static_sharded_job(job, config, client)
-    if job.get("input_mode") == "remote_folder_snapshot":
+    if mode == "remote_folder_snapshot":
         return await run_remote_folder_snapshot_job(job, config, client)
-
     job_id = str(job["id"])
     try:
-        command, event_file = build_ocr_command(job, config)
-        env = _ocr_subprocess_env(job)
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            start_new_session=True,
-            env=env,
-        )
+        running = await _start_job_process(job, config)
     except Exception as exc:
         await _post_job_failed(
             client,
@@ -1304,120 +1541,260 @@ async def run_job(
             },
         )
         return 1
-
-    tasks: list[asyncio.Task[Any]] = []
-    if config.resource_guard_enabled:
-        tasks.append(
-            asyncio.create_task(
-                resource_execution_control_watcher(
-                    job,
-                    config,
-                    _execution_control_path(config, job_id),
-                    process,
-                    client=client,
-                )
-            )
-        )
-    if process.stdout is not None:
-        tasks.append(
-            asyncio.create_task(
-                _forward_stream(process.stdout, "stdout", job_id, client)
-            )
-        )
-    if process.stderr is not None:
-        tasks.append(
-            asyncio.create_task(
-                _forward_stream(process.stderr, "stderr", job_id, client)
-            )
-        )
-    tasks.append(
-        asyncio.create_task(
-            _forward_events_until_done(
-                event_file,
-                job_id,
-                client,
-                process,
-                shard_id=(job.get("shard") or {}).get("id"),
-                shard_update_context=job.get("shard"),
-                config=config,
-            )
-        )
+    tasks = _create_job_process_tasks(job, config, client, running)
+    return_code, forwarded_status, stopped = await _wait_for_job_process(
+        running,
+        tasks,
+        config,
     )
-    event_task = tasks[-1]
-    stop_task = asyncio.create_task(
-        _stop_watcher(
+    outcome = await _resolve_job_execution_outcome(
+        running.context,
+        return_code,
+        forwarded_status,
+        stopped,
+        client,
+    )
+    return await _publish_job_execution_outcome(
+        job,
+        running.context,
+        outcome,
+        client,
+    )
+
+
+@dataclass(frozen=True)
+class _StaticJobState:
+    final_code: int = 0
+    failure_category: str | None = None
+    error_message: str | None = None
+
+
+@dataclass(frozen=True)
+class _ClaimedShardContext:
+    job_id: str
+    shard_id: Any
+    shard_path: str | None
+    file_count: Any
+    assigned_server_id: Any
+    attempt_count: Any
+    shard: Mapping[str, Any]
+
+    @classmethod
+    def from_claim(cls, job_id: str, shard: dict[str, Any]) -> "_ClaimedShardContext":
+        snapshot = MappingProxyType(dict(shard))
+        return cls(
+            job_id=job_id,
+            shard_id=shard.get("id"),
+            shard_path=(
+                str(shard["shard_path"])
+                if shard.get("shard_path") is not None
+                else None
+            ),
+            file_count=shard.get("file_count"),
+            assigned_server_id=shard.get("assigned_server_id"),
+            attempt_count=shard.get("attempt_count"),
+            shard=snapshot,
+        )
+
+    def update_context(self) -> dict[str, Any]:
+        return dict(self.shard)
+
+    def child_job(self, job: dict[str, Any]) -> dict[str, Any]:
+        child = dict(job)
+        child["shard"] = dict(self.shard)
+        child["has_static_shards"] = False
+        if child.get("input_mode") == "remote_folder_snapshot":
+            child["input_mode"] = "folder_snapshot"
+        return child
+
+
+@dataclass(frozen=True)
+class _ClaimedShardResult:
+    return_code: int
+    progress: Mapping[str, Any]
+    stopped: bool
+
+
+async def _post_static_job_stopped(
+    client: ControlClient,
+    job_id: str,
+    *,
+    return_code: int | None = None,
+) -> None:
+    payload: dict[str, Any] = {"static_shards_final": True}
+    if return_code is not None:
+        payload["return_code"] = return_code
+    await client.post_event(job_id, {"type": "job_stopped", "payload": payload})
+
+
+async def _wait_for_static_claim_capacity(
+    job_id: str,
+    config: AgentConfig,
+    client: ControlClient,
+) -> bool:
+    pressure = resource_pressure(config)
+    if not pressure.get("constrained"):
+        return False
+    await client.post_event(
+        job_id,
+        {
+            "type": "resource_pressure",
+            "payload": {
+                "stage": "before_shard_claim",
+                "server_id": config.server_id,
+                "pressure": pressure,
+            },
+        },
+    )
+    await asyncio.sleep(config.poll_interval_seconds)
+    return True
+
+
+async def _finalize_static_job_without_claim(
+    state: _StaticJobState,
+    job_id: str,
+    client: ControlClient,
+) -> int:
+    if await should_stop_job(job_id, client):
+        await _post_static_job_stopped(client, job_id)
+        return state.final_code or 1
+    summary = await client.get_job_summary(job_id)
+    if _summary_has_active_shards(summary):
+        return state.final_code
+    has_failed_shards = _summary_has_failed_shards(summary)
+    if state.final_code == 0 and not has_failed_shards:
+        await client.post_event(
             job_id,
-            client,
-            process,
-            poll_interval_seconds=config.stop_poll_interval_seconds,
-            termination_timeout_seconds=config.process_termination_timeout_seconds,
+            {"type": "job_done", "payload": {"static_shards_final": True}},
         )
+        return state.final_code
+    if state.failure_category is None:
+        payload = (
+            failure_payload_for_return_code(state.final_code)
+            if state.final_code
+            else {
+                "failure_category": "shard_failed",
+                "error_message": "one or more shards failed",
+            }
+        )
+        state = _StaticJobState(
+            final_code=state.final_code,
+            failure_category=str(payload["failure_category"]),
+            error_message=str(payload["error_message"]),
+        )
+    await client.post_event(
+        job_id,
+        {
+            "type": "job_failed",
+            "payload": {
+                "static_shards_final": True,
+                "return_code": state.final_code,
+                "failure_category": state.failure_category,
+                "error_message": state.error_message,
+            },
+        },
     )
-    tasks.append(stop_task)
-    wait_task = asyncio.create_task(process.wait())
-    all_tasks = tasks + [wait_task]
+    return state.final_code
 
-    try:
-        done, pending = await asyncio.wait(
-            all_tasks,
-            return_when=asyncio.FIRST_EXCEPTION,
+
+async def _execute_claimed_shard(
+    job: dict[str, Any],
+    context: _ClaimedShardContext,
+    config: AgentConfig,
+    client: ControlClient,
+) -> _ClaimedShardResult:
+    child_job = context.child_job(job)
+    return_code = await run_job(child_job, config, client)
+    progress = MappingProxyType(dict(child_job.get("_shard_progress") or {}))
+    stopped = await _should_stop_job_with_transient_retry(
+        context.job_id,
+        client,
+        config,
+    )
+    return _ClaimedShardResult(
+        return_code=return_code,
+        progress=progress,
+        stopped=stopped,
+    )
+
+
+def _failed_static_job_state(result: _ClaimedShardResult) -> _StaticJobState:
+    fallback = (
+        failure_payload_for_return_code(result.return_code)
+        if result.return_code
+        else {
+            "failure_category": "shard_failed",
+            "error_message": "one or more shards failed",
+        }
+    )
+    return _StaticJobState(
+        final_code=result.return_code,
+        failure_category=str(
+            result.progress.get("failure_category") or fallback["failure_category"]
+        ),
+        error_message=str(
+            result.progress.get("error_message") or fallback["error_message"]
+        ),
+    )
+
+
+def _claimed_shard_terminal_payload(
+    context: _ClaimedShardContext,
+    result: _ClaimedShardResult,
+    status: str,
+    state: _StaticJobState,
+) -> dict[str, Any]:
+    progress = result.progress
+    processed_files = progress.get("processed_files", 0)
+    if status == "succeeded":
+        processed_files = max(
+            int(processed_files),
+            int(context.shard["file_count"]),
         )
-        for task in done:
-            exception = task.exception()
-            if exception is not None:
-                await _terminate_process(
-                    process,
-                    config.process_termination_timeout_seconds,
-                )
-                await _cancel_tasks(list(pending))
-                raise exception
+    payload: dict[str, Any] = {
+        "status": status,
+        "processed_files": processed_files,
+        "failed_files": progress.get("failed_files", 0),
+        "skipped_files": progress.get("skipped_files", 0),
+        "completed_pages": progress.get("completed_pages", 0),
+    }
+    if status == "stopped":
+        payload["failure_category"] = "operator_stopped"
+    elif status == "failed":
+        payload["failure_category"] = state.failure_category
+        payload["error_message"] = state.error_message
+    return _with_shard_update_context(payload, context.update_context())
 
-        return_code = wait_task.result()
-        forwarded_status = event_task.result()
-        stopped = stop_task.done() and stop_task.result()
-        if forwarded_status.saw_job_stopped:
-            stopped = True
-        if not stopped:
-            try:
-                stopped = await should_stop_job(job_id, client)
-            except Exception:
-                stopped = False
-        effective_return_code = return_code
-        if forwarded_status.saw_job_stopped and effective_return_code == 0:
-            effective_return_code = -signal.SIGTERM
-        elif forwarded_status.saw_failure and effective_return_code == 0:
-            effective_return_code = 1
-        if (job.get("shard") or {}).get("id") is not None:
-            progress_status = "running"
-            if stopped:
-                progress_status = "stopped"
-            elif effective_return_code != 0:
-                progress_status = "failed"
-            job["_shard_progress"] = forwarded_status.shard_progress_payload(progress_status)
-        if stopped:
-            if not forwarded_status.saw_job_stopped:
-                await client.post_event(
-                    job_id,
-                    {
-                        "type": "job_stopped",
-                        "payload": {"return_code": effective_return_code},
-                    },
-                )
-        elif effective_return_code != 0 and not forwarded_status.saw_job_failed:
-            await _post_job_failed(
-                client,
-                job_id,
-                failure_payload_for_return_code(effective_return_code),
-            )
-        return effective_return_code
-    except asyncio.CancelledError:
-        await _terminate_process(process, config.process_termination_timeout_seconds)
-        await _cancel_tasks(all_tasks)
-        raise
-    except Exception:
-        await _terminate_process(process, config.process_termination_timeout_seconds)
-        await _cancel_tasks(all_tasks)
-        raise
+
+async def _finish_claimed_shard(
+    state: _StaticJobState,
+    context: _ClaimedShardContext,
+    result: _ClaimedShardResult,
+    config: AgentConfig,
+    client: ControlClient,
+) -> tuple[_StaticJobState, int | None]:
+    if result.stopped:
+        status = "stopped"
+    elif result.return_code == 0:
+        status = "succeeded"
+    else:
+        status = "failed"
+        state = _failed_static_job_state(result)
+    await _update_shard_with_transient_retry(
+        client,
+        context.shard["id"],
+        _claimed_shard_terminal_payload(context, result, status, state),
+        config,
+        job_id=context.job_id,
+    )
+    if result.stopped:
+        await _post_static_job_stopped(
+            client,
+            context.job_id,
+            return_code=result.return_code,
+        )
+        return state, result.return_code or 1
+    return state, None
 
 
 async def run_static_sharded_job(
@@ -1425,176 +1802,25 @@ async def run_static_sharded_job(
     config: AgentConfig,
     client: ControlClient,
 ) -> int:
-    final_code = 0
-    final_failure_category: str | None = None
-    final_error_message: str | None = None
     job_id = str(job["id"])
+    state = _StaticJobState()
     while True:
         if await should_stop_job(job_id, client):
-            await client.post_event(
-                job_id,
-                {
-                    "type": "job_stopped",
-                    "payload": {"static_shards_final": True},
-                },
-            )
-            return final_code or 1
-
-        pressure = resource_pressure(config)
-        if pressure.get("constrained"):
-            await client.post_event(
-                job_id,
-                {
-                    "type": "resource_pressure",
-                    "payload": {
-                        "stage": "before_shard_claim",
-                        "server_id": config.server_id,
-                        "pressure": pressure,
-                    },
-                },
-            )
-            await asyncio.sleep(config.poll_interval_seconds)
+            await _post_static_job_stopped(client, job_id)
+            return state.final_code or 1
+        if await _wait_for_static_claim_capacity(job_id, config, client):
             continue
-
         shard = await client.claim_shard(job_id, config.server_id)
         if shard is None:
-            if await should_stop_job(job_id, client):
-                await client.post_event(
-                    job_id,
-                    {
-                        "type": "job_stopped",
-                        "payload": {"static_shards_final": True},
-                    },
-                )
-                return final_code or 1
-            summary = await client.get_job_summary(job_id)
-            if _summary_has_active_shards(summary):
-                return final_code
-            has_failed_shards = _summary_has_failed_shards(summary)
-            if final_code == 0 and not has_failed_shards:
-                await client.post_event(
-                    job_id,
-                    {
-                        "type": "job_done",
-                        "payload": {"static_shards_final": True},
-                    },
-                )
-            else:
-                if final_failure_category is None:
-                    final_payload = (
-                        failure_payload_for_return_code(final_code)
-                        if final_code
-                        else {
-                            "failure_category": "shard_failed",
-                            "error_message": "one or more shards failed",
-                        }
-                    )
-                    final_failure_category = str(final_payload["failure_category"])
-                    final_error_message = str(final_payload["error_message"])
-                await client.post_event(
-                    job_id,
-                    {
-                        "type": "job_failed",
-                        "payload": {
-                            "static_shards_final": True,
-                            "return_code": final_code,
-                            "failure_category": final_failure_category,
-                            "error_message": final_error_message,
-                        },
-                    },
-                )
-            return final_code
-
-        shard_job = dict(job)
-        shard_job["shard"] = shard
-        shard_job["has_static_shards"] = False
-        if shard_job.get("input_mode") == "remote_folder_snapshot":
-            shard_job["input_mode"] = "folder_snapshot"
-        return_code = await run_job(shard_job, config, client)
-        shard_progress = shard_job.get("_shard_progress") or {}
-        stopped = await _should_stop_job_with_transient_retry(
-            job_id,
-            client,
+            return await _finalize_static_job_without_claim(state, job_id, client)
+        context = _ClaimedShardContext.from_claim(job_id, shard)
+        result = await _execute_claimed_shard(job, context, config, client)
+        state, terminal_code = await _finish_claimed_shard(
+            state,
+            context,
+            result,
             config,
+            client,
         )
-        if stopped:
-            await _update_shard_with_transient_retry(
-                client,
-                shard["id"],
-                _with_shard_update_context(
-                    {
-                        "status": "stopped",
-                        "processed_files": shard_progress.get("processed_files", 0),
-                        "failed_files": shard_progress.get("failed_files", 0),
-                        "skipped_files": shard_progress.get("skipped_files", 0),
-                        "completed_pages": shard_progress.get("completed_pages", 0),
-                        "failure_category": "operator_stopped",
-                    },
-                    shard,
-                ),
-                config,
-                job_id=job_id,
-            )
-            await client.post_event(
-                job_id,
-                {
-                    "type": "job_stopped",
-                    "payload": {
-                        "static_shards_final": True,
-                        "return_code": return_code,
-                    },
-                },
-            )
-            return return_code or 1
-        elif return_code == 0:
-            await _update_shard_with_transient_retry(
-                client,
-                shard["id"],
-                _with_shard_update_context(
-                    {
-                        "status": "succeeded",
-                        "processed_files": max(
-                            int(shard_progress.get("processed_files", 0)),
-                            int(shard["file_count"]),
-                        ),
-                        "failed_files": shard_progress.get("failed_files", 0),
-                        "skipped_files": shard_progress.get("skipped_files", 0),
-                        "completed_pages": shard_progress.get("completed_pages", 0),
-                    },
-                    shard,
-                ),
-                config,
-                job_id=job_id,
-            )
-        else:
-            final_code = return_code
-            if shard_progress.get("failure_category"):
-                final_failure_category = str(shard_progress["failure_category"])
-            elif return_code:
-                final_failure_category = str(failure_payload_for_return_code(return_code)["failure_category"])
-            else:
-                final_failure_category = "shard_failed"
-            if shard_progress.get("error_message"):
-                final_error_message = str(shard_progress["error_message"])
-            elif return_code:
-                final_error_message = str(failure_payload_for_return_code(return_code)["error_message"])
-            else:
-                final_error_message = "one or more shards failed"
-            await _update_shard_with_transient_retry(
-                client,
-                shard["id"],
-                _with_shard_update_context(
-                    {
-                        "status": "failed",
-                        "processed_files": shard_progress.get("processed_files", 0),
-                        "failed_files": shard_progress.get("failed_files", 0),
-                        "skipped_files": shard_progress.get("skipped_files", 0),
-                        "completed_pages": shard_progress.get("completed_pages", 0),
-                        "failure_category": final_failure_category,
-                        "error_message": final_error_message,
-                    },
-                    shard,
-                ),
-                config,
-                job_id=job_id,
-            )
+        if terminal_code is not None:
+            return terminal_code
