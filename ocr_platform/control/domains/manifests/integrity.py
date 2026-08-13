@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ocr_platform.manifest.models import ManifestItem
 from sqlalchemy import func, select
@@ -25,6 +26,54 @@ from ..common import POOL_SERVER_ID, json_loads_object, utcnow
 from . import policy
 from .paths import evaluate_server_path_access, path_is_under
 from .projection import get_job_or_raise
+
+
+@dataclass(frozen=True)
+class _ManifestFileEvidence:
+    exists: bool
+    actual_file_count: int | None
+    file_count_matches: bool
+    expected_total_bytes: int
+    actual_total_bytes: int | None
+    total_bytes_matches: bool
+    error: str | None
+    relative_paths: set[str] | None
+
+
+@dataclass(frozen=True)
+class _ManifestMetaEvidence:
+    exists: bool | None
+    error: str | None
+    expected_file_count: int
+    actual_file_count: int | None
+    file_count_matches: bool
+    expected_total_bytes: int
+    actual_total_bytes: int | None
+    total_bytes_matches: bool
+
+
+@dataclass(frozen=True)
+class _ScanUnitAudit:
+    count: int
+    expected_file_count: int
+    actual_file_count: int | None
+    file_count_matches: bool
+    expected_total_bytes: int
+    actual_total_bytes: int | None
+    total_bytes_matches: bool
+    relative_paths: set[str]
+    bad_count: int
+    bad_samples: list[ManifestIntegrityScanUnitIssue]
+
+
+@dataclass(frozen=True)
+class _ShardAudit:
+    count: int
+    expected_file_count: int
+    bad_count: int
+    bad_samples: list[ManifestIntegrityShardIssue]
+
+
 class InvalidManifestRowError(ValueError):
     pass
 
@@ -460,21 +509,503 @@ def complete_worker_manifest_integrity_check(
         requested_at=manifest.worker_integrity_requested_at,
     )
 
+def _read_manifest_file_evidence(manifest: Manifest) -> _ManifestFileEvidence:
+    path = Path(manifest.manifest_path)
+    exists = path.exists()
+    expected_total_bytes = int(manifest.total_bytes or 0)
+    rows, error = _read_manifest_jsonl(path) if exists else (None, None)
+    if rows is None:
+        return _ManifestFileEvidence(
+            exists=exists,
+            actual_file_count=None,
+            file_count_matches=False,
+            expected_total_bytes=expected_total_bytes,
+            actual_total_bytes=None,
+            total_bytes_matches=False,
+            error=error,
+            relative_paths=None,
+        )
+    actual_file_count, relative_paths, actual_total_bytes = rows
+    file_count_matches = actual_file_count == manifest.file_count
+    total_bytes_matches = actual_total_bytes == expected_total_bytes
+    if file_count_matches and not total_bytes_matches:
+        error = "total_bytes_mismatch"
+    return _ManifestFileEvidence(
+        exists=True,
+        actual_file_count=actual_file_count,
+        file_count_matches=file_count_matches,
+        expected_total_bytes=expected_total_bytes,
+        actual_total_bytes=actual_total_bytes,
+        total_bytes_matches=total_bytes_matches,
+        error=error,
+        relative_paths=relative_paths,
+    )
+
+
+def _read_manifest_meta_evidence(manifest: Manifest) -> _ManifestMetaEvidence:
+    expected_file_count = int(manifest.file_count or 0)
+    expected_total_bytes = int(manifest.total_bytes or 0)
+    exists: bool | None = None
+    error: str | None = None
+    actual_file_count: int | None = None
+    actual_total_bytes: int | None = None
+    file_count_matches = False
+    total_bytes_matches = False
+    if manifest.meta_path:
+        path = Path(manifest.meta_path)
+        exists = path.exists()
+        payload, error = _read_json_object(path) if exists else (None, None)
+        if payload is not None:
+            if payload.get("file_count") is None:
+                error = "file_count_missing"
+            else:
+                try:
+                    actual_file_count = int(payload["file_count"])
+                except (TypeError, ValueError):
+                    error = "file_count_invalid"
+                else:
+                    file_count_matches = actual_file_count == expected_file_count
+                if error is None and payload.get("total_bytes") is not None:
+                    try:
+                        actual_total_bytes = int(payload["total_bytes"])
+                    except (TypeError, ValueError):
+                        error = "total_bytes_invalid"
+                    else:
+                        total_bytes_matches = actual_total_bytes == expected_total_bytes
+                        if not total_bytes_matches:
+                            error = "total_bytes_mismatch"
+    return _ManifestMetaEvidence(
+        exists=exists,
+        error=error,
+        expected_file_count=expected_file_count,
+        actual_file_count=actual_file_count,
+        file_count_matches=file_count_matches,
+        expected_total_bytes=expected_total_bytes,
+        actual_total_bytes=actual_total_bytes,
+        total_bytes_matches=total_bytes_matches,
+    )
+
+
+def _worker_only_integrity_response(
+    session: Session,
+    job_id: str,
+    manifest: Manifest,
+    evidence: _ManifestFileEvidence,
+    *,
+    limits: ControlLimits,
+) -> ManifestIntegrityResponse | None:
+    if evidence.exists or not path_is_under_worker_shared_root(
+        session, manifest.manifest_path
+    ):
+        return None
+    succeeded_scan_units = int(
+        session.execute(
+            select(func.count(ScanUnit.id))
+            .where(ScanUnit.job_id == job_id)
+            .where(ScanUnit.status == "succeeded")
+        ).scalar_one()
+        or 0
+    )
+    if succeeded_scan_units:
+        return None
+    worker_report = _load_worker_integrity_report(manifest, limits=limits)
+    if worker_report is not None:
+        return worker_report
+    shard_count = int(
+        session.execute(
+            select(func.count(WorkShard.id)).where(WorkShard.job_id == job_id)
+        ).scalar_one()
+        or 0
+    )
+    shard_expected_file_count = int(
+        session.execute(
+            select(func.coalesce(func.sum(WorkShard.file_count), 0)).where(
+                WorkShard.job_id == job_id
+            )
+        ).scalar_one()
+        or 0
+    )
+    reference_count = int(manifest.file_count or 0)
+    return ManifestIntegrityResponse(
+        job_id=job_id,
+        manifest_id=manifest.id,
+        ok=False,
+        status="not_accessible_from_control",
+        manifest_path=manifest.manifest_path,
+        manifest_file_exists=False,
+        manifest_expected_file_count=manifest.file_count,
+        manifest_file_count_matches=False,
+        manifest_expected_total_bytes=manifest.total_bytes,
+        manifest_total_bytes_matches=False,
+        worker_integrity_status=manifest.worker_integrity_status,
+        meta_path=manifest.meta_path,
+        meta_file_exists=False if manifest.meta_path else None,
+        meta_expected_file_count=reference_count,
+        meta_file_count_matches=False,
+        meta_expected_total_bytes=int(manifest.total_bytes or 0),
+        meta_total_bytes_matches=False,
+        shard_count=shard_count,
+        shard_expected_file_count=shard_expected_file_count,
+        shard_reference_file_count=reference_count,
+        shard_file_count_matches_manifest=shard_expected_file_count == reference_count,
+    )
+
+
+def _scan_unit_issue(
+    unit: ScanUnit,
+    reason: str,
+    *,
+    actual_file_count: int | None,
+    manifest_path: str | None = None,
+) -> ManifestIntegrityScanUnitIssue:
+    return ManifestIntegrityScanUnitIssue(
+        scan_unit_id=unit.id,
+        path=unit.path,
+        manifest_path=unit.manifest_path if manifest_path is None else manifest_path,
+        expected_file_count=unit.file_count,
+        actual_file_count=actual_file_count,
+        reason=reason,
+    )
+
+
+def _scan_unit_meta_issues(
+    unit: ScanUnit,
+    actual_file_count: int,
+) -> list[ManifestIntegrityScanUnitIssue]:
+    if not unit.meta_path:
+        return []
+    path = Path(unit.meta_path)
+    if not path.exists():
+        return [
+            _scan_unit_issue(
+                unit,
+                "meta_file_missing",
+                actual_file_count=actual_file_count,
+                manifest_path=unit.meta_path,
+            )
+        ]
+    payload, error = _read_json_object(path)
+    issues: list[ManifestIntegrityScanUnitIssue] = []
+    if error:
+        reason = "meta_file_malformed" if error == "malformed_json" else "meta_file_unreadable"
+        issues.append(
+            _scan_unit_issue(
+                unit,
+                reason,
+                actual_file_count=actual_file_count,
+                manifest_path=unit.meta_path,
+            )
+        )
+    elif payload.get("file_count") is not None:
+        try:
+            meta_file_count = int(payload["file_count"])
+        except (TypeError, ValueError):
+            issues.append(
+                _scan_unit_issue(
+                    unit,
+                    "meta_file_count_invalid",
+                    actual_file_count=actual_file_count,
+                    manifest_path=unit.meta_path,
+                )
+            )
+        else:
+            if meta_file_count != int(unit.file_count or 0):
+                issues.append(
+                    _scan_unit_issue(
+                        unit,
+                        "meta_file_count_mismatch",
+                        actual_file_count=meta_file_count,
+                        manifest_path=unit.meta_path,
+                    )
+                )
+    if payload is not None and payload.get("total_bytes") is not None:
+        try:
+            meta_total_bytes = int(payload["total_bytes"])
+        except (TypeError, ValueError):
+            reason = "meta_total_bytes_invalid"
+        else:
+            reason = (
+                "meta_total_bytes_mismatch"
+                if meta_total_bytes != int(unit.total_bytes or 0)
+                else None
+            )
+        if reason is not None:
+            issues.append(
+                _scan_unit_issue(
+                    unit,
+                    reason,
+                    actual_file_count=actual_file_count,
+                    manifest_path=unit.meta_path,
+                )
+            )
+    return issues
+
+
+def _audit_scan_units(
+    session: Session,
+    job_id: str,
+    manifest: Manifest,
+    append_sample: Callable[[list[Any], Any], None],
+) -> _ScanUnitAudit:
+    units = session.execute(
+        select(ScanUnit)
+        .where(ScanUnit.job_id == job_id)
+        .where(ScanUnit.status == "succeeded")
+        .order_by(ScanUnit.id.asc())
+    ).scalars().all()
+    expected_count = sum(int(unit.file_count or 0) for unit in units)
+    expected_bytes = sum(int(unit.total_bytes or 0) for unit in units)
+    actual_count = 0
+    actual_bytes = 0
+    actual_known = True
+    relative_paths: set[str] = set()
+    bad_count = 0
+    bad_samples: list[ManifestIntegrityScanUnitIssue] = []
+    for unit in units:
+        rows: tuple[int, set[str], int] | None = None
+        error: str | None = None
+        if not unit.manifest_path:
+            error = "manifest_path_missing"
+        else:
+            path = Path(unit.manifest_path)
+            if not path.exists():
+                error = "file_missing"
+            else:
+                rows, error = _read_manifest_jsonl(path)
+        if rows is None:
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _scan_unit_issue(
+                    unit,
+                    error or "file_unreadable",
+                    actual_file_count=None,
+                ),
+            )
+            actual_known = False
+            continue
+        unit_count, unit_paths, unit_bytes = rows
+        if relative_paths.intersection(unit_paths):
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _scan_unit_issue(unit, "duplicate_relative_path", actual_file_count=None),
+            )
+            actual_known = False
+            continue
+        relative_paths.update(unit_paths)
+        actual_count += unit_count
+        if unit_count != unit.file_count:
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _scan_unit_issue(unit, "file_count_mismatch", actual_file_count=unit_count),
+            )
+        if unit_bytes != int(unit.total_bytes or 0):
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _scan_unit_issue(unit, "total_bytes_mismatch", actual_file_count=unit_count),
+            )
+            actual_known = False
+            continue
+        actual_bytes += unit_bytes
+        for issue in _scan_unit_meta_issues(unit, unit_count):
+            bad_count += 1
+            append_sample(bad_samples, issue)
+    has_units = bool(units)
+    return _ScanUnitAudit(
+        count=len(units),
+        expected_file_count=expected_count,
+        actual_file_count=actual_count if actual_known else None,
+        file_count_matches=(
+            has_units
+            and actual_known
+            and actual_count == expected_count
+            and expected_count == int(manifest.file_count or 0)
+            and bad_count == 0
+        ),
+        expected_total_bytes=expected_bytes,
+        actual_total_bytes=actual_bytes if actual_known else None,
+        total_bytes_matches=(
+            has_units
+            and actual_known
+            and actual_bytes == expected_bytes
+            and expected_bytes == int(manifest.total_bytes or 0)
+            and bad_count == 0
+        ),
+        relative_paths=relative_paths,
+        bad_count=bad_count,
+        bad_samples=bad_samples,
+    )
+
+
+def _shard_issue(
+    shard: WorkShard,
+    reason: str,
+    *,
+    actual_file_count: int | None,
+) -> ManifestIntegrityShardIssue:
+    return ManifestIntegrityShardIssue(
+        shard_id=shard.id,
+        shard_index=shard.shard_index,
+        shard_path=shard.shard_path,
+        expected_file_count=shard.file_count,
+        actual_file_count=actual_file_count,
+        reason=reason,
+    )
+
+
+def _audit_shards(
+    session: Session,
+    job_id: str,
+    reference_paths: set[str] | None,
+    append_sample: Callable[[list[Any], Any], None],
+) -> _ShardAudit:
+    shards = session.execute(
+        select(WorkShard)
+        .where(WorkShard.job_id == job_id)
+        .order_by(WorkShard.shard_index.asc())
+    ).scalars().all()
+    expected_count = sum(int(shard.file_count or 0) for shard in shards)
+    seen_paths: set[str] = set()
+    bad_count = 0
+    bad_samples: list[ManifestIntegrityShardIssue] = []
+    for shard in shards:
+        path = Path(shard.shard_path)
+        rows, error = _read_manifest_jsonl(path) if path.exists() else (None, "file_missing")
+        if rows is None:
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _shard_issue(
+                    shard,
+                    error or "file_unreadable",
+                    actual_file_count=None,
+                ),
+            )
+            continue
+        actual_count, shard_paths, _total_bytes = rows
+        if seen_paths.intersection(shard_paths):
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _shard_issue(shard, "duplicate_relative_path", actual_file_count=None),
+            )
+            continue
+        if reference_paths is not None and shard_paths.difference(reference_paths):
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _shard_issue(shard, "relative_path_not_in_manifest", actual_file_count=None),
+            )
+            continue
+        seen_paths.update(shard_paths)
+        if actual_count != shard.file_count:
+            bad_count += 1
+            append_sample(
+                bad_samples,
+                _shard_issue(shard, "file_count_mismatch", actual_file_count=actual_count),
+            )
+    return _ShardAudit(
+        count=len(shards),
+        expected_file_count=expected_count,
+        bad_count=bad_count,
+        bad_samples=bad_samples,
+    )
+
+
+def _build_manifest_integrity_response(
+    job_id: str,
+    manifest: Manifest,
+    manifest_file: _ManifestFileEvidence,
+    meta: _ManifestMetaEvidence,
+    scan: _ScanUnitAudit,
+    shards: _ShardAudit,
+) -> ManifestIntegrityResponse:
+    if scan.count:
+        manifest_ok = scan.file_count_matches
+        manifest_total_ok = scan.total_bytes_matches
+        meta_ok = True
+        shard_reference_count = scan.expected_file_count
+    else:
+        manifest_ok = manifest_file.exists and manifest_file.file_count_matches
+        manifest_total_ok = (
+            manifest_file.exists
+            and manifest_file.error is None
+            and manifest_file.total_bytes_matches
+        )
+        meta_ok = (
+            meta.exists is not False
+            and meta.error is None
+            and (manifest.meta_path is None or meta.file_count_matches)
+            and (
+                manifest.meta_path is None
+                or meta.actual_total_bytes is None
+                or meta.total_bytes_matches
+            )
+        )
+        shard_reference_count = int(manifest.file_count or 0)
+    shard_counts_match = shards.expected_file_count == shard_reference_count
+    ok = (
+        manifest_ok
+        and manifest_total_ok
+        and meta_ok
+        and shard_counts_match
+        and scan.bad_count == 0
+        and shards.bad_count == 0
+    )
+    return ManifestIntegrityResponse(
+        job_id=job_id,
+        manifest_id=manifest.id,
+        ok=ok,
+        status="ok" if ok else "failed",
+        manifest_path=manifest.manifest_path,
+        manifest_file_exists=manifest_file.exists,
+        manifest_expected_file_count=manifest.file_count,
+        manifest_actual_file_count=manifest_file.actual_file_count,
+        manifest_file_count_matches=manifest_file.file_count_matches,
+        manifest_expected_total_bytes=manifest_file.expected_total_bytes,
+        manifest_actual_total_bytes=manifest_file.actual_total_bytes,
+        manifest_total_bytes_matches=manifest_file.total_bytes_matches,
+        manifest_error=manifest_file.error,
+        meta_path=manifest.meta_path,
+        meta_file_exists=meta.exists,
+        meta_error=meta.error,
+        meta_expected_file_count=meta.expected_file_count,
+        meta_actual_file_count=meta.actual_file_count,
+        meta_file_count_matches=meta.file_count_matches,
+        meta_expected_total_bytes=meta.expected_total_bytes,
+        meta_actual_total_bytes=meta.actual_total_bytes,
+        meta_total_bytes_matches=meta.total_bytes_matches,
+        scan_unit_count=scan.count,
+        scan_unit_manifest_expected_file_count=scan.expected_file_count,
+        scan_unit_manifest_actual_file_count=scan.actual_file_count,
+        scan_unit_manifest_count_matches=scan.file_count_matches,
+        scan_unit_manifest_expected_total_bytes=scan.expected_total_bytes,
+        scan_unit_manifest_actual_total_bytes=scan.actual_total_bytes,
+        scan_unit_manifest_total_bytes_matches=scan.total_bytes_matches,
+        bad_scan_unit_count=scan.bad_count,
+        bad_scan_units=scan.bad_samples,
+        shard_count=shards.count,
+        shard_expected_file_count=shards.expected_file_count,
+        shard_reference_file_count=shard_reference_count,
+        shard_file_count_matches_manifest=shard_counts_match,
+        bad_shard_count=shards.bad_count,
+        bad_shards=shards.bad_samples,
+    )
+
+
 def _assemble_manifest_integrity_report(
     session: Session,
     job_id: str,
     *,
     limits: ControlLimits | None = None,
 ) -> ManifestIntegrityResponse:
-    control_limits = (
-        limits if limits is not None else legacy_control_limits()
-    )
-    issue_sample_limit = max(
-        control_limits.manifest_integrity_issue_sample_limit,
-        0,
-    )
+    control_limits = limits if limits is not None else legacy_control_limits()
+    issue_sample_limit = max(control_limits.manifest_integrity_issue_sample_limit, 0)
 
-    def append_issue_sample(samples: list[Any], issue: Any) -> None:
+    def append_sample(samples: list[Any], issue: Any) -> None:
         _append_manifest_integrity_issue_sample(
             samples,
             issue,
@@ -495,524 +1026,27 @@ def _assemble_manifest_integrity_report(
             ok=False,
             status="missing_manifest",
         )
-
-    manifest_path = Path(manifest.manifest_path)
-    manifest_file_exists = manifest_path.exists()
-    control_cannot_access_manifest = (
-        not manifest_file_exists
-        and path_is_under_worker_shared_root(session, manifest.manifest_path)
+    manifest_file = _read_manifest_file_evidence(manifest)
+    meta = _read_manifest_meta_evidence(manifest)
+    worker_only = _worker_only_integrity_response(
+        session,
+        job_id,
+        manifest,
+        manifest_file,
+        limits=control_limits,
     )
-    manifest_actual_file_count: int | None = None
-    manifest_file_count_matches = False
-    manifest_expected_total_bytes = int(manifest.total_bytes or 0)
-    manifest_actual_total_bytes: int | None = None
-    manifest_total_bytes_matches = False
-    manifest_error: str | None = None
-    manifest_relative_paths: set[str] | None = None
-    if manifest_file_exists:
-        manifest_rows, manifest_error = _read_manifest_jsonl(manifest_path)
-        if manifest_rows is not None:
-            (
-                manifest_actual_file_count,
-                manifest_relative_paths,
-                manifest_actual_total_bytes,
-            ) = manifest_rows
-            manifest_file_count_matches = manifest_actual_file_count == manifest.file_count
-            manifest_total_bytes_matches = (
-                manifest_actual_total_bytes == manifest_expected_total_bytes
-            )
-            if manifest_file_count_matches and not manifest_total_bytes_matches:
-                manifest_error = "total_bytes_mismatch"
-
-    meta_file_exists: bool | None = None
-    meta_error: str | None = None
-    meta_expected_file_count = int(manifest.file_count or 0)
-    meta_actual_file_count: int | None = None
-    meta_file_count_matches = False
-    meta_expected_total_bytes = int(manifest.total_bytes or 0)
-    meta_actual_total_bytes: int | None = None
-    meta_total_bytes_matches = False
-    if manifest.meta_path:
-        meta_path = Path(manifest.meta_path)
-        meta_file_exists = meta_path.exists()
-        if meta_file_exists:
-            meta_payload, meta_error = _read_json_object(meta_path)
-            if meta_payload is not None:
-                if meta_payload.get("file_count") is not None:
-                    try:
-                        meta_actual_file_count = int(meta_payload["file_count"])
-                    except (TypeError, ValueError):
-                        meta_error = "file_count_invalid"
-                    else:
-                        meta_file_count_matches = meta_actual_file_count == meta_expected_file_count
-                    if meta_error is None and meta_payload.get("total_bytes") is not None:
-                        try:
-                            meta_actual_total_bytes = int(meta_payload["total_bytes"])
-                        except (TypeError, ValueError):
-                            meta_error = "total_bytes_invalid"
-                        else:
-                            meta_total_bytes_matches = (
-                                meta_actual_total_bytes == meta_expected_total_bytes
-                            )
-                            if not meta_total_bytes_matches:
-                                meta_error = "total_bytes_mismatch"
-                else:
-                    meta_error = "file_count_missing"
-
-    if control_cannot_access_manifest and int(
-        session.execute(
-            select(func.count(ScanUnit.id))
-            .where(ScanUnit.job_id == job_id)
-            .where(ScanUnit.status == "succeeded")
-        ).scalar_one()
-        or 0
-    ) == 0:
-        worker_report = _load_worker_integrity_report(
-            manifest,
-            limits=control_limits,
-        )
-        if worker_report is not None:
-            return worker_report
-        shard_count = int(
-            session.execute(
-                select(func.count(WorkShard.id)).where(WorkShard.job_id == job_id)
-            ).scalar_one()
-            or 0
-        )
-        shard_expected_file_count = int(
-            session.execute(
-                select(func.coalesce(func.sum(WorkShard.file_count), 0)).where(
-                    WorkShard.job_id == job_id
-                )
-            ).scalar_one()
-            or 0
-        )
-        return ManifestIntegrityResponse(
-            job_id=job_id,
-            manifest_id=manifest.id,
-            ok=False,
-            status="not_accessible_from_control",
-            manifest_path=manifest.manifest_path,
-            manifest_file_exists=False,
-            manifest_expected_file_count=manifest.file_count,
-            manifest_file_count_matches=False,
-            manifest_expected_total_bytes=manifest.total_bytes,
-            manifest_total_bytes_matches=False,
-            worker_integrity_status=manifest.worker_integrity_status,
-            meta_path=manifest.meta_path,
-            meta_file_exists=False if manifest.meta_path else None,
-            meta_expected_file_count=int(manifest.file_count or 0),
-            meta_file_count_matches=False,
-            meta_expected_total_bytes=int(manifest.total_bytes or 0),
-            meta_total_bytes_matches=False,
-            shard_count=shard_count,
-            shard_expected_file_count=shard_expected_file_count,
-            shard_reference_file_count=int(manifest.file_count or 0),
-            shard_file_count_matches_manifest=shard_expected_file_count == int(manifest.file_count or 0),
-        )
-
-    bad_scan_unit_count = 0
-    bad_scan_units: list[ManifestIntegrityScanUnitIssue] = []
-    scan_units = session.execute(
-        select(ScanUnit)
-        .where(ScanUnit.job_id == job_id)
-        .where(ScanUnit.status == "succeeded")
-        .order_by(ScanUnit.id.asc())
-    ).scalars().all()
-    scan_unit_expected_file_count = sum(int(unit.file_count or 0) for unit in scan_units)
-    scan_unit_expected_total_bytes = sum(int(unit.total_bytes or 0) for unit in scan_units)
-    scan_unit_actual_file_count = 0
-    scan_unit_actual_total_bytes = 0
-    scan_unit_actual_count_known = True
-    scan_unit_relative_paths: set[str] = set()
-    for unit in scan_units:
-        if not unit.manifest_path:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=None,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="manifest_path_missing",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        unit_manifest_path = Path(unit.manifest_path)
-        if not unit_manifest_path.exists():
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="file_missing",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        unit_rows, unit_error = _read_manifest_jsonl(unit_manifest_path)
-        if unit_rows is None:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason=unit_error or "file_unreadable",
-                ),
-            )
-            scan_unit_actual_count_known = False
-            continue
-        else:
-            (
-                unit_actual_file_count,
-                unit_relative_paths,
-                unit_actual_total_bytes,
-            ) = unit_rows
-        if scan_unit_relative_paths.intersection(unit_relative_paths):
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=None,
-                    reason="duplicate_relative_path",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        scan_unit_relative_paths.update(unit_relative_paths)
-        scan_unit_actual_file_count += unit_actual_file_count
-        if unit_actual_file_count != unit.file_count:
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=unit_actual_file_count,
-                    reason="file_count_mismatch",
-                )
-            )
-        if unit_actual_total_bytes != int(unit.total_bytes or 0):
-            bad_scan_unit_count += 1
-            append_issue_sample(
-                bad_scan_units,
-                ManifestIntegrityScanUnitIssue(
-                    scan_unit_id=unit.id,
-                    path=unit.path,
-                    manifest_path=unit.manifest_path,
-                    expected_file_count=unit.file_count,
-                    actual_file_count=unit_actual_file_count,
-                    reason="total_bytes_mismatch",
-                )
-            )
-            scan_unit_actual_count_known = False
-            continue
-        scan_unit_actual_total_bytes += unit_actual_total_bytes
-        if unit.meta_path:
-            unit_meta_path = Path(unit.meta_path)
-            if not unit_meta_path.exists():
-                bad_scan_unit_count += 1
-                append_issue_sample(
-                    bad_scan_units,
-                    ManifestIntegrityScanUnitIssue(
-                        scan_unit_id=unit.id,
-                        path=unit.path,
-                        manifest_path=unit.meta_path,
-                        expected_file_count=unit.file_count,
-                        actual_file_count=unit_actual_file_count,
-                        reason="meta_file_missing",
-                    )
-                )
-            else:
-                unit_meta_payload, unit_meta_error = _read_json_object(
-                    unit_meta_path
-                )
-                if unit_meta_error:
-                    unit_meta_reason = (
-                        "meta_file_malformed"
-                        if unit_meta_error == "malformed_json"
-                        else "meta_file_unreadable"
-                    )
-                    bad_scan_unit_count += 1
-                    append_issue_sample(
-                        bad_scan_units,
-                        ManifestIntegrityScanUnitIssue(
-                            scan_unit_id=unit.id,
-                            path=unit.path,
-                            manifest_path=unit.meta_path,
-                            expected_file_count=unit.file_count,
-                            actual_file_count=unit_actual_file_count,
-                            reason=unit_meta_reason,
-                        )
-                    )
-                elif unit_meta_payload.get("file_count") is not None:
-                    try:
-                        unit_meta_file_count = int(unit_meta_payload["file_count"])
-                    except (TypeError, ValueError):
-                        bad_scan_unit_count += 1
-                        append_issue_sample(
-                            bad_scan_units,
-                            ManifestIntegrityScanUnitIssue(
-                                scan_unit_id=unit.id,
-                                path=unit.path,
-                                manifest_path=unit.meta_path,
-                                expected_file_count=unit.file_count,
-                                actual_file_count=unit_actual_file_count,
-                                reason="meta_file_count_invalid",
-                            )
-                        )
-                    else:
-                        if unit_meta_file_count != int(unit.file_count or 0):
-                            bad_scan_unit_count += 1
-                            append_issue_sample(
-                                bad_scan_units,
-                                ManifestIntegrityScanUnitIssue(
-                                    scan_unit_id=unit.id,
-                                    path=unit.path,
-                                    manifest_path=unit.meta_path,
-                                    expected_file_count=unit.file_count,
-                                    actual_file_count=unit_meta_file_count,
-                                    reason="meta_file_count_mismatch",
-                                )
-                            )
-                if (
-                    unit_meta_payload is not None
-                    and unit_meta_payload.get("total_bytes") is not None
-                ):
-                    try:
-                        unit_meta_total_bytes = int(unit_meta_payload["total_bytes"])
-                    except (TypeError, ValueError):
-                        bad_scan_unit_count += 1
-                        append_issue_sample(
-                            bad_scan_units,
-                            ManifestIntegrityScanUnitIssue(
-                                scan_unit_id=unit.id,
-                                path=unit.path,
-                                manifest_path=unit.meta_path,
-                                expected_file_count=unit.file_count,
-                                actual_file_count=unit_actual_file_count,
-                                reason="meta_total_bytes_invalid",
-                            )
-                        )
-                    else:
-                        if unit_meta_total_bytes != int(unit.total_bytes or 0):
-                            bad_scan_unit_count += 1
-                            append_issue_sample(
-                                bad_scan_units,
-                                ManifestIntegrityScanUnitIssue(
-                                    scan_unit_id=unit.id,
-                                    path=unit.path,
-                                    manifest_path=unit.meta_path,
-                                    expected_file_count=unit.file_count,
-                                    actual_file_count=unit_actual_file_count,
-                                    reason="meta_total_bytes_mismatch",
-                                )
-                            )
-
-    has_distributed_scan_units = bool(scan_units)
-    scan_unit_manifest_actual_total = (
-        scan_unit_actual_file_count if scan_unit_actual_count_known else None
-    )
-    scan_unit_manifest_actual_total_bytes = (
-        scan_unit_actual_total_bytes if scan_unit_actual_count_known else None
-    )
-    scan_unit_manifest_count_matches = (
-        has_distributed_scan_units
-        and scan_unit_actual_count_known
-        and scan_unit_actual_file_count == scan_unit_expected_file_count
-        and scan_unit_expected_file_count == int(manifest.file_count or 0)
-        and bad_scan_unit_count == 0
-    )
-    scan_unit_manifest_total_bytes_matches = (
-        has_distributed_scan_units
-        and scan_unit_actual_count_known
-        and scan_unit_actual_total_bytes == scan_unit_expected_total_bytes
-        and scan_unit_expected_total_bytes == int(manifest.total_bytes or 0)
-        and bad_scan_unit_count == 0
-    )
-
-    bad_shard_count = 0
-    bad_shards: list[ManifestIntegrityShardIssue] = []
-    shards = session.execute(
-        select(WorkShard)
-        .where(WorkShard.job_id == job_id)
-        .order_by(WorkShard.shard_index.asc())
-    ).scalars().all()
-    shard_expected_file_count = sum(int(shard.file_count or 0) for shard in shards)
-    shard_relative_paths: set[str] = set()
-    for shard in shards:
-        shard_path = Path(shard.shard_path)
-        if not shard_path.exists():
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="file_missing",
-                )
-            )
-            continue
-        shard_rows, shard_error = _read_manifest_jsonl(shard_path)
-        if shard_rows is None:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason=shard_error or "file_unreadable",
-                ),
-            )
-            continue
-        else:
-            (
-                actual_file_count,
-                shard_file_relative_paths,
-                _shard_total_bytes,
-            ) = shard_rows
-        if shard_relative_paths.intersection(shard_file_relative_paths):
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="duplicate_relative_path",
-                )
-            )
-            continue
-        shard_reference_relative_paths = (
-            scan_unit_relative_paths if has_distributed_scan_units else manifest_relative_paths
-        )
-        if (
-            shard_reference_relative_paths is not None
-            and shard_file_relative_paths.difference(shard_reference_relative_paths)
-        ):
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=None,
-                    reason="relative_path_not_in_manifest",
-                )
-            )
-            continue
-        shard_relative_paths.update(shard_file_relative_paths)
-        if actual_file_count != shard.file_count:
-            bad_shard_count += 1
-            append_issue_sample(
-                bad_shards,
-                ManifestIntegrityShardIssue(
-                    shard_id=shard.id,
-                    shard_index=shard.shard_index,
-                    shard_path=shard.shard_path,
-                    expected_file_count=shard.file_count,
-                    actual_file_count=actual_file_count,
-                    reason="file_count_mismatch",
-                )
-            )
-
-    if has_distributed_scan_units:
-        manifest_ok = scan_unit_manifest_count_matches
-        manifest_total_ok = scan_unit_manifest_total_bytes_matches
-        meta_ok = True
-        shard_reference_file_count = scan_unit_expected_file_count
-    else:
-        manifest_ok = manifest_file_exists and manifest_file_count_matches
-        manifest_total_ok = (
-            manifest_file_exists
-            and manifest_error is None
-            and manifest_total_bytes_matches
-        )
-        meta_ok = (
-            meta_file_exists is not False
-            and meta_error is None
-            and (manifest.meta_path is None or meta_file_count_matches)
-            and (
-                manifest.meta_path is None
-                or meta_actual_total_bytes is None
-                or meta_total_bytes_matches
-            )
-        )
-        shard_reference_file_count = int(manifest.file_count or 0)
-    shard_file_count_matches_manifest = shard_expected_file_count == shard_reference_file_count
-    ok = (
-        manifest_ok
-        and manifest_total_ok
-        and meta_ok
-        and shard_file_count_matches_manifest
-        and bad_scan_unit_count == 0
-        and bad_shard_count == 0
-    )
-    return ManifestIntegrityResponse(
-        job_id=job_id,
-        manifest_id=manifest.id,
-        ok=ok,
-        status="ok" if ok else "failed",
-        manifest_path=manifest.manifest_path,
-        manifest_file_exists=manifest_file_exists,
-        manifest_expected_file_count=manifest.file_count,
-        manifest_actual_file_count=manifest_actual_file_count,
-        manifest_file_count_matches=manifest_file_count_matches,
-        manifest_expected_total_bytes=manifest_expected_total_bytes,
-        manifest_actual_total_bytes=manifest_actual_total_bytes,
-        manifest_total_bytes_matches=manifest_total_bytes_matches,
-        manifest_error=manifest_error,
-        meta_path=manifest.meta_path,
-        meta_file_exists=meta_file_exists,
-        meta_error=meta_error,
-        meta_expected_file_count=meta_expected_file_count,
-        meta_actual_file_count=meta_actual_file_count,
-        meta_file_count_matches=meta_file_count_matches,
-        meta_expected_total_bytes=meta_expected_total_bytes,
-        meta_actual_total_bytes=meta_actual_total_bytes,
-        meta_total_bytes_matches=meta_total_bytes_matches,
-        scan_unit_count=len(scan_units),
-        scan_unit_manifest_expected_file_count=scan_unit_expected_file_count,
-        scan_unit_manifest_actual_file_count=scan_unit_manifest_actual_total,
-        scan_unit_manifest_count_matches=scan_unit_manifest_count_matches,
-        scan_unit_manifest_expected_total_bytes=scan_unit_expected_total_bytes,
-        scan_unit_manifest_actual_total_bytes=scan_unit_manifest_actual_total_bytes,
-        scan_unit_manifest_total_bytes_matches=scan_unit_manifest_total_bytes_matches,
-        bad_scan_unit_count=bad_scan_unit_count,
-        bad_scan_units=bad_scan_units,
-        shard_count=len(shards),
-        shard_expected_file_count=shard_expected_file_count,
-        shard_reference_file_count=shard_reference_file_count,
-        shard_file_count_matches_manifest=shard_file_count_matches_manifest,
-        bad_shard_count=bad_shard_count,
-        bad_shards=bad_shards,
+    if worker_only is not None:
+        return worker_only
+    scan = _audit_scan_units(session, job_id, manifest, append_sample)
+    reference_paths = scan.relative_paths if scan.count else manifest_file.relative_paths
+    shards = _audit_shards(session, job_id, reference_paths, append_sample)
+    return _build_manifest_integrity_response(
+        job_id,
+        manifest,
+        manifest_file,
+        meta,
+        scan,
+        shards,
     )
 
 

@@ -1528,6 +1528,9 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
         manifests_integrity,
         {
             "complete_worker_manifest_integrity_check",
+            "_worker_only_integrity_response",
+            "_audit_scan_units",
+            "_audit_shards",
             "_assemble_manifest_integrity_report",
             "get_manifest_integrity_report",
         },
@@ -1536,7 +1539,10 @@ def test_manifest_limit_paths_keep_direct_session_call_baseline() -> None:
             "get": 1,
             "flush": 1,
         },
-        "_assemble_manifest_integrity_report": {"execute": 6},
+        "_worker_only_integrity_response": {"execute": 3},
+        "_audit_scan_units": {"execute": 1},
+        "_audit_shards": {"execute": 1},
+        "_assemble_manifest_integrity_report": {"execute": 1},
         "get_manifest_integrity_report": {},
     }
 
