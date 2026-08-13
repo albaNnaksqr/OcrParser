@@ -6,6 +6,10 @@
   audits, worker-only handling, and response assembly into bounded private
   helpers while preserving its HTTP, query, filesystem, issue-ordering, and
   sampling contracts.
+- Split Agent job and static-shard execution into explicit mode, process,
+  supervision, claim, capacity, terminal-update, and failure helpers backed by
+  immutable execution snapshots, without changing lane, lease, retry, spool,
+  signal, or shutdown behavior.
 
 ## 0.4.3 - 2026-08-12
 

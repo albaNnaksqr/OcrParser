@@ -293,6 +293,35 @@ def test_static_shard_summary_treats_retrying_and_stale_as_active():
     assert runner._summary_has_active_shards({"pending_shards": 0, "running_shards": 0}) is False
 
 
+def test_claimed_shard_context_freezes_claim_and_builds_isolated_child_job():
+    claim = {
+        "id": 7,
+        "shard_path": "/manifest/shard-7.jsonl",
+        "file_count": 3,
+        "assigned_server_id": "server-a",
+        "attempt_count": 2,
+    }
+    context = runner._ClaimedShardContext.from_claim("job-1", claim)
+
+    claim["attempt_count"] = 99
+    child = context.child_job(
+        {
+            "id": "job-1",
+            "input_mode": "remote_folder_snapshot",
+            "has_static_shards": True,
+        }
+    )
+    child["shard"]["attempt_count"] = 5
+
+    assert context.attempt_count == 2
+    assert context.update_context()["attempt_count"] == 2
+    assert child["input_mode"] == "folder_snapshot"
+    assert child["has_static_shards"] is False
+    assert context.update_context()["attempt_count"] == 2
+    with pytest.raises(TypeError):
+        context.shard["attempt_count"] = 6
+
+
 def test_forward_stream_tolerates_transient_log_post_failure():
     class FlakyLogClient:
         def __init__(self):
