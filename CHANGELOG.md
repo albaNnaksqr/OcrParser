@@ -10,6 +10,10 @@
   supervision, claim, capacity, terminal-update, and failure helpers backed by
   immutable execution snapshots, without changing lane, lease, retry, spool,
   signal, or shutdown behavior.
+- Split DotsOCR page execution into explicit preparation, inference,
+  postprocess, concurrent retry, table refinement, artifact, and fallback
+  helpers while preserving retry budgets, output statuses, execution traces,
+  and the existing Parser injection boundary.
 
 ## 0.4.3 - 2026-08-12
 
